@@ -2,4 +2,7 @@ node_modules/
 .next/
 out/
 public/_pagefind/
+.venv/
+.state/
+__pycache__/
 .DS_Store

@@ -8,8 +8,9 @@
     "build": "next build --webpack",
     "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind",
     "start": "next start",
-    "generate": "../.venv/bin/python scripts/generate_reference.py",
-    "generate:check": "../.venv/bin/python scripts/generate_reference.py --check"
+    "generate": ".venv/bin/python scripts/generate_reference.py",
+    "generate:check": ".venv/bin/python scripts/generate_reference.py --check",
+    "sources": ".venv/bin/pip install -q -r requirements.txt && .venv/bin/ansible-galaxy collection install -r requirements.yml -p .state/collections"
   },
   "dependencies": {
     "next": "^16.0.7",
