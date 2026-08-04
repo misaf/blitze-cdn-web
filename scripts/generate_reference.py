@@ -30,6 +30,7 @@ import argparse
 import ast
 import json
 import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -72,6 +73,84 @@ def _edge_roles_dir() -> Path:
         "-p .state/collections\n"
         "or set BLITZECDN_EDGE_COLLECTION to a checkout."
     )
+
+
+def _edge_collection_version(roles_dir: Path, *, allow_unreleased: bool) -> str:
+    """Report the version of the edge collection the reference is built from.
+
+    Only an installed collection carries `MANIFEST.json`; a source checkout —
+    what `BLITZECDN_EDGE_COLLECTION` and the sibling-directory fallback both
+    give you — does not. Refuse to stamp a page "unknown" unless the caller
+    said so explicitly, or previewing unreleased roles silently produces
+    committable output that names no version at all.
+    """
+    manifest = roles_dir.parent / "MANIFEST.json"
+    if manifest.is_file():
+        return str(
+            json.loads(manifest.read_text(encoding="utf-8"))["collection_info"][
+                "version"
+            ]
+        )
+    if allow_unreleased:
+        return "unknown"
+    raise SystemExit(
+        f"{roles_dir.parent} has no MANIFEST.json, so it is a source checkout "
+        "rather than a released collection and its version cannot be "
+        "determined.\nInstall the pinned collection with\n"
+        "  ansible-galaxy collection install -r requirements.yml "
+        "-p .state/collections\n"
+        "or pass --allow-unreleased to preview unreleased roles. Output "
+        "generated that way records no version and must not be committed."
+    )
+
+
+def _pinned_edge_version() -> str:
+    """The edge version this site's own requirements.yml asks for."""
+    document = yaml.safe_load((WEB_DIR / "requirements.yml").read_text(encoding="utf-8"))
+    return str(
+        next(
+            entry["version"]
+            for entry in document["collections"]
+            if entry["name"] == "blitzecdn.edge"
+        )
+    )
+
+
+def check_pins() -> list[str]:
+    """Verify this site documents one coherent release of BlitzeCDN.
+
+    Three pins have to agree, and until now nothing checked them: the edge
+    collection actually installed, the edge version `requirements.yml` asks
+    for, and the edge version the control plane pinned in `requirements.txt`
+    actually deploys. When they diverge the reference still generates cleanly
+    — it just describes roles the documented control plane never ships.
+    """
+    from blitzecdn import EDGE_COLLECTION_VERSION, __version__
+
+    installed = _edge_collection_version(_edge_roles_dir(), allow_unreleased=True)
+    requested = _pinned_edge_version()
+
+    problems = []
+    if installed == "unknown":
+        problems.append(
+            "the edge collection in use is a source checkout, not the "
+            f"released {requested} that requirements.yml pins. Install the "
+            "pinned collection, or pass --allow-unreleased to preview."
+        )
+    elif installed != requested:
+        problems.append(
+            f"requirements.yml pins blitzecdn.edge {requested} but "
+            f"{installed} is installed; reinstall the pinned collection."
+        )
+    if requested != EDGE_COLLECTION_VERSION:
+        problems.append(
+            f"requirements.yml pins blitzecdn.edge {requested} but the control "
+            f"plane pinned in requirements.txt (blitzecdn {__version__}) "
+            f"deploys {EDGE_COLLECTION_VERSION}. The role reference would "
+            "describe roles that control plane does not deploy. Move both "
+            "pins together."
+        )
+    return problems
 
 
 # --------------------------------------------------------------------------
@@ -475,14 +554,9 @@ def _describe_option(name: str, spec: dict[str, Any], default: object) -> list[s
     ]
 
 
-def render_roles() -> str:
+def render_roles(*, allow_unreleased: bool = False) -> str:
     roles_dir = _edge_roles_dir()
-    version = "unknown"
-    manifest = roles_dir.parent / "MANIFEST.json"
-    if manifest.is_file():
-        version = json.loads(manifest.read_text(encoding="utf-8"))["collection_info"][
-            "version"
-        ]
+    version = _edge_collection_version(roles_dir, allow_unreleased=allow_unreleased)
     lines = [
         BANNER,
         "# Ansible role variables",
@@ -556,13 +630,37 @@ def main() -> int:
         action="store_true",
         help="Fail instead of writing when the committed output is stale.",
     )
+    parser.add_argument(
+        "--allow-unreleased",
+        action="store_true",
+        help=(
+            "Generate from an edge source checkout, recording no collection "
+            "version. For local preview only; do not commit the result."
+        ),
+    )
     arguments = parser.parse_args()
+
+    if arguments.allow_unreleased:
+        print(
+            "warning: generating from an unreleased edge checkout; "
+            "the role reference will record no version. Do not commit it.",
+            file=sys.stderr,
+        )
+    else:
+        problems = check_pins()
+        if problems:
+            print(
+                "The documented sources do not describe one release:\n"
+                + "\n".join(f"  - {problem}" for problem in problems),
+                file=sys.stderr,
+            )
+            return 1
 
     pages = {
         "api.mdx": render_api(build_openapi_schema()),
         "cli.mdx": render_cli(),
         "configuration.mdx": render_configuration(),
-        "roles.mdx": render_roles(),
+        "roles.mdx": render_roles(allow_unreleased=arguments.allow_unreleased),
     }
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

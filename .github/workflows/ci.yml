@@ -35,6 +35,8 @@ jobs:
             -p .state/collections
       - name: Install site dependencies
         run: npm ci
+      # Also asserts the two pins describe one release: the edge version this
+      # site documents must be the one the pinned control plane deploys.
       - name: Verify generated reference matches the pinned sources
         run: python scripts/generate_reference.py --check
       - name: Dependency audit

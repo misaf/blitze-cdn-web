@@ -27,9 +27,18 @@ the control plane's `ansible/requirements.yml`. Otherwise the role reference
 describes roles the documented control plane does not actually deploy. The
 generated role page records the exact collection version it came from.
 
+`npm run generate` and `generate:check` enforce this rather than trusting it.
+Before generating anything they assert that the installed edge collection, the
+version `requirements.yml` asks for, and the version the control plane pinned
+in `requirements.txt` actually deploys (`blitzecdn.EDGE_COLLECTION_VERSION`)
+are all the same. Moving one pin without the others fails in CI.
+
 To preview unreleased role changes without publishing, point
-`BLITZECDN_EDGE_COLLECTION` at a checkout. A sibling `../blitze-cdn-edge` is
-picked up automatically.
+`BLITZECDN_EDGE_COLLECTION` at a checkout — a sibling `../blitze-cdn-edge` is
+picked up automatically — and pass `--allow-unreleased`. A source checkout
+carries no `MANIFEST.json` and so no version, so this is refused by default:
+without the flag it would quietly produce committable pages that name no edge
+version at all. Output generated this way is for local preview only.
 
 ## Layout
 
