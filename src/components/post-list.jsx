@@ -11,7 +11,7 @@ const formatter = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'long',
   year: 'numeric',
-  timeZone: 'UTC'
+  timeZone: 'UTC',
 })
 
 function formatDate(value) {
@@ -30,16 +30,20 @@ export async function PostList() {
   const pageMap = await getPageMap('/blog')
 
   const posts = pageMap
-    .filter(item => item.name !== 'index' && item.route)
-    .map(item => ({
+    .filter((item) => item.name !== 'index' && item.route)
+    .map((item) => ({
       route: item.route,
       title: item.frontMatter?.title ?? item.title ?? item.name,
       description: item.frontMatter?.description,
       author: item.frontMatter?.author,
-      date: item.frontMatter?.date
+      date: item.frontMatter?.date,
     }))
     /* Undated drafts sort last rather than throwing off the ordering. */
-    .sort((a, b) => (b.date ? Date.parse(b.date) : -Infinity) - (a.date ? Date.parse(a.date) : -Infinity))
+    .sort(
+      (a, b) =>
+        (b.date ? Date.parse(b.date) : -Infinity) -
+        (a.date ? Date.parse(a.date) : -Infinity),
+    )
 
   if (posts.length === 0) {
     return <p>No posts yet.</p>
@@ -47,7 +51,7 @@ export async function PostList() {
 
   return (
     <div className="mt-10 flex flex-col border-t border-line">
-      {posts.map(post => {
+      {posts.map((post) => {
         const date = post.date ? formatDate(post.date) : null
         return (
           <Link
@@ -55,15 +59,15 @@ export async function PostList() {
             href={post.route}
             className="group border-b border-line py-7 no-underline"
           >
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-xs uppercase tracking-[0.12em] text-accent-ink">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-xs tracking-[0.12em] text-accent-ink uppercase">
               {date && <time dateTime={post.date}>{date}</time>}
               {post.author && (
-                <span className="text-muted normal-case tracking-normal">
+                <span className="tracking-normal text-muted normal-case">
                   {post.author}
                 </span>
               )}
             </div>
-            <h3 className="mt-2 text-2xl font-book tracking-display text-fg group-hover:underline underline-offset-4">
+            <h3 className="mt-2 text-2xl font-book tracking-display text-fg underline-offset-4 group-hover:underline">
               {post.title}
             </h3>
             {post.description && (

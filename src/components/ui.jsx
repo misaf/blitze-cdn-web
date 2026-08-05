@@ -107,13 +107,11 @@ export function PageHero({ eyebrow: label, title, children }) {
       {/* Feathered on its leading edge: the bar pattern starts abruptly at the
           element boundary and reads as a seam without this. */}
       <div
-        className="band-art pointer-events-none absolute right-0 bottom-0 h-full w-[min(34%,30rem)] [mask-image:linear-gradient(90deg,transparent_0%,#000_55%)]"
+        className="pointer-events-none absolute right-0 bottom-0 h-full w-[min(34%,30rem)] band-art [mask-image:linear-gradient(90deg,transparent_0%,#000_55%)]"
         aria-hidden="true"
       />
-      <div
-        className={`relative z-10 ${inner} py-[clamp(3.5rem,7vw,6rem)]`}
-      >
-        <p className={`${eyebrow} text-accent`}>{label}</p>
+      <div className={`relative z-10 ${inner} py-[clamp(3.5rem,7vw,6rem)]`}>
+        <p className={`${eyebrow} text-accent!`}>{label}</p>
         <h1 className={`${h1} max-w-[16ch]`}>{title}</h1>
         {children && (
           <div className="mt-6 max-w-2xl text-[1.05rem] leading-relaxed text-ink-muted">
