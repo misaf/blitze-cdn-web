@@ -19,6 +19,11 @@ identity, network policy, host trust, and secret handling.
 
 - **SSH host keys are operator-verified.** Verify every fingerprint through a
   trusted channel, add it to `known_hosts`, and never disable host-key checking.
+- **SSH is public-key only, in both directions.** The controller dials out with
+  `PreferredAuthentications=publickey`, `PasswordAuthentication=no`, and
+  `BatchMode=yes`, so a deploy fails rather than falling back to a password or
+  hanging on a prompt; `blitzecdn_sshd` enforces the matching policy on every
+  edge. Use an SSH agent for key passphrases.
 - **API keys authenticate, they do not authorize.** Keys identify an operator;
   there are no per-operator roles in this release.
 - **Secrets never ride the CLI.** Keys and passwords live in environment / secret
@@ -34,6 +39,11 @@ The edge roles install a fail-closed baseline (see [Ansible roles](/docs/referen
 - **Firewall (UFW)** — `blitzecdn_firewall`, enabled by default, opening only
   `80`, `443`, and SSH, and only from `blitzecdn_firewall_ssh_sources`. An empty
   source list deliberately fails closed.
+- **SSH policy** — `blitzecdn_sshd`, enabled by default, accepting public keys
+  and nothing else (`AuthenticationMethods publickey`, root login off). It
+  refuses to run unless the account it would leave behind already has a working
+  key, reloads rather than restarts the daemon, and verifies the result with
+  `sshd -T` instead of trusting that the file was written.
 - **Fail2Ban** — `blitzecdn_fail2ban`, protecting SSH with bounded retry,
   find-time, and ban-time defaults.
 - **Kernel** — `blitzecdn_kernel`, conservative settings including TCP SYN

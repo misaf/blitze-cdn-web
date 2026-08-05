@@ -65,6 +65,20 @@ or raw inventory to an incident report.
   `BLITZE_INVENTORY` to an absolute path.
 - **SSH host-key failure:** validate the new fingerprint out of band; never
   bypass host-key checking.
+- **`Permission denied (publickey)`:** the controller offers keys only. Install
+  the operator public key in the `--user` account's `~/.ssh/authorized_keys` on
+  the edge; do not re-enable password authentication to work around it.
+- **Deploy fails on `Refuse to disable passwords without a working key`:** the
+  `blitzecdn_sshd` role found an account with a missing or empty
+  `authorized_keys` and stopped before hardening would have locked it out. The
+  message names the account and path. Install its key, then redeploy.
+- **Deploy hangs or fails at connection with no output:** an encrypted key with
+  no agent loaded. The controller runs `BatchMode=yes`, so there is no prompt —
+  run `ssh-add` first.
+- **`sshd -T` verification failure:** the drop-in was written but is not in
+  effect. Check that `/etc/ssh/sshd_config` still begins with
+  `Include /etc/ssh/sshd_config.d/*.conf`, and that no later `Match` block
+  re-enables password authentication.
 - **Group variables ignored:** `group_vars` must sit beside the inventory file in
   `ansible/inventory/group_vars/`. Elsewhere Ansible silently skips it and roles
   fall back to their defaults.

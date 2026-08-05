@@ -22,6 +22,13 @@ host. It is governed by the `CdnSite` model, and every value that may enter an
 Nginx template is constrained at the domain boundary — names, DNS/IP syntax,
 ports, durations, and absolute certificate paths.
 
+<Callout type="info">
+  You do not create sites. Since v1.1.0 a site is **derived** from a proxied DNS
+  record: proxy a record and its site appears, unproxy it and the site is gone.
+  The fields below are set on the record. See [Domains and
+  records](/docs/reference/domains).
+</Callout>
+
 The core fields:
 
 | Field                                           | Meaning                                              |

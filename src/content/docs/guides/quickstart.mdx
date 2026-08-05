@@ -6,10 +6,9 @@ description: Stand up a control plane and make your first deploy, end to end.
 # Quick start
 
 By the end of this tutorial, one site will be deployed across your edge servers.
-Expect about 20 minutes when SSH and package access are ready. Run every command
-from the release checkout created below; paths such as `ansible/` and
-`examples/site.yml` are relative to that directory. Editable development
-installation belongs in the [contributor guide](/docs/contributing).
+Expect about 15 minutes when SSH and package access are ready. Run every command
+from the release checkout created below. Editable development installation
+belongs in the repository's CONTRIBUTING.md.
 
 <Callout type="warning">
   This is a first-deployment lab, not a production runbook. It deliberately
@@ -42,9 +41,6 @@ The commands in this tutorial use the following control-plane layout:
       </FileTree.Folder>
       <FileTree.Folder name="playbooks" />
     </FileTree.Folder>
-    <FileTree.Folder name="examples">
-      <FileTree.File name="site.yml" />
-    </FileTree.Folder>
     <FileTree.File name=".env" />
     <FileTree.File name="blitzecdn.toml" />
   </FileTree.Folder>
@@ -57,49 +53,29 @@ The commands in this tutorial use the following control-plane layout:
 ```bash
 git clone --depth 1 https://github.com/misaf/blitze-cdn-cp.git
 cd blitze-cdn-cp
-python3 --version
-python3 -m venv .venv
-.venv/bin/pip install .
-.venv/bin/ansible-galaxy collection install -r ansible/requirements.yml
+./install.sh
 ```
 
 This checks out the latest version from the repository's default branch. Verify
-the repository owner before production use. The reported Python version must
-be 3.12, 3.13, or 3.14. For repeatable production deployments, select a tested
-version from the [compatibility matrix](/docs/reference).
+the repository owner before production use. The installer verifies Python,
+creates `.venv`, installs the compatible edge automation, and initializes local
+configuration. For repeatable production deployments, select a tested version
+matching the edge collection pinned in `ansible/requirements.yml`.
 
 ### Initialise local configuration
 
 ```bash
-.venv/bin/blitzecdn init --output .env
-cp ansible/inventory/hosts.example.yml ansible/inventory/hosts.yml
-cp examples/site.yml site.yml
-set -a; source .env; set +a
+.venv/bin/blitzecdn edge add edge-01 \
+  --host 192.0.2.10 \
+  --user deploy \
+  --ssh-source 198.51.100.0/24
 ```
 
-`init` writes a restrictive environment file without overwriting an existing
-one. Edit `hosts.yml` with your real addresses, deployment user, and at least
-one trusted management CIDR. The firewall role fails closed when
-`blitzecdn_firewall_ssh_sources` is empty:
-
-```yaml
-all:
-  children:
-    blitzecdn_edges:
-      hosts:
-        edge-01.example.net:
-          ansible_host: 192.0.2.10
-          ansible_user: deploy
-      vars:
-        blitzecdn_firewall_ssh_sources:
-          - 198.51.100.0/24
-```
-
-Replace the documentation addresses with your real edge and management
-networks before continuing. Then edit `site.yml`: replace every `example.com`
-hostname with a hostname and origin you control. Keep
-`certificate_mode: disabled` for this first deployment. That produces an
-HTTP-only edge; add HTTPS only after the HTTP path is proven.
+The installer has already created private local configuration and an empty
+inventory without overwriting existing files. The CLI reads `.env`
+automatically. Replace the documentation addresses with your real edge and trusted management network.
+At least one `--ssh-source` is required so the firewall cannot accidentally
+lock out every administrator.
 
 ### Verify the SSH trust chain
 
@@ -138,23 +114,72 @@ it also removes old keys: run it only after confirming that a legitimate host
 key rotation occurred or that the existing entry is obsolete. Repeat this
 process for each inventory connection target.
 
+### Install your login key on the edge
+
+The previous step verified the _host's_ identity to you. This step proves _your_
+identity to the host, and they are different keys: `known_hosts` holds the
+edge's host key, `authorized_keys` holds your public key. BlitzeCDN accepts no
+other way in — the controller connects with `PreferredAuthentications=publickey`
+and `PasswordAuthentication=no`, and the first deploy makes the edge itself
+reject everything but keys.
+
+Create a key if you do not already have one, and install the **public** half on
+the edge under the account you passed to `--user`:
+
+```bash
+ssh-keygen -t ed25519 -C "blitzecdn-operator"
+ssh-copy-id -i ~/.ssh/id_ed25519.pub deploy@"$EDGE_HOST"
+```
+
+Most cloud images inject an operator key at provisioning time, in which case
+`ssh-copy-id` is unnecessary — it also needs password login, which a
+pre-hardened image will already refuse. Either route is fine; what matters is
+that the account can log in with a key before you deploy.
+
+Confirm it, and confirm that no password was involved:
+
+```bash
+ssh -o PreferredAuthentications=publickey -o PasswordAuthentication=no \
+  deploy@"$EDGE_HOST" true
+```
+
+<Callout type="warning">
+  Run this for every account you list in `blitzecdn_sshd_allow_users`, or for
+  the `--user` account if you leave that list empty. The `blitzecdn_sshd` role
+  checks each one for a non-empty `authorized_keys` and **fails the deploy**
+  rather than disabling passwords on a host where that would strand you. A
+  failure here means the key is missing, not that the tooling is broken.
+</Callout>
+
+If your key has a passphrase, load it into an agent before deploying. The
+controller runs SSH with `BatchMode=yes`, so an unloaded passphrase fails the
+deploy immediately instead of hanging on a prompt:
+
+```bash
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
+```
+
 ### Prove readiness, then deploy
 
 ```bash
 .venv/bin/blitzecdn doctor --json
-.venv/bin/blitzecdn site add --file site.yml
-.venv/bin/blitzecdn validate
-.venv/bin/blitzecdn plan --json
+.venv/bin/blitzecdn domain add example.com
+.venv/bin/blitzecdn record add example.com cdn \
+  --value 198.51.100.20 \
+  --proxied
 .venv/bin/blitzecdn deploy
 ```
 
 - `doctor` reports local readiness without contacting remote servers.
-- `site add` registers a documented site; `validate` checks configuration,
-  desired state, inventory, and playbook syntax.
-- `plan` runs Ansible in check mode and shows the deployment record it would
-  produce.
-- `deploy` asks you to confirm before it applies the state. Use `--yes` only in
-  reviewed automation where no interactive terminal is available.
+- `domain add` registers the zone.
+- `record add --proxied` points `cdn.example.com` at the origin
+  `198.51.100.20` and routes it through the edge. Without `--proxied` the record
+  bypasses the CDN and the edge serves nothing for it. See
+  [Domains and records](/docs/reference/domains).
+- `deploy` validates the configuration, previews the Ansible changes, and asks
+  you to confirm before applying them. Use `--yes` only in reviewed automation
+  where validation and preview happen separately.
 
 The timestamps, paths, and deployment IDs vary. Look for these stable fields:
 
@@ -169,21 +194,10 @@ $ .venv/bin/blitzecdn doctor --json
 ```
 
 ```console
-$ .venv/bin/blitzecdn validate
-valid: true
-errors: []
-```
-
-```console
-$ .venv/bin/blitzecdn plan --json
-{
-  "check_mode": true,
-  "status": "succeeded",
-  ...
-}
-
 $ .venv/bin/blitzecdn deploy
-Apply desired state to all blitzecdn_edges hosts? [y/N]: y
+Configuration is valid. Previewing changes...
+...
+Apply these changes to all configured edges? [y/N]: y
 status: succeeded
 check_mode: false
 ...
@@ -217,7 +231,7 @@ $ .venv/bin/blitzecdn audit --limit 5
 ```
 
 Now exercise the real HTTP path without waiting for public DNS. Substitute the
-hostname from `site.yml` and one edge IP:
+hostname passed to `--domain` and one edge IP:
 
 ```bash
 SITE_HOST=cdn.your-domain.example
@@ -237,23 +251,21 @@ the listener, virtual host, proxy path, and origin response together.
 ## Clean up the lab site
 
 If this was only an evaluation, remove its desired state and converge that
-removal on the edges. Use the `name` value from `site.yml`:
+removal on the edges. Removing the zone removes its records with it:
 
 ```bash
-.venv/bin/blitzecdn site remove example-cdn
-.venv/bin/blitzecdn validate
-.venv/bin/blitzecdn plan
+.venv/bin/blitzecdn domain remove example.com
 .venv/bin/blitzecdn deploy
 ```
 
-Both destructive commands prompt for confirmation. Review the plan before the
-final deploy; removing desired state does not imply that unrelated origin data
-or DNS records are deleted.
+Both destructive commands prompt for confirmation, and deploy shows its preview
+before applying. Removing desired state does not imply that unrelated origin
+data or DNS records are deleted.
 
 ## Recover from a failed first deployment
 
 Do not immediately retry a failed or timed-out run. Read its retained output,
-correct the inventory or desired state, then run `validate` and `plan` again.
+correct the inventory or desired state, then run `deploy` and review its preview.
 See [Deployment lifecycle troubleshooting](/docs/guides/troubleshooting#deployment-lifecycle)
 for timeout and partial-state guidance.
 
