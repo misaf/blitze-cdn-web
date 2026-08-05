@@ -16,7 +16,7 @@ any single step. It was in the order.
 
 ## Writing state before the world agrees
 
-The old rollback rewrote the current YAML *first*, then converged the hosts.
+The old rollback rewrote the current YAML _first_, then converged the hosts.
 
 Read that again with a failure in mind. If convergence then fails, the
 controller's idea of desired state has already moved to something the edges are
@@ -39,8 +39,8 @@ The second half of the problem is concurrency, and it is easy to under-scope.
 
 It is tempting to hold the deployment lock only around the Ansible invocation —
 that is the slow part, and it is what obviously must not run twice at once. But
-rollback is three operations: *select* a target snapshot, *converge* to it, and
-*replace* canonical state. Lock only the middle one and a site edit can land in
+rollback is three operations: _select_ a target snapshot, _converge_ to it, and
+_replace_ canonical state. Lock only the middle one and a site edit can land in
 the gap between selection and replacement, where it will be silently discarded
 by a write derived from a snapshot chosen before that edit existed.
 
@@ -58,7 +58,7 @@ Locks handle contention. They do not handle a controller that dies.
 
 API deployments run on a worker thread and return `202` immediately, because a
 convergence outlives any HTTP client. The record and its snapshot are committed
-*before* the worker starts, so a crash cannot lose queued work the way the
+_before_ the worker starts, so a crash cannot lose queued work the way the
 original system did. On restart, `abandon_running` settles anything the worker
 did not finish by marking it `abandoned`.
 

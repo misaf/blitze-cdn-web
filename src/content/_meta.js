@@ -3,12 +3,17 @@
  * out of the docs sidebar and into the navbar, which is what keeps blog posts
  * and the FAQ from being listed alongside the reference pages.
  *
- * `/about` and `/contact` are deliberately absent: they are hand-designed App
- * Router routes (`src/app/about`, `src/app/contact`) rather than MDX, so Nextra
- * knows nothing about them. They are reached from the footer.
+ * `/`, `/about`, and `/contact` are hand-designed App Router routes. Nextra
+ * still discovers App Router pages while building its page map, so explicit
+ * hidden entries keep them out of the docs sidebar and navbar. The `index`
+ * entry also prevents its key from colliding with `docs/index.mdx` in Nextra's
+ * navigation rendering.
  */
 export default {
   docs: { type: 'page', title: 'Documentation' },
   faq: { type: 'page', title: 'FAQ' },
-  blog: { type: 'page', title: 'Blog' }
+  blog: { type: 'page', title: 'Blog' },
+  index: { display: 'hidden' },
+  about: { display: 'hidden' },
+  contact: { display: 'hidden' },
 }

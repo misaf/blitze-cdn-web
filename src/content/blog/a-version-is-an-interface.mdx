@@ -22,7 +22,7 @@ Ansible converges hosts in batches. Without a contract, the first batch fails on
 a missing variable — or worse, succeeds while silently ignoring it — and you
 discover the mismatch somewhere around 25% of your fleet, with the remainder in
 the old state and the converged portion in a state nobody designed. Partial
-rollouts are not just an availability problem; they are a *reasoning* problem,
+rollouts are not just an availability problem; they are a _reasoning_ problem,
 because afterwards no single description of the fleet is true.
 
 The requirement, then, is not "detect skew". It is: **fail before the first host
@@ -48,7 +48,7 @@ survive:
 - **Do not bump** for a key that older roles can safely ignore.
 
 The distinction is whether an old role reading the new document would be
-*wrong*, not whether the document changed.
+_wrong_, not whether the document changed.
 
 ## Testing a contract from one side
 
@@ -71,14 +71,9 @@ because it passes.
 
 ## The same idea, one level up
 
-This documentation site has the same shape of problem, and takes the same
-approach. It documents two pinned upstreams, and the reference pages are
-generated from them. If the pins disagree the pages still generate — they just
-describe roles the documented control plane never deploys.
-
-So the site asserts, before generating anything, that the installed edge
-collection, the version `requirements.yml` pins, and the version the pinned
-control plane deploys are all the same.
+The documentation has the same shape of problem. Its reference pages must name
+the release they describe, and a release review must compare those pages with
+both the control-plane and edge interfaces before publishing.
 
 In both cases the lesson is the same, and it is not really about versions: when
 two components are released independently, the thing that passes between them

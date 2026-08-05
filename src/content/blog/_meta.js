@@ -8,5 +8,4 @@ export default {
   index: 'All posts',
   'a-version-is-an-interface': 'A version is an interface',
   'one-lock-two-halves': 'One lock, two halves',
-  'the-reference-writes-itself': 'The reference writes itself'
 }
