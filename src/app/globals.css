@@ -1,0 +1,213 @@
+/*
+ * Tailwind setup, loaded from the root layout so the landing page, the FAQ and
+ * the blog can all use it. It is safe on the docs routes: it ships no preflight
+ * (see below), and Nextra inlines its own theme values rather than reading
+ * variables from `:root`, so nothing here collides with them.
+ *
+ * Three things here are deliberate and worth not "fixing" later:
+ *
+ * 1. Tailwind is imported WITHOUT preflight. `nextra-theme-docs` ships a
+ *    precompiled Tailwind build that contains no preflight of its own (it
+ *    styles its own prose explicitly instead), so every docs page currently
+ *    relies on browser defaults. Dropping a global reset in would restyle all
+ *    of them. The landing page therefore zeroes its own margins with `m-0`
+ *    and friends rather than inheriting a reset.
+ *
+ * 2. Because the imports are granular, Tailwind's automatic source detection
+ *    does not run — that only happens for a bare `@import "tailwindcss"`. The
+ *    `@source` line below is what makes class scanning work; without it every
+ *    utility silently disappears from the build.
+ *
+ * 3. Nextra's own utilities are compiled under an `x:` prefix, so the
+ *    unprefixed utilities generated here cannot collide with them.
+ */
+
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@source '../';
+
+/* Nextra switches themes with a class on <html> (next-themes), not with the
+   `prefers-color-scheme` media query Tailwind defaults to. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Semantic colours flip between themes; `@theme inline` is what makes that
+ * work. It emits `var(--surface)` into the utility instead of copying the
+ * value, so `bg-surface` follows the variable when `.dark` redefines it.
+ */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent-ink: var(--accent-ink);
+}
+
+/* Fixed colours. The hero, the code panels and the colour bands stay dark in
+   both themes, so they do not participate in the flip above. */
+@theme {
+  --color-accent: #ffb61f;
+  --color-accent-bright: #ffc752;
+  --color-accent-contrast: #17130a;
+
+  --color-ink: #0c0e14;
+  --color-ink-fg: #f4f6fa;
+  --color-ink-muted: #a3acbd;
+  --color-ink-faint: #6f7a8d;
+
+  --color-band: #1d1b4b;
+  --color-band-fg: #f2f1fb;
+  --color-band-muted: #b9b6dd;
+  --color-band-line: #443f86;
+
+  --color-code-fg: #d6dbe6;
+  --color-tok-key: #7fd6c4;
+  --color-tok-str: #ffc85c;
+  --color-tok-num: #9db8ff;
+  --color-tok-com: #6a7488;
+  --color-tok-ok: #6ddba0;
+
+  /* A book weight. The headings want the light, wide geometric feel of the
+     reference design, which bold system fonts destroy. */
+  --font-weight-book: 450;
+
+  --tracking-display: -0.022em;
+
+  --text-hero: clamp(2.75rem, 6.4vw, 5.25rem);
+  --text-section: clamp(2rem, 4vw, 3.4rem);
+  --text-card: clamp(1.25rem, 1.8vw, 1.6rem);
+  --text-principle: clamp(1.35rem, 2.2vw, 1.9rem);
+
+  --spacing-gutter: clamp(1.25rem, 5vw, 5.5rem);
+  --spacing-band: clamp(4rem, 9vw, 8.5rem);
+  --spacing-measure: 82rem;
+}
+
+:root {
+  --surface: #ffffff;
+  --fg: #10131a;
+  --muted: #4d5563;
+  --line: #e2e5ea;
+  /* Amber is legible on dark surfaces but not on white, so labels and links in
+     the light theme use a darkened version of it. */
+  --accent-ink: #8a5300;
+}
+
+.dark {
+  --surface: #0c0e14;
+  --fg: #f4f6fa;
+  --muted: #9aa4b6;
+  --line: #23283a;
+  --accent-ink: #ffb61f;
+}
+
+/*
+ * A mini-preflight for the hand-designed pages (`/`, `/about`, `/contact`),
+ * which opt in by wrapping themselves in `.canvas`. It is scoped rather than
+ * global because the global preflight is excluded: Tailwind's sizing utilities
+ * assume `border-box`, and its layout utilities assume the browser's default
+ * margins are gone, but the Nextra docs routes want neither imposed on them.
+ *
+ * Everything is wrapped in `:where()` so it carries zero specificity and any
+ * utility class still wins.
+ */
+@layer base {
+  .canvas,
+  .canvas *,
+  .canvas *::before,
+  .canvas *::after {
+    box-sizing: border-box;
+  }
+
+  .canvas :where(h1, h2, h3, p, dl, dd, pre, figure, ul, ol) {
+    margin: 0;
+  }
+
+  .canvas :where(ul, ol) {
+    padding: 0;
+    list-style: none;
+  }
+}
+
+/*
+ * The hero's vertical-bar gradient: a radial amber bloom sliced into bars by a
+ * repeating hard-stop gradient. Pure CSS, because this site is a static export
+ * that ships no images. Too many layered stops to express as utilities.
+ */
+@utility hero-art {
+  background-color: #0c0e14;
+  background-image: repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.55) 0 1px,
+      transparent 1px 7px
+    ),
+    radial-gradient(
+      120% 78% at 62% 82%,
+      #ffb61f 0%,
+      #f0761d 26%,
+      #7a2f6b 52%,
+      #241b4b 72%,
+      #0c0e14 100%
+    );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-art {
+    animation: hero-bloom 14s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes hero-bloom {
+  from {
+    background-position: 0 0, 54% 88%;
+  }
+  to {
+    background-position: 0 0, 70% 74%;
+  }
+}
+
+/* The WebGL globe mounts after hydration, on top of the CSS bloom. Without a
+   fade it pops in a frame or two late; this hides the seam. */
+@keyframes hero-globe-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The same bar motif, tucked into a colour band's trailing corner. Kept dim:
+   card text and link rows sit on top of it, and a hotter bloom eats their
+   contrast. */
+@utility band-art {
+  background-image: repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.4) 0 1px,
+      transparent 1px 7px
+    ),
+    radial-gradient(
+      100% 82% at 88% 100%,
+      #ffb61f 0%,
+      #b4457a 34%,
+      rgba(29, 27, 75, 0) 72%
+    );
+  opacity: 0.45;
+}
+
+/* The `▶` that opens each section label. */
+@utility eyebrow-marker {
+  &::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0.3rem 0 0.3rem 0.45rem;
+    border-color: transparent transparent transparent currentColor;
+  }
+}
