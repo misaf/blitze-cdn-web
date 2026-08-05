@@ -1,0 +1,10 @@
+.next
+out
+node_modules
+public/_pagefind
+playwright-report
+test-results
+package-lock.json
+patches
+.state
+src/content/docs/reference/*.mdx

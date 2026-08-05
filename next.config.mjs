@@ -8,8 +8,8 @@ const withNextra = nextra({
   // (required) rather than `[[...mdxPath]]` (optional) — the optional form
   // would also match `/` and collide with it.
   search: {
-    codeblocks: false
-  }
+    codeblocks: false,
+  },
 })
 
 export default withNextra({
@@ -17,5 +17,5 @@ export default withNextra({
   // Static export: the site is a build artifact, never a server with access to
   // controller state. See SECURITY.md.
   output: 'export',
-  images: { unoptimized: true }
+  images: { unoptimized: true },
 })

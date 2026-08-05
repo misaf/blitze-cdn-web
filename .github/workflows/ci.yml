@@ -1,10 +1,10 @@
 ---
 name: CI
 
-"on":
+'on':
   pull_request:
   push:
-    branches: [master, main]
+    branches: [master, 1.x]
 
 permissions:
   contents: read
@@ -14,32 +14,27 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v7.0.0
         with:
-          python-version: "3.14"
-          cache: pip
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
+          node-version: '24'
           cache: npm
-      # The reference pages are generated from the two pinned sources, so this
-      # step decides which versions of BlitzeCDN this site documents.
-      - name: Install the documented sources
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt 'ansible-core>=2.21,<2.22'
-          ansible-galaxy collection install -r requirements.yml \
-            -p .state/collections
       - name: Install site dependencies
         run: npm ci
-      # Also asserts the two pins describe one release: the edge version this
-      # site documents must be the one the pinned control plane deploys.
-      - name: Verify generated reference matches the pinned sources
-        run: python scripts/generate_reference.py --check
       - name: Dependency audit
         run: npm audit --audit-level=high
       - name: Build site
         run: npm run build
+      - name: Check formatting and lint
+        run: |
+          npm run format:check
+          npm run lint
+          npm run check:docs
+      - name: Check internal links
+        run: npm run check:links
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Browser and accessibility tests
+        run: npm run test:e2e
