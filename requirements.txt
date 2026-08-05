@@ -1,4 +1,0 @@
-# The control plane this site documents. Pin an exact ref: the reference pages
-# are generated from it, so an unpinned source would silently change the docs.
-# Bump together with requirements.yml when documenting a new release.
-blitzecdn @ git+https://github.com/misaf/blitze-cdn-cp@v0.1.0

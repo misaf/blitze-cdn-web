@@ -1,9 +1,0 @@
----
-collections:
-  # The edge collection this site documents. Keep the version in step with the
-  # pin in the control plane's ansible/requirements.yml, or the role reference
-  # will describe roles the documented control plane does not actually deploy.
-  - name: blitzecdn.edge
-    source: https://github.com/misaf/blitze-cdn-edge.git
-    type: git
-    version: "1.0.0"
