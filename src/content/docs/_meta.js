@@ -1,6 +1,9 @@
 export default {
   index: 'Overview',
+  glossary: 'Glossary',
   architecture: 'Architecture',
-  operations: 'Operations',
-  reference: 'Reference'
+  guides: 'Guides',
+  contributing: 'Contributing',
+  release: 'Release',
+  reference: 'Reference',
 }

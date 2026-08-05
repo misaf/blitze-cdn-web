@@ -5,13 +5,49 @@ description: What BlitzeCDN is, how its two halves divide responsibility, and wh
 
 # BlitzeCDN
 
-BlitzeCDN converges Nginx CDN edge servers from a single controller. The split
-is deliberate and absolute:
+Use BlitzeCDN to manage Nginx CDN edge servers from one controller. Start with
+the [Quick start](/docs/guides/quickstart) to deploy a site, or use the links
+below to solve a specific operational task.
+
+The product has a strict responsibility split:
 
 - **Python** owns validation, desired state, deployment history, planning,
   rollback, audit records, and process execution.
 - **Ansible** exclusively owns remote Linux state. It carries defensive
   validation but no product workflow decisions.
+
+<Cards num={2}>
+  <Cards.Card
+    title="Start with a tutorial"
+    href="/docs/guides/quickstart"
+    arrow
+  >
+    Deploy the example site from a fresh controller.
+  </Cards.Card>
+  <Cards.Card title="Operate safely" href="/docs/guides/deployment" arrow>
+    Plan, deploy, verify, and recover production changes.
+  </Cards.Card>
+  <Cards.Card title="Understand the design" href="/docs/architecture" arrow>
+    Follow state, trust, and execution across both halves.
+  </Cards.Card>
+  <Cards.Card title="Look up exact behavior" href="/docs/reference/cli" arrow>
+    Use versioned CLI, API, configuration, and role reference.
+  </Cards.Card>
+  <Cards.Card
+    title="Upgrade a release pair"
+    href="/docs/guides/upgrading"
+    arrow
+  >
+    Back up, check compatibility, canary, verify, and recover.
+  </Cards.Card>
+  <Cards.Card
+    title="Respond to an incident"
+    href="/docs/guides/incidents"
+    arrow
+  >
+    Establish serving state, contain risk, and recover controller truth.
+  </Cards.Card>
+</Cards>
 
 The project is opinionated: Debian 12+ and Ubuntu 24.04+ edges, OpenSSH
 host-key verification, non-root SSH users with explicit sudo, UFW, Fail2Ban,
@@ -21,43 +57,46 @@ and distributed to every edge.
 
 ## Where to go
 
+- [Quick start](/docs/guides/quickstart) — stand up a controller and make the
+  first deploy, end to end.
 - [Architecture](/docs/architecture) — trust boundaries, execution flow, and the
   limits this release deliberately accepts.
-- [Operations](/docs/operations) — deployment checklist, troubleshooting, and
-  certificate renewal.
+- [Sites & deployment](/docs/guides/sites) — what a site is, how desired state,
+  snapshots, and rollback work.
+- [Deploying](/docs/guides/deployment) — the operator's deployment checklist.
+- [Certificates](/docs/guides/certificates) — ACME HTTP-01 issuance, uploads, and
+  renewal.
+- [API usage](/docs/guides/api) — authenticate operators and drive the control
+  plane over HTTP.
+- [Security](/docs/guides/security) — hardening the control plane and edges.
+- [Backup & recovery](/docs/guides/backup) — what to back up and how to recover.
+- [Production](/docs/guides/production) — sizing, scaling, and operational
+  caveats.
+- [Upgrading](/docs/guides/upgrading) — change the controller and edge release
+  pair safely.
+- [API key rotation](/docs/guides/api-key-rotation) — replace operator secrets
+  without locking out every client.
+- [Incident response](/docs/guides/incidents) — contain and recover when serving
+  state or controller truth is uncertain.
+- [Troubleshooting](/docs/guides/troubleshooting) — errors, stalls, and how to
+  resolve them.
 - [CLI](/docs/reference/cli) — every command, flag, and exit code.
 - [HTTP API](/docs/reference/api) — every route, model, and status code.
 - [Configuration](/docs/reference/configuration) — every `BLITZE_*` variable and
   its TOML equivalent.
 - [Ansible roles](/docs/reference/roles) — every role variable, typed, with
   defaults.
+- [Compatibility](/docs/reference) — verified controller, edge, and state-format
+  combinations.
+- [Glossary](/docs/glossary) — definitions for controller, convergence,
+  snapshots, canonical state, and other recurring terms.
+- [Contributing](/docs/contributing) — editable installs, documentation checks,
+  and interface review policy.
 
 ## About the reference pages
 
-Everything under **Reference** is generated from the source tree — the OpenAPI
-schema, the Typer command tree, `Settings.from_environment`, and each role's
-`argument_specs.yml`. CI fails when the committed output no longer matches the
-code, so these pages cannot quietly go stale. Edit the source, then run
-`npm run generate` in `web/`.
+Everything under **Reference** is maintained as MDX in this repository. When a
+public interface changes, update its reference page alongside the release and
+verify commands and examples against the corresponding project version.
 
-## Quick start
-
-```bash
-python3.14 -m venv .venv
-.venv/bin/pip install -e '.[dev]'
-.venv/bin/ansible-galaxy collection install -r ansible/requirements.yml
-
-.venv/bin/blitzecdn init --output .env
-cp ansible/inventory/hosts.example.yml ansible/inventory/hosts.yml
-set -a; source .env; set +a
-
-blitzecdn doctor
-blitzecdn site add --file examples/site.yml
-blitzecdn validate
-blitzecdn plan
-blitzecdn deploy --yes
-```
-
-Verify every SSH fingerprint through a trusted channel and add it to the
-controller's `known_hosts` before the first deploy. Never disable host-key
-checking.
+Without a running controller, start with the [Quick start](/docs/guides/quickstart).

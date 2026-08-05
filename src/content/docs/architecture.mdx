@@ -5,18 +5,39 @@ description: Trust boundaries, execution flow, dependency decisions, and the lim
 
 # Architecture
 
-## Original system assessment
+Use this explanation to understand which component owns state, where trust
+boundaries sit, and why deployment and rollback behave as they do. For commands,
+use the [deployment guide](/docs/guides/deployment).
 
-The original repository combined a global FastAPI application, loosely typed
-service functions, a YAML site database, generated YAML, SQLite deployment
-records, a Bash/curl helper, and Ansible roles. HTTP background tasks held an
-open `fcntl` lock and launched `ansible-playbook`; process restart lost queued
-work. Rollback rewrote current YAML before remote convergence. Validation and
-defaults were duplicated in Pydantic, YAML serializers, Ansible assertions,
-role defaults, and Jinja. Inventory contained real hosts, root SSH, and a
-repository-local private-key path. The firewall role was commented out.
+## Why the boundaries changed
+
+Earlier versions mixed API state, YAML state, process execution, and remote
+configuration ownership. That made restart behavior, rollback safety, and the
+control-plane/edge contract difficult to reason about. The current design gives
+each layer one responsibility and records state before remote work begins.
 
 ## Target boundaries
+
+<Mermaid
+  chart={`flowchart LR
+    Operator[Operator] --> CLI[CLI]
+    Operator --> API[Authenticated API]
+    CLI --> CP[Control plane]
+    API --> CP
+    CP --> DB[(SQLite desired state and history)]
+    CP --> Certs[Certificate store / Certbot]
+    CP --> Ansible[Ansible subprocess]
+    Ansible --> EdgeA[Nginx edge A]
+    Ansible --> EdgeB[Nginx edge B]
+    EdgeA --> Origin[Origin]
+    EdgeB --> Origin
+    Client[Client traffic] --> EdgeA
+    Client --> EdgeB`}
+/>
+
+Operator traffic stops at the controller boundary. End-user traffic reaches the
+edges directly and continues when the controller is unavailable. The controller
+changes desired state and converges hosts; it is not in the serving path.
 
 ```text
 CLI / authenticated API
@@ -56,6 +77,25 @@ invariants         SQLite | atomic files | process lock | Ansible subprocess
 
 ## Execution flow
 
+<Mermaid
+  chart={`sequenceDiagram
+    actor Operator
+    participant Surface as CLI / API
+    participant CP as Control plane
+    participant DB as SQLite
+    participant Ansible
+    participant Edge
+    Operator->>Surface: plan or deploy
+    Surface->>CP: validated request
+    CP->>DB: commit snapshot and queued record
+    CP->>Ansible: converge immutable snapshot
+    Ansible->>Edge: validate and apply state
+    Edge-->>Ansible: result
+    Ansible-->>CP: bounded output and status
+    CP->>DB: record terminal status
+    CP-->>Surface: deployment record`}
+/>
+
 Site mutations are validated, committed transactionally to SQLite, and audited.
 They do not touch hosts. Validation renders a snapshot and runs syntax checks.
 A deployment acquires the lock, records an immutable snapshot, transitions
@@ -63,20 +103,17 @@ A deployment acquires the lock, records an immutable snapshot, transitions
 `succeeded`, `failed`, or `timed_out` with bounded output. A controller restart
 marks unfinished records `abandoned`.
 
-The CLI runs that sequence inline. The API runs it on a worker thread and
-returns `202` with the `queued` record, because a convergence outlives any
-HTTP client. The original system also used background execution and lost queued
-work on restart; this version does not, because the record and its snapshot are
-committed before the worker starts and `abandon_running` settles anything the
-worker did not finish. The lock is an `fcntl` lock on an open file, so the
-worker releases it on the way out. Work that can be rejected before queuing —
-no rollback target, a deployment already running — still fails synchronously.
+The CLI waits for this sequence to finish. The API returns `202` with a queued
+record and runs convergence on a worker thread. Before that worker starts, the
+controller commits the record and snapshot. A restart therefore leaves visible
+`abandoned` work instead of silently losing it. Requests that can already be
+rejected—such as a missing rollback target or a conflicting deployment—fail
+synchronously.
 
-Rollback selects an explicit successful applied snapshot (or the latest
-successful state different from current), deploys it, and only after success
-replaces canonical desired state in one database transaction. Selection,
-convergence, and that replacement all happen under a single hold of the
-deployment lock, so a concurrent site edit cannot be silently discarded.
+Rollback blocks concurrent site changes while it selects and converges a
+snapshot. Only after convergence succeeds does it replace canonical desired
+state in one database transaction. This prevents a concurrent edit from being
+silently overwritten.
 
 ## The control plane / edge contract
 
