@@ -61,9 +61,10 @@ certificate endpoints, and the Nginx role re-checks both rules.
 
 `validate` renders a snapshot and runs syntax checks without contacting hosts.
 `plan` runs Ansible in check mode and shows the resulting deployment record.
-`deploy --yes` acquires the lock, records an immutable snapshot, and converges
-the edges for real. `doctor` is the one before all of them: it reports local
-readiness without touching anything remote.
+Interactive `deploy` validates, runs a check-mode preview, asks for confirmation,
+then converges the edges. `deploy --yes` skips that interactive validation and
+preview for reviewed automation. `doctor` is the one before all of them: it
+reports local readiness without touching anything remote.
 
 ### Why do the two repositories have to stay in step?
 
