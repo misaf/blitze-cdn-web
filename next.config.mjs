@@ -1,8 +1,12 @@
 import nextra from 'nextra'
 
 const withNextra = nextra({
-  // Prose and generated reference live under /docs; `/` is the landing page.
-  contentDirBasePath: '/docs',
+  // No `contentDirBasePath`: the content tree maps to URLs directly, so
+  // `src/content/docs/**` still serves `/docs/**` while `faq` and `blog` sit
+  // alongside it as top-level sections. `/` is the hand-written landing page in
+  // `src/app/page.jsx`, which is why the catch-all route is `[...mdxPath]`
+  // (required) rather than `[[...mdxPath]]` (optional) — the optional form
+  // would also match `/` and collide with it.
   search: {
     codeblocks: false
   }

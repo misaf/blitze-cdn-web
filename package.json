@@ -13,13 +13,18 @@
     "sources": ".venv/bin/pip install -q -r requirements.txt && .venv/bin/ansible-galaxy collection install -r requirements.yml -p .state/collections"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.7.0",
     "next": "^16.0.7",
     "nextra": "4.5.1",
     "nextra-theme-docs": "4.5.1",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "three": "^0.185.1"
   },
   "devDependencies": {
-    "pagefind": "^1.3.0"
+    "@tailwindcss/postcss": "^4.3.3",
+    "pagefind": "^1.3.0",
+    "tailwindcss": "^4.3.3"
   }
 }
