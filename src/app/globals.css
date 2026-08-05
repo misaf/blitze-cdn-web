@@ -56,7 +56,7 @@
   --color-ink: #0c0e14;
   --color-ink-fg: #f4f6fa;
   --color-ink-muted: #a3acbd;
-  --color-ink-faint: #6f7a8d;
+  --color-ink-faint: #78849a;
 
   --color-band: #1d1b4b;
   --color-band-fg: #f2f1fb;
@@ -67,7 +67,7 @@
   --color-tok-key: #7fd6c4;
   --color-tok-str: #ffc85c;
   --color-tok-num: #9db8ff;
-  --color-tok-com: #6a7488;
+  --color-tok-com: #7b879c;
   --color-tok-ok: #6ddba0;
 
   /* A book weight. The headings want the light, wide geometric feel of the
@@ -139,7 +139,8 @@
  */
 @utility hero-art {
   background-color: #0c0e14;
-  background-image: repeating-linear-gradient(
+  background-image:
+    repeating-linear-gradient(
       90deg,
       rgba(0, 0, 0, 0.55) 0 1px,
       transparent 1px 7px
@@ -162,10 +163,14 @@
 
 @keyframes hero-bloom {
   from {
-    background-position: 0 0, 54% 88%;
+    background-position:
+      0 0,
+      54% 88%;
   }
   to {
-    background-position: 0 0, 70% 74%;
+    background-position:
+      0 0,
+      70% 74%;
   }
 }
 
@@ -186,7 +191,8 @@
    card text and link rows sit on top of it, and a hotter bloom eats their
    contrast. */
 @utility band-art {
-  background-image: repeating-linear-gradient(
+  background-image:
+    repeating-linear-gradient(
       90deg,
       rgba(0, 0, 0, 0.4) 0 1px,
       transparent 1px 7px

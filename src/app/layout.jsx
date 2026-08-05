@@ -1,18 +1,42 @@
 import Link from 'next/link'
 import { Footer, Layout, Navbar } from 'nextra-theme-docs'
-import { Head } from 'nextra/components'
+import { Banner, Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
+import { siteUrl } from '@/lib/site'
+import ThemeToggle from '@/components/theme-toggle'
 import 'nextra-theme-docs/style.css'
 import './globals.css'
 
 export const metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: 'BlitzeCDN',
-    template: '%s – BlitzeCDN'
+    template: '%s – BlitzeCDN',
   },
   description:
     'A security-focused control plane for converging Nginx CDN edge servers.',
-  applicationName: 'BlitzeCDN'
+  applicationName: 'BlitzeCDN',
+  alternates: {
+    canonical: '/',
+    types: { 'application/rss+xml': '/feed.xml' },
+  },
+  openGraph: {
+    type: 'website',
+    siteName: 'BlitzeCDN',
+    title: 'BlitzeCDN – edge control plane',
+    description:
+      'A security-focused control plane for converging Nginx CDN edge servers.',
+    url: '/',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'BlitzeCDN – edge control plane',
+    description:
+      'A security-focused control plane for converging Nginx CDN edge servers.',
+    images: ['/opengraph-image'],
+  },
+  robots: { index: true, follow: true },
 }
 
 export default async function RootLayout({ children }) {
@@ -24,8 +48,10 @@ export default async function RootLayout({ children }) {
           <span style={{ opacity: '60%' }}>edge control plane</span>
         </span>
       }
-      projectLink="https://github.com/misaf/blitze-cdn"
-    />
+      projectLink="https://github.com/misaf/blitze-cdn-web"
+    >
+      <ThemeToggle />
+    </Navbar>
   )
 
   return (
@@ -33,6 +59,13 @@ export default async function RootLayout({ children }) {
       <Head faviconGlyph="⚡" />
       <body>
         <Layout
+          copyPageButton={false}
+          banner={
+            <Banner storageKey="production-checklist-2026-08">
+              Before changing production edges, review the{' '}
+              <Link href="/docs/guides/deployment">deployment checklist →</Link>
+            </Banner>
+          }
           navbar={navbar}
           footer={
             <Footer>
@@ -53,27 +86,22 @@ export default async function RootLayout({ children }) {
                   <Link href="/blog" className="hover:underline">
                     Blog
                   </Link>
+                  <a href="/feed.xml" className="hover:underline">
+                    RSS
+                  </a>
                   <a
-                    href="https://github.com/misaf/blitze-cdn"
+                    href="https://github.com/misaf/blitze-cdn-web"
                     className="hover:underline"
                   >
                     GitHub
                   </a>
                 </nav>
-                <p>
-                  MIT {new Date().getFullYear()} © BlitzeCDN. Reference pages on
-                  this site are generated from the source tree. Report a
-                  vulnerability{' '}
-                  <Link href="/contact" className="underline">
-                    privately
-                  </Link>
-                  , never as a public issue.
-                </p>
+                <p>MIT {new Date().getFullYear()} © BlitzeCDN.</p>
               </div>
             </Footer>
           }
           editLink="Edit this page on GitHub"
-          docsRepositoryBase="https://github.com/misaf/blitze-cdn/blob/master/web"
+          docsRepositoryBase="https://github.com/misaf/blitze-cdn-web/blob/1.x"
           sidebar={{ defaultMenuCollapseLevel: 1 }}
           pageMap={await getPageMap()}
         >
