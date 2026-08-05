@@ -7,6 +7,8 @@
  * stay readable at the call site and Tailwind's scanner sees them literally.
  */
 
+import Link from 'next/link'
+
 export const inner = 'mx-auto w-full max-w-measure px-gutter'
 export const section = 'py-band'
 
@@ -38,9 +40,13 @@ export const focusInsetDark =
   'focus-visible:outline-2 focus-visible:-outline-offset-2 ' +
   'focus-visible:outline-accent'
 
+/* The lift on hover is `motion-safe:` for the same reason the hero bloom and
+   the WebGL globe are gated: a reduced-motion preference should not have to be
+   honoured selectively. The colour transition stays — it is not motion. */
 const btn =
   'inline-flex items-center justify-center border px-6 py-3.5 text-[0.98rem] ' +
-  'font-medium no-underline transition duration-100 hover:-translate-y-px ' +
+  'font-medium no-underline transition duration-100 ' +
+  'motion-safe:hover:-translate-y-px ' +
   'focus-visible:outline-2 focus-visible:outline-offset-[3px] ' +
   'focus-visible:outline-accent'
 
@@ -48,16 +54,32 @@ export const btnPrimary = `${btn} border-transparent bg-accent text-accent-contr
 export const btnGhost = `${btn} border-current bg-transparent hover:bg-current/12`
 
 /* Heading left, supporting prose right — the dominant section header. */
-export const split =
-  'grid items-start gap-[clamp(1.25rem,4vw,4rem)] lg:grid-cols-2'
+export const split = 'grid items-start gap-split lg:grid-cols-2'
+
+/* The standard gap between a section's header and the content below it. */
+export const flow = 'mt-flow'
 
 /* Cells draw only their top and left rules and the container closes the outer
    right and bottom, so interior rules never double up. */
-export const grid =
-  'mt-[clamp(2.5rem,5vw,4rem)] grid border-r border-b border-line'
+export const grid = `${flow} grid border-r border-b border-line`
 export const gridCell =
-  'flex flex-col justify-center gap-1.5 border-t border-l border-line ' +
-  'p-[clamp(1.5rem,3vw,2.25rem)]'
+  'flex flex-col justify-center gap-1.5 border-t border-l border-line p-card'
+
+/* One full-bleed row per item, rule between. Used for the landing page's
+   design principles and /about's beliefs; `tone` is the only thing that
+   differs between the two, because one sits on `surface` and one on `band`. */
+export const principleRow = (tone = 'surface') =>
+  `grid items-start gap-x-8 gap-y-3 border-t py-row last:border-b ` +
+  `md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] ` +
+  (tone === 'band' ? 'border-band-line' : 'border-line')
+
+/* The quiet closing paragraph that ends a page above the footer, set off by a
+   rule. Shared by `/` and the 404 rather than copied — extracting it was the
+   whole point of the exercise; adding a second copy would have re-created the
+   drift this module exists to prevent. */
+export const closingNote =
+  'max-w-3xl border-t border-line py-note text-[0.92rem] leading-relaxed ' +
+  'text-muted'
 
 export const band = 'relative overflow-hidden bg-band text-band-fg'
 export const bandArt =
@@ -79,10 +101,17 @@ export function Check({ className = 'text-accent' }) {
   )
 }
 
-export function Arrow({ className = '' }) {
+/* The size lives in the default `className`, not in the base string, so a
+   caller passing its own `size-*` replaces it. Concatenating the two instead
+   produces a pair of equal-specificity rules whose winner is decided by
+   whichever Tailwind happens to emit last — which is how the tracker and
+   repository cards spent their life asking for `size-[1.1rem]` and rendering
+   at 1.35rem. Same reasoning in `ExternalArrow`; `Icon` already worked this
+   way, which is why it never had the problem. */
+export function Arrow({ className = 'size-[1.35rem]' }) {
   return (
     <svg
-      className={`size-[1.35rem] shrink-0 ${className}`}
+      className={`shrink-0 ${className}`}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -91,6 +120,26 @@ export function Arrow({ className = '' }) {
       aria-hidden="true"
     >
       <path d="M4 12h15M13 6l6 6-6 6" />
+    </svg>
+  )
+}
+
+/* The outbound counterpart to `Arrow`. Internal navigation continues in the
+   flow of the site; these leave it. Using the same rightward arrow for both —
+   which is what the tracker and repository cards used to do — made a link to
+   github.com look exactly like a link to /faq. */
+export function ExternalArrow({ className = 'size-[1.35rem]' }) {
+  return (
+    <svg
+      className={`shrink-0 ${className}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="square"
+      aria-hidden="true"
+    >
+      <path d="M7 17 17 7M8 7h9v9" />
     </svg>
   )
 }
@@ -108,6 +157,66 @@ export function Icon({ children, className = 'size-[1.4rem] shrink-0' }) {
     >
       {children}
     </svg>
+  )
+}
+
+/**
+ * A stack of internal link rows filling the trailing half of a colour band.
+ * Both the landing page's reference list and `/contact`'s "anything else"
+ * panel are this, and each used to carry its own 300-character copy of the
+ * class string — so a hover tweak on one silently stopped matching the other.
+ *
+ * `links` is `[{ href, label }]`.
+ */
+export function BandLinkList({ links }) {
+  return (
+    <div className="flex flex-col border-t border-band-line lg:border-t-0 lg:border-l">
+      {links.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className="group flex flex-1 items-center justify-between gap-6 px-row-x py-row-y text-[1.05rem] no-underline transition-colors duration-100 not-first:border-t not-first:border-band-line hover:bg-white/7 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+        >
+          <span>{link.label}</span>
+          <Arrow className="size-[1.35rem] text-accent transition-transform motion-safe:duration-150 motion-safe:group-hover:translate-x-1" />
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * The grid of outbound repository cards shared by `/about` and `/contact`.
+ *
+ * `items` is `[{ name, href, note }]`. Every card leaves the site, so each
+ * carries the outbound arrow and names its destination host to assistive
+ * technology — the visible label is a bare repository name, which does not
+ * say "this goes to GitHub" on its own.
+ */
+export function ExternalCardGrid({ items }) {
+  return (
+    <div
+      className={`${flow} grid gap-px border border-line bg-line md:grid-cols-3`}
+    >
+      {items.map((item) => (
+        <a
+          key={item.name}
+          href={item.href}
+          className={`group flex flex-col gap-3 bg-surface p-card no-underline ${focusInset}`}
+        >
+          <span className="flex items-center justify-between gap-3">
+            <span className="font-mono text-[0.95rem] text-fg underline-offset-4 group-hover:underline">
+              {item.name}
+            </span>
+            <ExternalArrow className="size-[1.1rem] text-accent-ink transition-transform motion-safe:duration-150 motion-safe:group-hover:translate-x-px motion-safe:group-hover:-translate-y-px" />
+          </span>
+          <span className="text-[0.92rem] leading-relaxed text-muted">
+            {item.note}
+          </span>
+          <span className="sr-only">Opens on {new URL(item.href).host}</span>
+        </a>
+      ))}
+    </div>
   )
 }
 

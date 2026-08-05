@@ -28,6 +28,11 @@
 @import 'tailwindcss/utilities.css' layer(utilities);
 
 @source '../';
+/* `mdx-components.js` lives at the repository root, outside the `../` scan
+   above, and styles the docs-route tables. Without this line its classes are
+   only generated when some file under `src/` happens to use the same ones —
+   which is true today and is not a guarantee. */
+@source '../../mdx-components.js';
 
 /* Nextra switches themes with a class on <html> (next-themes), not with the
    `prefers-color-scheme` media query Tailwind defaults to. */
@@ -81,9 +86,36 @@
   --text-card: clamp(1.25rem, 1.8vw, 1.6rem);
   --text-principle: clamp(1.35rem, 2.2vw, 1.9rem);
 
+  /*
+   * The spacing scale. Every one of these was previously a `clamp()` literal
+   * repeated at the call site — `mt-[clamp(2.5rem,5vw,4rem)]` alone appeared
+   * fourteen times, and had already drifted into a second near-identical
+   * variant. They are tokens now so a section gap is one edit, not fourteen.
+   *
+   * `gutter` / `band` / `measure` set the page frame; `flow` and below are the
+   * rhythm inside a section.
+   */
   --spacing-gutter: clamp(1.25rem, 5vw, 5.5rem);
   --spacing-band: clamp(4rem, 9vw, 8.5rem);
   --spacing-measure: 82rem;
+
+  /* Section heading to the content it introduces. */
+  --spacing-flow: clamp(2.5rem, 5vw, 4rem);
+  /* The gap between a split header's heading and its supporting prose. */
+  --spacing-split: clamp(1.25rem, 4vw, 4rem);
+
+  /* Card padding, three sizes: grid cells, band cards, feature panels. */
+  --spacing-card: clamp(1.5rem, 3vw, 2.25rem);
+  --spacing-card-sm: clamp(1.25rem, 2.5vw, 1.75rem);
+  --spacing-card-lg: clamp(2rem, 4vw, 3.5rem);
+
+  /* The closing note that ends a page above the footer. */
+  --spacing-note: clamp(3rem, 5vw, 4.5rem);
+
+  /* Full-bleed list rows: the principle/belief rows, and the band link rows. */
+  --spacing-row: clamp(1.75rem, 3vw, 2.5rem);
+  --spacing-row-x: clamp(1.25rem, 2.5vw, 2rem);
+  --spacing-row-y: clamp(1.1rem, 2.2vw, 1.5rem);
 }
 
 :root {
@@ -130,6 +162,37 @@
     padding: 0;
     list-style: none;
   }
+}
+
+/*
+ * Inline `<code>` inside a Nextra callout, light theme only.
+ *
+ * The theme tints both the callout and the code chip, and the two tints
+ * compose to #a65f00 on #f6f4e1 — 4.44:1, which misses the 4.5:1 WCAG AA
+ * threshold for body text. It is a near miss rather than an obviously broken
+ * colour, which is why it survived: nothing was checking these routes until
+ * the reference and guide pages were added to `tests/e2e/site.spec.js`.
+ *
+ * `--accent-ink` is the site's existing darkened amber, already used for links
+ * and labels on light surfaces, so this introduces no new colour — it reaches
+ * 5.7:1 against the same background.
+ *
+ * Scoped away from `.dark`: the dark callout pairs yellow-500 with a
+ * translucent yellow-700 and passes as it stands.
+ */
+:where(html:not(.dark)) .nextra-callout :where(code.nextra-code) {
+  color: var(--accent-ink);
+}
+
+/*
+ * The same near-miss one step over: inline `<code>` inside a link. The theme's
+ * link blue is measured against the page, but the code chip puts a grey tint
+ * behind it, and #006be6 on #f3f3f3 comes to 4.45:1. Darkening the blue for
+ * this case only keeps the link colour recognisable — same hue, one step down
+ * — and reaches 5.9:1. Light theme only; the dark pairing passes.
+ */
+:where(html:not(.dark)) a :where(code.nextra-code) {
+  color: #0059c2;
 }
 
 /*
