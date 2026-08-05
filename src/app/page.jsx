@@ -472,14 +472,13 @@ export default function LandingPage() {
         <div className={`relative z-10 ${inner} ${section}`}>
           <div className="grid border border-band-line lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-5 p-[clamp(2rem,4vw,3.5rem)]">
-              <h2 className={h2}>The reference writes itself</h2>
+              <h2 className={h2}>Reference checked against reality</h2>
               <p className="leading-relaxed text-band-muted">
-                Everything under Reference is generated from the source tree —
-                the OpenAPI schema, the Typer command tree,{' '}
+                Everything under Reference is maintained in this repository and
+                reviewed against the OpenAPI schema, the Typer command tree,{' '}
                 <code>Settings.from_environment</code>, and each role&rsquo;s{' '}
-                <code>argument_specs.yml</code>. CI fails when the committed
-                output no longer matches the code, so these pages cannot quietly
-                go stale.
+                <code>argument_specs.yml</code>. Version labels record the exact
+                releases covered by that review.
               </p>
             </div>
             <div className="flex flex-col border-t border-band-line lg:border-t-0 lg:border-l">
