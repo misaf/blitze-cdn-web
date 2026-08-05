@@ -10,51 +10,69 @@
  */
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 
 const HeroGlobeScene = dynamic(() => import('./hero-globe-scene'), {
-  ssr: false
+  ssr: false,
 })
 
 function supportsWebGL() {
   try {
     const canvas = document.createElement('canvas')
-    return Boolean(
-      canvas.getContext('webgl2') || canvas.getContext('webgl')
-    )
+    return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'))
   } catch {
     /* Some hardened/privacy configurations throw rather than return null. */
     return false
   }
 }
 
+function prefersLightweightPage() {
+  const connection =
+    navigator.connection ||
+    navigator.mozConnection ||
+    navigator.webkitConnection
+
+  return Boolean(
+    connection?.saveData ||
+    (connection?.effectiveType &&
+      ['slow-2g', '2g'].includes(connection.effectiveType)),
+  )
+}
+
 export default function HeroGlobe() {
-  /* `null` means "not decided yet" — we render nothing on the first client
-     pass so the CSS `hero-art` panel underneath is what the user sees until
-     the scene is genuinely ready. */
-  const [enabled, setEnabled] = useState(null)
-  const [animate, setAnimate] = useState(true)
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  )
 
-  useEffect(() => {
-    if (!supportsWebGL()) {
-      setEnabled(false)
-      return
-    }
+  if (!mounted) return null
 
-    const motion = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const sync = () => setAnimate(!motion.matches)
+  return <MountedHeroGlobe />
+}
 
-    sync()
-    setEnabled(true)
-    motion.addEventListener('change', sync)
-    return () => motion.removeEventListener('change', sync)
-  }, [])
+function subscribeToMotionPreference(callback) {
+  const query = window.matchMedia('(prefers-reduced-motion: reduce)')
+  query.addEventListener('change', callback)
+  return () => query.removeEventListener('change', callback)
+}
 
-  if (!enabled) return null
+function getMotionPreference() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function MountedHeroGlobe() {
+  const reduceMotion = useSyncExternalStore(
+    subscribeToMotionPreference,
+    getMotionPreference,
+    () => true,
+  )
+
+  if (!supportsWebGL() || prefersLightweightPage()) return null
 
   return (
     <div className="absolute inset-0 motion-safe:animate-[hero-globe-in_900ms_ease-out_both]">
-      <HeroGlobeScene animate={animate} />
+      <HeroGlobeScene animate={!reduceMotion} />
     </div>
   )
 }
