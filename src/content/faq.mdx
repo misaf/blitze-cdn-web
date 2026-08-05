@@ -6,7 +6,7 @@ description: Common questions about BlitzeCDN's scope, guarantees, failure behav
 # Frequently asked questions
 
 Answers here describe the current release. Where an answer depends on an exact
-flag, route or variable, the [reference](/docs/reference/cli) is generated from
+flag, route or variable, the [reference](/docs/reference/cli) is verified against
 the source and is the authority.
 
 ## Scope and limits
@@ -135,18 +135,13 @@ before validation. Certificates are issued once and distributed from there.
 
 ## This site
 
-### Why is the reference generated rather than written?
+### How is the reference maintained?
 
-Because prose about a CLI drifts from the CLI. Everything under
-[Reference](/docs/reference/cli) is generated from the source tree — the OpenAPI
-schema, the Typer command tree, `Settings.from_environment`, and each role's
-`argument_specs.yml`. CI regenerates and fails if the committed output no longer
-matches, so those pages cannot quietly go stale.
+Everything under [Reference](/docs/reference/cli) is maintained as MDX in this
+repository. Changes to commands, API routes, configuration, or roles should
+update the corresponding page in the same release pull request.
 
 ### Which versions does this site document?
 
-The exact ones it is pinned to: a control-plane ref in `requirements.txt` and an
-edge collection version in `requirements.yml`. Before generating anything, the
-build asserts that the installed collection, the version `requirements.yml`
-pins, and the version the pinned control plane actually deploys are all the
-same. Moving one pin without the others fails in CI.
+The versions named on the individual reference and release pages. Verify those
+labels when updating documentation for a new control-plane or edge release.
