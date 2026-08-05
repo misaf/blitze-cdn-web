@@ -1,0 +1,81 @@
+---
+title: One lock, two halves
+description: Rollback is easy to get almost right. The hard part is deciding when canonical state is allowed to change.
+date: 2026-06-23
+author: BlitzeCDN maintainers
+---
+
+# One lock, two halves
+
+Rollback is one of those features that looks finished long before it is correct.
+You keep the previous configuration, you write it back, you re-run the
+deployment. Demo passes. Ship it.
+
+The original system BlitzeCDN replaced did exactly that, and the bug was not in
+any single step. It was in the order.
+
+## Writing state before the world agrees
+
+The old rollback rewrote the current YAML *first*, then converged the hosts.
+
+Read that again with a failure in mind. If convergence then fails, the
+controller's idea of desired state has already moved to something the edges are
+not running. The system now confidently describes a world that does not exist.
+Worse, it is a plausible world — it is the state you were trying to reach — so
+nothing looks obviously broken until someone compares against a real edge.
+
+The fix is unglamorous: **canonical desired state changes last, and only after
+Ansible reports success.** Rollback selects an explicit successful applied
+snapshot, deploys it, and only then replaces canonical state, in a single
+database transaction.
+
+The rule generalises past rollback. A normal deployment works the same way: the
+snapshot is immutable and recorded up front, the convergence either succeeds or
+does not, and the controller's canonical view never runs ahead of the hosts.
+
+## Two halves, one lock
+
+The second half of the problem is concurrency, and it is easy to under-scope.
+
+It is tempting to hold the deployment lock only around the Ansible invocation —
+that is the slow part, and it is what obviously must not run twice at once. But
+rollback is three operations: *select* a target snapshot, *converge* to it, and
+*replace* canonical state. Lock only the middle one and a site edit can land in
+the gap between selection and replacement, where it will be silently discarded
+by a write derived from a snapshot chosen before that edit existed.
+
+So all three happen under a single hold of the lock. The window in which a
+concurrent edit could be lost does not get smaller; it stops existing.
+
+The lock itself is an `fcntl` lock on an open file, which has a property worth
+naming: it is released by the operating system when the owning process exits.
+There is no stale-lock cleanup path to get wrong, and — as the troubleshooting
+guide says rather bluntly — you should never delete a live lock file.
+
+## What a crash leaves behind
+
+Locks handle contention. They do not handle a controller that dies.
+
+API deployments run on a worker thread and return `202` immediately, because a
+convergence outlives any HTTP client. The record and its snapshot are committed
+*before* the worker starts, so a crash cannot lose queued work the way the
+original system did. On restart, `abandon_running` settles anything the worker
+did not finish by marking it `abandoned`.
+
+`abandoned` is deliberately not a synonym for `failed`. It means: this run's
+outcome is unknown, because nobody was watching when it ended. The honest
+response to an unknown outcome is to look, which is why the guidance is to rerun
+`plan` before retrying.
+
+Timeouts get the same treatment. On timeout the controller signals the entire
+`ansible-playbook` process group — `SIGTERM`, then `SIGKILL` after five seconds
+— because Ansible fans work out to per-host workers, and signalling only the
+direct child would leave those workers happily mutating remote state after the
+run was already recorded as timed out. Even then, a timeout is not proof that
+nothing changed remotely. Rerun `plan`.
+
+## The through-line
+
+Three different mechanisms — ordering, locking, process-group signalling —
+serve one idea: the controller's record of the world should never claim more
+than it has actually established. Everything else is bookkeeping.

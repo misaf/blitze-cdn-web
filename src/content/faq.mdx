@@ -1,0 +1,152 @@
+---
+title: FAQ
+description: Common questions about BlitzeCDN's scope, guarantees, failure behaviour, and the limits it deliberately accepts.
+---
+
+# Frequently asked questions
+
+Answers here describe the current release. Where an answer depends on an exact
+flag, route or variable, the [reference](/docs/reference/cli) is generated from
+the source and is the authority.
+
+## Scope and limits
+
+### Why only Debian and Ubuntu?
+
+Because the same rules are enforced twice — once in Python on the controller and
+again by the Ansible roles on the host — and that is only tractable against a
+narrow, well-understood platform. Supporting every distribution would mean
+either weakening the edge-side checks or maintaining a matrix of them. This
+release targets Debian 12+ and Ubuntu 24.04+ edges and commits to them.
+
+### Can BlitzeCDN provision my servers or manage DNS?
+
+No. It does not provision virtual machines, manage DNS, issue wildcard
+certificates, distribute cache invalidations, or provide active/active job
+execution. Each of those needs an explicit provider or distributed-state design,
+and the release would rather refuse them than half-implement them. See
+[deliberate limits](/docs/architecture#deliberate-limits).
+
+### Why is there only one controller node?
+
+Multi-controller operation needs a real distributed job queue, not a lock file.
+The current deployment lock is an `fcntl` lock on an open file — correct for one
+controller, meaningless across several. Rather than ship something that looks
+like HA and is not, this release supports one controller and says so.
+
+### Why not use `ansible-runner`?
+
+BlitzeCDN needs one local playbook process with explicit command, timeout,
+output and lock semantics. `ansible-runner`'s event and container features would
+add state without replacing the distributed job queue that multi-controller
+operation actually requires.
+
+## Desired state and validation
+
+### Can I edit desired state by hand?
+
+You can, but it will not get you past the boundary. Every value that can enter
+an Nginx template is constrained by immutable domain models on the controller,
+and the Ansible roles re-check the same rules against the host. A hand-edited
+desired-state file is therefore rejected on the edge rather than silently
+applied.
+
+This matters most for certificate paths, which are a privilege boundary rather
+than a syntax concern: a deploy copies them onto every edge as root. Domain
+models confine them to `/etc/blitzecdn/tls/`, `/etc/ssl/` and
+`/etc/letsencrypt/`, reserve the managed `uploaded`/`requested` paths to the
+certificate endpoints, and the Nginx role re-checks both rules.
+
+### What is the difference between `validate`, `plan` and `deploy`?
+
+`validate` renders a snapshot and runs syntax checks without contacting hosts.
+`plan` runs Ansible in check mode and shows the resulting deployment record.
+`deploy --yes` acquires the lock, records an immutable snapshot, and converges
+the edges for real. `doctor` is the one before all of them: it reports local
+readiness without touching anything remote.
+
+### Why do the two repositories have to stay in step?
+
+The control plane and the edge roles ship separately, so the desired-state
+document they exchange is a versioned interface, not an internal detail. The
+control plane emits `blitzecdn_desired_state_version`; the Nginx role declares
+`blitzecdn_nginx_supported_state_versions` and refuses to run against anything
+else. A version-skewed pair fails before the first host is touched, instead of
+midway through a rollout.
+
+## Failure behaviour
+
+### What happens if a deployment fails halfway through?
+
+The deployment record settles as `failed` with bounded retained output, and
+canonical desired state is left alone — it only advances after a successful
+convergence. Nginx is not reloaded after a failed validation, so a bad
+configuration does not reach a running server.
+
+### What happens on a timeout?
+
+The controller signals the whole `ansible-playbook` process group — `SIGTERM`,
+then `SIGKILL` after five seconds — so per-host workers stop rather than
+continuing to converge edges after the run has been recorded as timed out.
+
+Importantly, **a timeout is not proof that no remote changes occurred.** Rerun
+`plan` before retrying.
+
+### A deployment is stuck in `queued` or `running`. What now?
+
+API deployments run on a worker thread, so the record only settles when Ansible
+finishes. If the controller restarted mid-run, startup marks the record
+`abandoned`. Rerun `plan` before retrying.
+
+Do not delete a live lock file. Filesystem locks release when their owning
+process exits.
+
+### What does rollback actually roll back to?
+
+An explicit successful applied snapshot — a state that genuinely ran — not a
+reconstruction. Rollback deploys that snapshot and only replaces canonical
+desired state after it succeeds, in a single database transaction. Selection,
+convergence and replacement all happen under one hold of the deployment lock, so
+a concurrent site edit cannot be silently discarded.
+
+## Security
+
+### Are private keys ever readable once uploaded?
+
+No. Uploaded private keys are validated on the way in, then never returned by
+the API, never logged, and never included directly in deployment snapshots.
+Secrets live in the environment, a secret manager, Ansible Vault, or restrictive
+controller state — and are never accepted as CLI arguments, where they would
+land in shell history and process listings.
+
+### Do API keys act as roles?
+
+No. API keys authenticate operators; they are not authorization roles. Ten
+failed authentications from one client address within a minute are throttled —
+note that behind a reverse proxy this counts all clients together unless the
+proxy is accounted for.
+
+### How are certificates issued?
+
+Either upload a chain, or issue via ACME HTTP-01 from the controller. Issuance
+is centrally coordinated: one controller-side Certbot process runs, and its
+hooks use a focused playbook to synchronise the HTTP-01 token to every edge
+before validation. Certificates are issued once and distributed from there.
+
+## This site
+
+### Why is the reference generated rather than written?
+
+Because prose about a CLI drifts from the CLI. Everything under
+[Reference](/docs/reference/cli) is generated from the source tree — the OpenAPI
+schema, the Typer command tree, `Settings.from_environment`, and each role's
+`argument_specs.yml`. CI regenerates and fails if the committed output no longer
+matches, so those pages cannot quietly go stale.
+
+### Which versions does this site document?
+
+The exact ones it is pinned to: a control-plane ref in `requirements.txt` and an
+edge collection version in `requirements.yml`. Before generating anything, the
+build asserts that the installed collection, the version `requirements.yml`
+pins, and the version the pinned control plane actually deploys are all the
+same. Moving one pin without the others fails in CI.

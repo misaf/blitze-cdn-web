@@ -1,0 +1,82 @@
+---
+title: The reference writes itself
+description: Documentation that describes a CLI will drift from that CLI. The only fix we trusted was to stop writing it by hand.
+date: 2026-07-14
+author: BlitzeCDN maintainers
+---
+
+# The reference writes itself
+
+Every project that documents a command-line tool eventually ships a page that is
+wrong. Not maliciously wrong — just late. A flag gets renamed, a default
+changes, an exit code is added, and the prose describing it stays exactly as it
+was. The documentation is not lying so much as remembering.
+
+We decided not to rely on remembering.
+
+## Four generators, one rule
+
+Everything under [Reference](/docs/reference/cli) is generated from the source
+tree rather than written:
+
+| Page | Source |
+| --- | --- |
+| CLI | The Typer command tree of the installed `blitzecdn` |
+| HTTP API | The OpenAPI schema the app produces |
+| Configuration | `Settings.from_environment` |
+| Ansible roles | Each role's `argument_specs.yml` |
+
+The rule is that a reference page may only contain things a machine can read out
+of the code. If a fact cannot be derived, it does not belong on a generated
+page — it belongs in hand-written prose like
+[Architecture](/docs/architecture), where a human is accountable for it.
+
+That split is the whole design. Generated pages cannot go stale. Hand-written
+pages can, but there are few of them and they describe intent rather than
+detail, which ages far more slowly than a flag list.
+
+## Generating is not enough
+
+A generator that runs when someone remembers to run it is the same problem in a
+new costume. So the committed output is checked, not trusted:
+
+```bash
+npm run generate:check
+```
+
+This regenerates every page and compares it to what is committed. If they
+differ, it fails and tells you to run `npm run generate`. CI runs it on every
+pull request. The generated pages in the repository are therefore not a cache of
+the documentation — they *are* the documentation, and CI's job is to prove they
+still match the code they came from.
+
+## The part we got wrong first
+
+The subtler failure was not staleness but *ambiguity about what is being
+documented*.
+
+This site is pinned to two upstream sources: a control-plane ref in
+`requirements.txt` and an edge collection version in `requirements.yml`. Nothing
+initially checked that those two agreed. The reference still generated cleanly
+when they diverged — it just quietly described a set of Ansible roles that the
+documented control plane does not actually deploy. Clean output, wrong subject.
+
+So the pins are now asserted before anything is generated. Three versions have
+to be identical: the edge collection installed, the version `requirements.yml`
+asks for, and the version the pinned control plane deploys
+(`blitzecdn.EDGE_COLLECTION_VERSION`). Move one pin without the others and the
+build stops.
+
+There is an escape hatch for previewing unreleased roles from a source checkout,
+but it is deliberately awkward: a checkout carries no `MANIFEST.json` and so no
+version, so `--allow-unreleased` is required, it warns loudly, and it stamps the
+page with no version at all. Output produced that way is for local preview and
+must not be committed.
+
+## Why bother
+
+Because the alternative is asking readers to guess which parts of the
+documentation are current. Generated pages remove that question for the parts
+that change most often, which leaves the hand-written pages a smaller and much
+more honest job: explain why the system is shaped the way it is, and be clear
+about what it refuses to do.

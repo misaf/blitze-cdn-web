@@ -1,0 +1,85 @@
+---
+title: A version is an interface
+description: The control plane and the edge roles ship separately, so the document they exchange is a public contract — and it fails loudly when the two drift.
+date: 2026-05-19
+author: BlitzeCDN maintainers
+---
+
+# A version is an interface
+
+BlitzeCDN is two repositories. The control plane owns validation, desired state,
+history and rollback. The edge collection owns remote Linux state. They are
+deployed by different people at different times, which means the document they
+pass between them is not an implementation detail. It is a published interface,
+and it needs to behave like one.
+
+## The failure we were designing against
+
+Picture a rollout where the control plane has learned a new required key and the
+edge roles have not.
+
+Ansible converges hosts in batches. Without a contract, the first batch fails on
+a missing variable — or worse, succeeds while silently ignoring it — and you
+discover the mismatch somewhere around 25% of your fleet, with the remainder in
+the old state and the converged portion in a state nobody designed. Partial
+rollouts are not just an availability problem; they are a *reasoning* problem,
+because afterwards no single description of the fleet is true.
+
+The requirement, then, is not "detect skew". It is: **fail before the first host
+is touched.**
+
+## Making skew unrepresentable
+
+`_write_desired_state` emits `blitzecdn_desired_state_version` alongside
+`blitzecdn_nginx_sites`. The Nginx role declares
+`blitzecdn_nginx_supported_state_versions` and refuses to run against anything
+outside it.
+
+Because that check happens as the role starts, a version-skewed pair stops at
+the very beginning of the run rather than partway through the fleet. An absent
+version is caught earlier still, by the role's `argument_specs` — a document
+with no version at all is malformed, not merely unsupported.
+
+When to bump `DESIRED_STATE_VERSION` follows directly from what older roles can
+survive:
+
+- **Bump** for a new required key, a renamed key, or new semantics for an
+  existing key.
+- **Do not bump** for a key that older roles can safely ignore.
+
+The distinction is whether an old role reading the new document would be
+*wrong*, not whether the document changed.
+
+## Testing a contract from one side
+
+Both halves have to agree, but tests live in one repository at a time. So the
+control plane guards its own side of the boundary in `tests/test_contract.py`,
+which renders desired state from real `CdnSite` values and asserts that:
+
+- every emitted key is declared in the role's `argument_specs.yml`
+- required keys are present
+- role `choices` cover every value of the corresponding domain enum
+- `site.conf.j2` actually renders
+
+That last assertion is the one that catches the interesting failures. A key can
+be correctly declared and still produce a template that does not render.
+
+The test also keeps `tests/fixtures/desired-state.yml` — the document CI feeds
+to a real playbook — byte-identical to what the control plane genuinely
+produces. A fixture that has drifted from reality is worse than no fixture,
+because it passes.
+
+## The same idea, one level up
+
+This documentation site has the same shape of problem, and takes the same
+approach. It documents two pinned upstreams, and the reference pages are
+generated from them. If the pins disagree the pages still generate — they just
+describe roles the documented control plane never deploys.
+
+So the site asserts, before generating anything, that the installed edge
+collection, the version `requirements.yml` pins, and the version the pinned
+control plane deploys are all the same.
+
+In both cases the lesson is the same, and it is not really about versions: when
+two components are released independently, the thing that passes between them
+needs a declared shape and a check that runs early enough to matter.
