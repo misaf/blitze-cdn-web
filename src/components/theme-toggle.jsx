@@ -11,7 +11,15 @@ export default function ThemeToggle() {
     () => false,
   )
   const dark = mounted && resolvedTheme === 'dark'
-  const label = dark ? 'Switch to light theme' : 'Switch to dark theme'
+  /* Before hydration the resolved theme is unknowable, so the button cannot
+     honestly name a destination. It says what it does instead — announcing
+     "Switch to dark theme" to someone already in dark mode is worse than
+     being unspecific for one frame. */
+  const label = !mounted
+    ? 'Toggle theme'
+    : dark
+      ? 'Switch to light theme'
+      : 'Switch to dark theme'
 
   return (
     <button

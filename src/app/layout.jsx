@@ -73,7 +73,13 @@ export default async function RootLayout({ children }) {
                   was crowded at five items. They are `display: 'hidden'` in
                   `src/content/_meta.js` so Nextra does not also list them. */}
               <div className="flex w-full flex-col gap-4">
-                <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                {/* Named: this is the second <nav> landmark on every page,
+                    and "navigation" twice over tells a screen-reader user
+                    nothing about which is which. */}
+                <nav
+                  aria-label="Footer"
+                  className="flex flex-wrap gap-x-6 gap-y-2 text-sm"
+                >
                   <Link href="/about" className="hover:underline">
                     About us
                   </Link>

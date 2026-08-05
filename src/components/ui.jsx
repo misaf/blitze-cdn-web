@@ -23,6 +23,21 @@ export const eyebrow =
   'eyebrow-marker mb-6 flex items-center gap-2.5 font-mono text-[0.78rem] ' +
   'uppercase tracking-[0.14em] text-accent-ink'
 
+/* The focus ring for anything that is not a `btn`. Card-sized targets and
+   scrollable panels get it inset, so the outline is not clipped by the
+   neighbouring cell's rule. Kept in one place because the band link rows,
+   the repository cards and the code panels must not drift apart.
+
+   `focusInset` is for the light `surface`; `focusInsetDark` is for anything
+   sitting on `ink` or `band`, where the darkened light-theme accent would be
+   nearly invisible. */
+export const focusInset =
+  'focus-visible:outline-2 focus-visible:-outline-offset-2 ' +
+  'focus-visible:outline-accent-ink'
+export const focusInsetDark =
+  'focus-visible:outline-2 focus-visible:-outline-offset-2 ' +
+  'focus-visible:outline-accent'
+
 const btn =
   'inline-flex items-center justify-center border px-6 py-3.5 text-[0.98rem] ' +
   'font-medium no-underline transition duration-100 hover:-translate-y-px ' +

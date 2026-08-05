@@ -9,6 +9,7 @@ import {
   btnGhost,
   btnPrimary,
   eyebrow,
+  focusInsetDark,
   grid,
   gridCell,
   h2,
@@ -26,10 +27,15 @@ export const metadata = {
 }
 
 /* Landing-page only: the deployment triptych is the sole place code panels
-   appear, so this stays here rather than in the shared module. */
+   appear, so this stays here rather than in the shared module.
+
+   These panels scroll horizontally on narrow viewports. A scroll container is
+   only reachable by keyboard if it is focusable, so each one is a tabbable
+   named region (see the `tabIndex` and `aria-label` at the call site) and
+   carries its own focus ring. */
 const codeBlock =
-  'overflow-x-auto border border-line bg-ink px-5 py-[1.15rem] font-mono ' +
-  'text-[0.82rem] leading-[1.72] text-code-fg'
+  `overflow-x-auto border border-line bg-ink px-5 py-[1.15rem] font-mono ` +
+  `text-[0.82rem] leading-[1.72] text-code-fg ${focusInsetDark}`
 
 /* The stack this release commits to. This occupies the slot a project with
    adopters would fill with a logo wall; the honest equivalent for a young
@@ -376,7 +382,14 @@ export default function LandingPage() {
                   </span>
                   {panel.title}
                 </p>
-                <pre className={codeBlock}>{panel.code}</pre>
+                <pre
+                  className={codeBlock}
+                  tabIndex={0}
+                  role="region"
+                  aria-label={`Step ${panel.n}: ${panel.title}`}
+                >
+                  {panel.code}
+                </pre>
               </div>
             ))}
           </div>

@@ -57,7 +57,7 @@ export async function PostList() {
           <Link
             key={post.route}
             href={post.route}
-            className="group border-b border-line py-7 no-underline"
+            className="group border-b border-line py-7 no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-ink"
           >
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-xs tracking-[0.12em] text-accent-ink uppercase">
               {date && <time dateTime={post.date}>{date}</time>}

@@ -6,6 +6,7 @@ import {
   band,
   bandArt,
   eyebrow,
+  focusInset,
   h2,
   h3,
   inner,
@@ -184,7 +185,7 @@ export default function ContactPage() {
               <a
                 key={tracker.name}
                 href={tracker.href}
-                className="group flex flex-col gap-3 bg-surface p-[clamp(1.5rem,3vw,2.25rem)] no-underline"
+                className={`group flex flex-col gap-3 bg-surface p-[clamp(1.5rem,3vw,2.25rem)] no-underline ${focusInset}`}
               >
                 <span className="flex items-center justify-between gap-3">
                   <span className="font-mono text-[0.95rem] text-fg underline-offset-4 group-hover:underline">
