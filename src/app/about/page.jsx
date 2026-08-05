@@ -16,66 +16,65 @@ import {
   inner,
   lede,
   section,
-  split
+  split,
 } from '@/components/ui'
 
 export const metadata = {
   title: 'About us',
   description:
     'Who maintains BlitzeCDN, why it was rebuilt, and the principles the ' +
-    'current design commits to.'
+    'current design commits to.',
 }
 
-/* TODO before publishing: replace FOUNDER_NAME with a real name. */
-const FOUNDER_NAME = 'FOUNDER_NAME'
+const FOUNDER_NAME = 'Misaf'
 
 /* The predecessor's failure modes, from the original system assessment in
    docs/architecture. These are the reasons the current boundaries exist. */
 const inherited = [
   {
     title: 'Queued work vanished',
-    body: 'HTTP background tasks held an open fcntl lock and launched ansible-playbook. Restarting the process lost whatever was queued.'
+    body: 'HTTP background tasks held an open fcntl lock and launched ansible-playbook. Restarting the process lost whatever was queued.',
   },
   {
     title: 'Rollback wrote first',
-    body: 'Current desired state was rewritten before remote convergence, so a failed rollback left the controller describing a fleet that did not exist.'
+    body: 'Current desired state was rewritten before remote convergence, so a failed rollback left the controller describing a fleet that did not exist.',
   },
   {
     title: 'Five places to disagree',
-    body: 'Validation and defaults were duplicated across Pydantic models, YAML serializers, Ansible assertions, role defaults and Jinja templates.'
+    body: 'Validation and defaults were duplicated across Pydantic models, YAML serializers, Ansible assertions, role defaults and Jinja templates.',
   },
   {
     title: 'Secrets in the repository',
-    body: 'The inventory carried real hosts, root SSH and a repository-local private-key path. The firewall role was commented out.'
-  }
+    body: 'The inventory carried real hosts, root SSH and a repository-local private-key path. The firewall role was commented out.',
+  },
 ]
 
 const beliefs = [
   {
     name: 'One owner per concern',
     body: 'Python owns validation, desired state, history, planning, rollback and audit. Ansible exclusively owns remote Linux state and carries no product workflow decisions. When two components can both decide something, they will eventually decide differently.',
-    icon: <path d="M4 6h16M4 12h16M4 18h10" />
+    icon: <path d="M4 6h16M4 12h16M4 18h10" />,
   },
   {
     name: 'Enforce it twice',
     body: 'Every constraint that holds on the controller is re-checked on the edge. A hand-edited desired-state file is not a supported input path, and it does not become one by accident.',
-    icon: <path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z" />
+    icon: <path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z" />,
   },
   {
     name: 'Never claim more than you established',
     body: 'Canonical state changes only after a convergence actually succeeds. An unknown outcome is recorded as unknown — abandoned is not a synonym for failed.',
-    icon: <path d="M12 8v5M12 16.5h.01M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z" />
+    icon: <path d="M12 8v5M12 16.5h.01M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z" />,
   },
   {
     name: 'Secrets travel one way',
     body: 'Private keys are validated on the way in and are never returned, never logged, never rendered into a plan, and never accepted as command-line arguments.',
-    icon: <path d="M6 11V8a6 6 0 0 1 12 0v3M5 11h14v9H5z" />
+    icon: <path d="M6 11V8a6 6 0 0 1 12 0v3M5 11h14v9H5z" />,
   },
   {
     name: 'Refuse clearly',
     body: 'No VM provisioning, no DNS, no wildcard certificates, no cache invalidation fan-out, no active/active. Each needs a design we have not done, and a stated boundary is easier to operate against than a vague one.',
-    icon: <path d="M12 3v18M3 12h18" />
-  }
+    icon: <path d="M12 3v18M3 12h18" />,
+  },
 ]
 
 const people = [
@@ -83,31 +82,31 @@ const people = [
     name: FOUNDER_NAME,
     handle: 'misaf',
     role: 'Founder',
-    body: 'Design, control plane, and edge roles.'
+    body: 'Design, control plane, and edge roles.',
   },
   {
     name: 'Arefeh',
     role: 'Support',
-    body: 'Issue triage, documentation, and operator questions.'
-  }
+    body: 'Issue triage, documentation, and operator questions.',
+  },
 ]
 
 const repositories = [
   {
     name: 'blitze-cdn-cp',
     href: 'https://github.com/misaf/blitze-cdn-cp',
-    owns: 'Control plane: CLI, HTTP API, domain models, deployment history.'
+    owns: 'Control plane: CLI, HTTP API, domain models, deployment history.',
   },
   {
     name: 'blitze-cdn-edge',
     href: 'https://github.com/misaf/blitze-cdn-edge',
-    owns: 'The Ansible roles that converge the edge hosts.'
+    owns: 'The Ansible roles that converge the edge hosts.',
   },
   {
     name: 'blitze-cdn',
-    href: 'https://github.com/misaf/blitze-cdn',
-    owns: 'This site. Holds no credentials and never runs on a controller.'
-  }
+    href: 'https://github.com/misaf/blitze-cdn-web',
+    owns: 'This site. Holds no credentials and never runs on a controller.',
+  },
 ]
 
 export default function AboutPage() {
@@ -142,7 +141,7 @@ export default function AboutPage() {
             </p>
           </div>
           <dl className={`${grid} sm:grid-cols-2`}>
-            {inherited.map(item => (
+            {inherited.map((item) => (
               <div key={item.title} className={`${gridCell} min-h-44`}>
                 <dt className="text-[1.18rem] font-medium tracking-tight">
                   {item.title}
@@ -159,10 +158,10 @@ export default function AboutPage() {
       <section className={band}>
         <div className={bandArt} aria-hidden="true" />
         <div className={`relative z-10 ${inner} ${section}`}>
-          <p className={`${eyebrow} text-accent`}>What we believe</p>
+          <p className={`${eyebrow} text-accent!`}>What we believe</p>
           <h2 className={h2}>Five commitments the design is held to</h2>
           <div className="mt-[clamp(2.5rem,5vw,4rem)]">
-            {beliefs.map(belief => (
+            {beliefs.map((belief) => (
               <div
                 key={belief.name}
                 className="grid items-start gap-x-8 gap-y-3 border-t border-band-line py-[clamp(1.75rem,3vw,2.5rem)] last:border-b md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]"
@@ -206,7 +205,7 @@ export default function AboutPage() {
                     : ''
                 }`}
               >
-                <p className="font-mono text-[0.72rem] uppercase tracking-[0.12em] text-accent-ink">
+                <p className="font-mono text-[0.72rem] tracking-[0.12em] text-accent-ink uppercase">
                   {person.role}
                 </p>
                 <h3 className={h3}>{person.name}</h3>
@@ -248,14 +247,14 @@ export default function AboutPage() {
             </p>
           </div>
           <div className="mt-[clamp(2.5rem,5vw,4rem)] grid gap-px border border-line bg-line md:grid-cols-3">
-            {repositories.map(repo => (
+            {repositories.map((repo) => (
               <a
                 key={repo.name}
                 href={repo.href}
                 className="group flex flex-col gap-3 bg-surface p-[clamp(1.5rem,3vw,2.25rem)] no-underline"
               >
                 <span className="flex items-center justify-between gap-3">
-                  <span className="font-mono text-[0.95rem] text-fg group-hover:underline underline-offset-4">
+                  <span className="font-mono text-[0.95rem] text-fg underline-offset-4 group-hover:underline">
                     {repo.name}
                   </span>
                   <Arrow className="size-[1.1rem] shrink-0 text-accent-ink transition-transform duration-150 group-hover:translate-x-1" />
@@ -279,7 +278,7 @@ export default function AboutPage() {
         <div className={`relative z-10 ${inner} ${section}`}>
           <div className="grid gap-10 border border-band-line p-[clamp(2rem,4vw,3.5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-5">
-              <p className={`${eyebrow} mb-0 text-accent`}>Licence</p>
+              <p className={`${eyebrow} mb-0 text-accent!`}>Licence</p>
               <h2 className={h2}>MIT, warranty and all</h2>
             </div>
             <div className="flex flex-col gap-4 text-band-muted">
@@ -295,9 +294,7 @@ export default function AboutPage() {
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Check />
-                  <span>
-                    Test against hosts you can afford to break first
-                  </span>
+                  <span>Test against hosts you can afford to break first</span>
                 </li>
               </ul>
             </div>

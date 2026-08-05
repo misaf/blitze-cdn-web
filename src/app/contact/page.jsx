@@ -11,61 +11,62 @@ import {
   inner,
   lede,
   section,
-  split
+  split,
 } from '@/components/ui'
 
 export const metadata = {
   title: 'Contact us',
   description:
     'Where to report a bug, how to disclose a security issue privately, and ' +
-    'what response to expect.'
+    'what response to expect.',
 }
 
-/* TODO before publishing: replace both placeholders with real addresses. */
-const SECURITY_CONTACT = 'SECURITY_CONTACT'
-const CONTACT_EMAIL = 'CONTACT_EMAIL'
+const SECURITY_CONTACT =
+  'https://github.com/misaf/blitze-cdn-cp/security/advisories/new'
+const GENERAL_CONTACT = 'https://github.com/misaf'
 
 const trackers = [
   {
     name: 'blitze-cdn-cp',
     href: 'https://github.com/misaf/blitze-cdn-cp/issues',
-    scope: 'CLI, HTTP API, desired state, deployments, rollback, certificates.'
+    scope: 'CLI, HTTP API, desired state, deployments, rollback, certificates.',
   },
   {
     name: 'blitze-cdn-edge',
     href: 'https://github.com/misaf/blitze-cdn-edge/issues',
-    scope: 'Ansible roles, host convergence, Nginx templates, firewall, hardening.'
+    scope:
+      'Ansible roles, host convergence, Nginx templates, firewall, hardening.',
   },
   {
     name: 'blitze-cdn',
-    href: 'https://github.com/misaf/blitze-cdn/issues',
-    scope: 'This site: documentation that is wrong, missing or unclear.'
-  }
+    href: 'https://github.com/misaf/blitze-cdn-web/issues',
+    scope: 'This site: documentation that is wrong, missing or unclear.',
+  },
 ]
 
 const disclosureNotes = [
   'What an attacker could achieve, and what access they would need to start.',
   'The versions involved — control plane and edge collection are pinned separately.',
   'Whether it crosses a documented trust boundary.',
-  'A minimal reproduction if you have one. A clear description is fine if not.'
+  'A minimal reproduction if you have one. A clear description is fine if not.',
 ]
 
 const expectations = [
   {
     name: 'No SLA',
     body: 'BlitzeCDN is maintained by two people alongside other work. There is no guaranteed response time and no paid support tier.',
-    icon: <path d="M12 7v5l3 2M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z" />
+    icon: <path d="M12 7v5l3 2M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z" />,
   },
   {
     name: 'Security first',
     body: 'Security reports are looked at before anything else. Everything else is best effort, in whatever order makes sense.',
-    icon: <path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z" />
+    icon: <path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z" />,
   },
   {
     name: 'Closed with a reason',
     body: 'Requests outside the project’s deliberate limits will usually be declined — but with an explanation, rather than left open indefinitely.',
-    icon: <path d="M6 6l12 12M18 6L6 18" />
-  }
+    icon: <path d="M6 6l12 12M18 6L6 18" />,
+  },
 ]
 
 export default function ContactPage() {
@@ -103,20 +104,24 @@ export default function ContactPage() {
                 fix.
               </p>
               <p className="text-[1.05rem] text-red-900 dark:text-red-100">
-                Report privately to{' '}
-                <span className="font-mono font-semibold">
-                  {SECURITY_CONTACT}
-                </span>
-                .
+                Report privately through the{' '}
+                <a
+                  href={SECURITY_CONTACT}
+                  className="font-semibold underline underline-offset-2"
+                >
+                  control plane’s security advisory form
+                </a>
+                . You need a GitHub account, but the report is visible only to
+                the repository maintainers.
               </p>
             </div>
             <div className="grid gap-8 p-[clamp(1.5rem,3vw,2.25rem)] lg:grid-cols-2">
               <div className="flex flex-col gap-3">
-                <h3 className="font-mono text-[0.78rem] uppercase tracking-[0.12em] text-red-800 dark:text-red-300">
+                <h3 className="font-mono text-[0.78rem] tracking-[0.12em] text-red-800 uppercase dark:text-red-300">
                   Useful to include
                 </h3>
                 <ul className="grid gap-2.5 text-[0.95rem] leading-relaxed text-fg">
-                  {disclosureNotes.map(note => (
+                  {disclosureNotes.map((note) => (
                     <li key={note} className="flex items-start gap-2.5">
                       <span className="mt-2 size-1.5 shrink-0 bg-red-600" />
                       <span>{note}</span>
@@ -125,7 +130,7 @@ export default function ContactPage() {
                 </ul>
               </div>
               <div className="flex flex-col gap-3 text-[0.95rem] leading-relaxed text-muted">
-                <h3 className="font-mono text-[0.78rem] uppercase tracking-[0.12em] text-red-800 dark:text-red-300">
+                <h3 className="font-mono text-[0.78rem] tracking-[0.12em] text-red-800 uppercase dark:text-red-300">
                   What happens next
                 </h3>
                 <p>
@@ -165,7 +170,7 @@ export default function ContactPage() {
               <code className="font-mono text-[0.9em]">blitzecdn doctor</code>{' '}
               and the{' '}
               <Link
-                href="/docs/operations#troubleshooting"
+                href="/docs/guides/troubleshooting"
                 className="text-accent-ink underline underline-offset-2"
               >
                 troubleshooting guide
@@ -175,14 +180,14 @@ export default function ContactPage() {
             </p>
           </div>
           <div className="mt-[clamp(2.5rem,5vw,4rem)] grid gap-px border border-line bg-line md:grid-cols-3">
-            {trackers.map(tracker => (
+            {trackers.map((tracker) => (
               <a
                 key={tracker.name}
                 href={tracker.href}
                 className="group flex flex-col gap-3 bg-surface p-[clamp(1.5rem,3vw,2.25rem)] no-underline"
               >
                 <span className="flex items-center justify-between gap-3">
-                  <span className="font-mono text-[0.95rem] text-fg group-hover:underline underline-offset-4">
+                  <span className="font-mono text-[0.95rem] text-fg underline-offset-4 group-hover:underline">
                     {tracker.name}
                   </span>
                   <Arrow className="size-[1.1rem] shrink-0 text-accent-ink transition-transform duration-150 group-hover:translate-x-1" />
@@ -214,14 +219,17 @@ export default function ContactPage() {
         <div className={`relative z-10 ${inner} ${section}`}>
           <div className="grid border border-band-line lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-5 p-[clamp(2rem,4vw,3.5rem)]">
-              <p className={`${eyebrow} mb-0 text-accent`}>Anything else</p>
+              <p className={`${eyebrow} mb-0 text-accent!`}>Anything else</p>
               <h2 className={h2}>Not everything fits a tracker</h2>
               <p className="leading-relaxed text-band-muted">
                 Commercial use, talks, or a conversation before you file
-                something — write to{' '}
-                <span className="font-mono font-semibold text-band-fg">
-                  {CONTACT_EMAIL}
-                </span>
+                something — contact{' '}
+                <a
+                  href={GENERAL_CONTACT}
+                  className="font-mono font-semibold text-band-fg underline underline-offset-2"
+                >
+                  @misaf on GitHub
+                </a>
                 .
               </p>
               <p className="text-[0.95rem] leading-relaxed text-band-muted">
@@ -229,18 +237,20 @@ export default function ContactPage() {
                 <strong className="font-semibold text-band-fg">
                   Edit this page on GitHub
                 </strong>{' '}
-                link on any docs page. One exception: the reference pages are
-                generated from source, so a pull request against them is
-                overwritten by the next build — file those against the
-                repository that owns the code.
+                link on any docs page. For reference corrections, include the
+                control-plane or edge version you verified so the change can be
+                reviewed against the right interface.
               </p>
             </div>
             <div className="flex flex-col border-t border-band-line lg:border-t-0 lg:border-l">
               {[
                 { href: '/faq', label: 'Read the FAQ first' },
-                { href: '/docs/operations', label: 'Operations and troubleshooting' },
-                { href: '/about', label: 'Who you are writing to' }
-              ].map(link => (
+                {
+                  href: '/docs/guides/troubleshooting',
+                  label: 'Operations and troubleshooting',
+                },
+                { href: '/about', label: 'Who you are writing to' },
+              ].map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -266,7 +276,7 @@ export default function ContactPage() {
             </p>
           </div>
           <div className="mt-[clamp(2.5rem,5vw,4rem)] grid gap-px border border-line bg-line md:grid-cols-3">
-            {expectations.map(item => (
+            {expectations.map((item) => (
               <div
                 key={item.name}
                 className="flex flex-col gap-3 bg-surface p-[clamp(1.5rem,3vw,2.25rem)]"
