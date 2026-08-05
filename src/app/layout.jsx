@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { Footer, Layout, Navbar } from 'nextra-theme-docs'
-import { Banner, Head } from 'nextra/components'
+import { Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
 import { siteUrl } from '@/lib/site'
+import DocsBanner from '@/components/docs-banner'
 import ThemeToggle from '@/components/theme-toggle'
 import 'nextra-theme-docs/style.css'
 import './globals.css'
@@ -60,12 +61,15 @@ export default async function RootLayout({ children }) {
       <body>
         <Layout
           copyPageButton={false}
-          banner={
-            <Banner storageKey="production-checklist-2026-08">
-              Before changing production edges, review the{' '}
-              <Link href="/docs/guides/deployment">deployment checklist →</Link>
-            </Banner>
-          }
+          /* Nextra's own theme switcher — a three-option listbox in the sidebar
+             footer — is off, because `ThemeToggle` in the navbar is now a
+             three-state control covering the same ground. Two controls for one
+             setting made users hesitate over whether they did the same thing,
+             and the sidebar one is not reachable at all on the hand-built
+             routes at narrow widths. This hides that UI only; the underlying
+             next-themes provider is configured separately and still runs. */
+          darkMode={false}
+          banner={<DocsBanner />}
           navbar={navbar}
           footer={
             <Footer>
@@ -95,11 +99,15 @@ export default async function RootLayout({ children }) {
                   <a href="/feed.xml" className="hover:underline">
                     RSS
                   </a>
+                  {/* The only footer link that leaves the site, and it looked
+                      identical to the five that do not. */}
                   <a
                     href="https://github.com/misaf/blitze-cdn-web"
                     className="hover:underline"
                   >
                     GitHub
+                    <span aria-hidden="true"> ↗</span>
+                    <span className="sr-only"> (opens github.com)</span>
                   </a>
                 </nav>
                 <p>MIT {new Date().getFullYear()} © BlitzeCDN.</p>
