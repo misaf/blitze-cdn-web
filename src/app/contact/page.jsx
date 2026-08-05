@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import {
-  Arrow,
+  BandLinkList,
+  ExternalCardGrid,
   Icon,
   PageHero,
   band,
   bandArt,
   eyebrow,
-  focusInset,
+  flow,
   h2,
   h3,
   inner,
@@ -26,22 +27,28 @@ const SECURITY_CONTACT =
   'https://github.com/misaf/blitze-cdn-cp/security/advisories/new'
 const GENERAL_CONTACT = 'https://github.com/misaf'
 
+/* Every route on this page used to require a GitHub account, including the
+   private disclosure route — which meant a researcher without one had no way
+   to report a vulnerability in software that holds TLS private keys except to
+   disclose it publicly. These are the account-free fallbacks. */
+const SECURITY_EMAIL = 'security@blitzecdn.dev'
+const GENERAL_EMAIL = 'hello@blitzecdn.dev'
+
 const trackers = [
   {
     name: 'blitze-cdn-cp',
     href: 'https://github.com/misaf/blitze-cdn-cp/issues',
-    scope: 'CLI, HTTP API, desired state, deployments, rollback, certificates.',
+    note: 'CLI, HTTP API, desired state, deployments, rollback, certificates.',
   },
   {
     name: 'blitze-cdn-edge',
     href: 'https://github.com/misaf/blitze-cdn-edge/issues',
-    scope:
-      'Ansible roles, host convergence, Nginx templates, firewall, hardening.',
+    note: 'Ansible roles, host convergence, Nginx templates, firewall, hardening.',
   },
   {
     name: 'blitze-cdn',
     href: 'https://github.com/misaf/blitze-cdn-web/issues',
-    scope: 'This site: documentation that is wrong, missing or unclear.',
+    note: 'This site: documentation that is wrong, missing or unclear.',
   },
 ]
 
@@ -72,7 +79,10 @@ const expectations = [
 
 export default function ContactPage() {
   return (
-    <div
+    /* `main` + Nextra's skip-target id: the theme's "Skip to Content" link is
+       rendered on every route but its target only exists on MDX ones. */
+    <main
+      id="nextra-skip-nav"
       className="canvas bg-surface text-fg antialiased [font-synthesis-weight:none]"
       /* Keeps the page in the Pagefind index now that it is a hand-built route
          rather than an MDX page Nextra would have marked for us. */
@@ -92,7 +102,7 @@ export default function ContactPage() {
         <div className={inner}>
           <p className={eyebrow}>Security</p>
           <div className="border border-red-600/60 bg-red-50 dark:bg-red-950/30">
-            <div className="flex flex-col gap-4 border-b border-red-600/40 p-[clamp(1.5rem,3vw,2.25rem)]">
+            <div className="flex flex-col gap-4 border-b border-red-600/40 p-card">
               <h2 className="flex items-start gap-3 text-card font-book tracking-display text-red-800 dark:text-red-300">
                 <Icon className="mt-1 size-[1.4rem] shrink-0">
                   <path d="M12 8v5M12 16.5h.01M10.3 3.9 2.4 18a1.9 1.9 0 0 0 1.7 2.8h15.8a1.9 1.9 0 0 0 1.7-2.8L13.7 3.9a1.9 1.9 0 0 0-3.4 0z" />
@@ -112,16 +122,35 @@ export default function ContactPage() {
                 >
                   control plane’s security advisory form
                 </a>
-                . You need a GitHub account, but the report is visible only to
-                the repository maintainers.
+                . The report is visible only to the repository maintainers.
+              </p>
+              <p className="text-[1.05rem] text-red-900 dark:text-red-100">
+                That form needs a GitHub account. If you do not have one, or
+                cannot use it, email{' '}
+                <a
+                  href={`mailto:${SECURITY_EMAIL}`}
+                  className="font-mono font-semibold underline underline-offset-2"
+                >
+                  {SECURITY_EMAIL}
+                </a>{' '}
+                instead — it reaches the same two people. Plain text is fine; do
+                not let the lack of an account push you towards a public issue.
               </p>
             </div>
-            <div className="grid gap-8 p-[clamp(1.5rem,3vw,2.25rem)] lg:grid-cols-2">
+            <div className="grid gap-8 p-card lg:grid-cols-2">
               <div className="flex flex-col gap-3">
-                <h3 className="font-mono text-[0.78rem] tracking-[0.12em] text-red-800 uppercase dark:text-red-300">
+                {/* These two head their columns, so they are sized as headings.
+                    At 0.78rem they were the smallest text in their own block —
+                    smaller than the 0.95rem body beneath them — and the panel
+                    read as one undifferentiated wall on the page where
+                    scanning matters most. */}
+                <h3 className="font-mono text-[0.95rem] font-semibold tracking-[0.08em] text-red-800 uppercase dark:text-red-300">
                   Useful to include
                 </h3>
-                <ul className="grid gap-2.5 text-[0.95rem] leading-relaxed text-fg">
+                <ul
+                  role="list"
+                  className="grid gap-2.5 text-[0.95rem] leading-relaxed text-fg"
+                >
                   {disclosureNotes.map((note) => (
                     <li key={note} className="flex items-start gap-2.5">
                       <span className="mt-2 size-1.5 shrink-0 bg-red-600" />
@@ -131,7 +160,7 @@ export default function ContactPage() {
                 </ul>
               </div>
               <div className="flex flex-col gap-3 text-[0.95rem] leading-relaxed text-muted">
-                <h3 className="font-mono text-[0.78rem] tracking-[0.12em] text-red-800 uppercase dark:text-red-300">
+                <h3 className="font-mono text-[0.95rem] font-semibold tracking-[0.08em] text-red-800 uppercase dark:text-red-300">
                   What happens next
                 </h3>
                 <p>
@@ -180,25 +209,7 @@ export default function ContactPage() {
               issue either way.
             </p>
           </div>
-          <div className="mt-[clamp(2.5rem,5vw,4rem)] grid gap-px border border-line bg-line md:grid-cols-3">
-            {trackers.map((tracker) => (
-              <a
-                key={tracker.name}
-                href={tracker.href}
-                className={`group flex flex-col gap-3 bg-surface p-[clamp(1.5rem,3vw,2.25rem)] no-underline ${focusInset}`}
-              >
-                <span className="flex items-center justify-between gap-3">
-                  <span className="font-mono text-[0.95rem] text-fg underline-offset-4 group-hover:underline">
-                    {tracker.name}
-                  </span>
-                  <Arrow className="size-[1.1rem] shrink-0 text-accent-ink transition-transform duration-150 group-hover:translate-x-1" />
-                </span>
-                <span className="text-[0.92rem] leading-relaxed text-muted">
-                  {tracker.scope}
-                </span>
-              </a>
-            ))}
-          </div>
+          <ExternalCardGrid items={trackers} />
 
           <div className="mt-10 border-l-2 border-accent bg-surface py-4 pl-5">
             <p className="leading-relaxed text-fg">
@@ -219,7 +230,7 @@ export default function ContactPage() {
         <div className={bandArt} aria-hidden="true" />
         <div className={`relative z-10 ${inner} ${section}`}>
           <div className="grid border border-band-line lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-            <div className="flex flex-col gap-5 p-[clamp(2rem,4vw,3.5rem)]">
+            <div className="flex flex-col gap-5 p-card-lg">
               <p className={`${eyebrow} mb-0 text-accent!`}>Anything else</p>
               <h2 className={h2}>Not everything fits a tracker</h2>
               <p className="leading-relaxed text-band-muted">
@@ -230,6 +241,13 @@ export default function ContactPage() {
                   className="font-mono font-semibold text-band-fg underline underline-offset-2"
                 >
                   @misaf on GitHub
+                </a>{' '}
+                or email{' '}
+                <a
+                  href={`mailto:${GENERAL_EMAIL}`}
+                  className="font-mono font-semibold text-band-fg underline underline-offset-2"
+                >
+                  {GENERAL_EMAIL}
                 </a>
                 .
               </p>
@@ -243,25 +261,16 @@ export default function ContactPage() {
                 reviewed against the right interface.
               </p>
             </div>
-            <div className="flex flex-col border-t border-band-line lg:border-t-0 lg:border-l">
-              {[
+            <BandLinkList
+              links={[
                 { href: '/faq', label: 'Read the FAQ first' },
                 {
                   href: '/docs/guides/troubleshooting',
                   label: 'Operations and troubleshooting',
                 },
                 { href: '/about', label: 'Who you are writing to' },
-              ].map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="group flex flex-1 items-center justify-between gap-6 px-[clamp(1.25rem,2.5vw,2rem)] py-[clamp(1.1rem,2.2vw,1.5rem)] text-[1.05rem] no-underline transition-colors duration-100 not-first:border-t not-first:border-band-line hover:bg-white/7 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                >
-                  <span>{link.label}</span>
-                  <Arrow className="text-accent transition-transform duration-150 group-hover:translate-x-1" />
-                </Link>
-              ))}
-            </div>
+              ]}
+            />
           </div>
         </div>
       </section>
@@ -276,11 +285,13 @@ export default function ContactPage() {
               waiting.
             </p>
           </div>
-          <div className="mt-[clamp(2.5rem,5vw,4rem)] grid gap-px border border-line bg-line md:grid-cols-3">
+          <div
+            className={`${flow} grid gap-px border border-line bg-line md:grid-cols-3`}
+          >
             {expectations.map((item) => (
               <div
                 key={item.name}
-                className="flex flex-col gap-3 bg-surface p-[clamp(1.5rem,3vw,2.25rem)]"
+                className="flex flex-col gap-3 bg-surface p-card"
               >
                 <Icon className="size-[1.4rem] shrink-0 text-accent-ink">
                   {item.icon}
@@ -294,6 +305,6 @@ export default function ContactPage() {
           </div>
         </div>
       </section>
-    </div>
+    </main>
   )
 }
