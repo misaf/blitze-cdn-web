@@ -45,14 +45,84 @@ version at all. Output generated this way is for local preview only.
 | Path | Contents |
 | --- | --- |
 | `src/app/page.jsx` | Landing page — hand-written, safe to restyle |
+| `src/app/globals.css` | Tailwind entry point and site theme |
 | `src/app/layout.jsx` | Shared shell: navbar, footer, theme |
-| `src/content/*.mdx` | Hand-written prose (architecture, operations) |
-| `src/content/reference/*.mdx` | **Generated — do not edit** |
+| `src/content/docs/*.mdx` | Hand-written prose (architecture, operations) |
+| `src/content/docs/reference/*.mdx` | **Generated — do not edit** |
+| `src/app/about/page.jsx` | About us — hand-designed, not MDX |
+| `src/app/contact/page.jsx` | Contact us — hand-designed, not MDX |
+| `src/components/ui.jsx` | Shared design recipes for the designed pages |
+| `src/content/faq.mdx` | FAQ |
+| `src/content/blog/` | Blog: `index.mdx` lists the posts beside it |
+| `src/components/post-list.jsx` | Builds the blog index from the page map |
+| `postcss.config.mjs` | Loads `@tailwindcss/postcss` |
 | `scripts/generate_reference.py` | The generators |
+
+## Sections and routing
+
+There is no `contentDirBasePath`, so the content tree maps to URLs directly:
+
+| Path on disk | URL |
+| --- | --- |
+| `src/app/page.jsx` | `/` |
+| `src/content/docs/**` | `/docs/**` |
+| `src/content/faq.mdx` | `/faq` |
+| `src/content/blog/**` | `/blog/**` |
+| `src/app/about/page.jsx` | `/about` |
+| `src/app/contact/page.jsx` | `/contact` |
+
+Two consequences worth knowing:
+
+- The catch-all route is `src/app/[...mdxPath]` (**required**, not optional).
+  The optional `[[...mdxPath]]` form would also match `/` and collide with the
+  hand-written landing page.
+- `src/content/_meta.js` marks `docs`, `faq` and `blog` as `type: 'page'`, which
+  is what lifts them into the navbar instead of listing them in the docs
+  sidebar.
+
+### Designed pages vs docs pages
+
+`/`, `/about` and `/contact` are hand-designed App Router routes. They bypass
+the Nextra docs layout entirely — no sidebar, no table of contents — and share
+their look through `src/components/ui.jsx`. Everything else is MDX under
+`src/content/` and gets the docs chrome.
+
+Two things a designed page must do:
+
+- Wrap itself in `.canvas`, which opts into the scoped mini-preflight (see
+  Styling below). Without it, padding utilities overflow their boxes.
+- Carry `data-pagefind-body`, or it drops out of the search index. Nextra adds
+  that marker to MDX pages automatically; a hand-built route has to say so.
+
+### Adding a blog post
+
+Add an `.mdx` file to `src/content/blog/` with `title`, `description`, `date`
+and `author` frontmatter, then add it to `src/content/blog/_meta.js` for the
+sidebar. The index page at `/blog` derives its listing from the page map and
+sorts by `date` descending, so it picks the post up on its own.
+
+## Styling
+
+Tailwind v4 is configured in `src/app/globals.css` and loaded from the root
+layout, so the landing page, FAQ and blog can all use it. Three things there are
+deliberate:
+
+- **Tailwind is imported without preflight.** `nextra-theme-docs` ships a
+  precompiled build carrying no preflight of its own, so every docs page relies
+  on browser defaults. A global reset would restyle all of them. The landing
+  designed pages opt into a mini-preflight scoped to `.canvas` instead.
+- **Sources are declared explicitly.** Granular `@import`s disable Tailwind's
+  automatic source detection, so the `@source` line is what makes class
+  scanning work. Remove it and every utility silently vanishes from the build.
+- **The dark variant is bound to the `.dark` class**, because Nextra switches
+  themes with next-themes rather than `prefers-color-scheme`.
+
+Nextra's own utilities are compiled under an `x:` prefix and its theme values
+are inlined, so nothing here collides with them.
 
 ## Generated reference
 
-`scripts/generate_reference.py` writes `src/content/reference/` from four
+`scripts/generate_reference.py` writes `src/content/docs/reference/` from four
 machine-readable sources, so the reference cannot drift from what it documents:
 
 | Page | Source |
