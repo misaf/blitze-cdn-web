@@ -1,0 +1,265 @@
+---
+title: Quick start
+description: Stand up a control plane and make your first deploy, end to end.
+---
+
+# Quick start
+
+By the end of this tutorial, one site will be deployed across your edge servers.
+Expect about 20 minutes when SSH and package access are ready. Run every command
+from the release checkout created below; paths such as `ansible/` and
+`examples/site.yml` are relative to that directory. Editable development
+installation belongs in the [contributor guide](/docs/contributing).
+
+<Callout type="warning">
+  This is a first-deployment lab, not a production runbook. It deliberately
+  starts with HTTP only. Complete the [production
+  checklist](/docs/guides/production), [security
+  hardening](/docs/guides/security), [backup and restore](/docs/guides/backup),
+  [certificate setup](/docs/guides/certificates), and [API key
+  rotation](/docs/guides/api-key-rotation) before serving production traffic.
+</Callout>
+
+## Before you begin
+
+- One controller with Python 3.12, 3.13, or 3.14.
+- Certbot on the controller if you plan to request ACME certificates.
+- Debian 12+ or Ubuntu 24.04+ edge servers, each with a non-root SSH user that
+  has narrowly scoped sudo.
+- Your own inventory of addresses and **SSH host fingerprints, verified out of
+  band**.
+
+## Install
+
+The commands in this tutorial use the following control-plane layout:
+
+<FileTree>
+  <FileTree.Folder name="blitze-cdn-cp" defaultOpen>
+    <FileTree.Folder name="ansible" defaultOpen>
+      <FileTree.Folder name="inventory">
+        <FileTree.File name="hosts.yml" />
+        <FileTree.Folder name="group_vars" />
+      </FileTree.Folder>
+      <FileTree.Folder name="playbooks" />
+    </FileTree.Folder>
+    <FileTree.Folder name="examples">
+      <FileTree.File name="site.yml" />
+    </FileTree.Folder>
+    <FileTree.File name=".env" />
+    <FileTree.File name="blitzecdn.toml" />
+  </FileTree.Folder>
+</FileTree>
+
+<Steps>
+
+### Install the control plane
+
+```bash
+git clone --depth 1 https://github.com/misaf/blitze-cdn-cp.git
+cd blitze-cdn-cp
+python3 --version
+python3 -m venv .venv
+.venv/bin/pip install .
+.venv/bin/ansible-galaxy collection install -r ansible/requirements.yml
+```
+
+This checks out the latest version from the repository's default branch. Verify
+the repository owner before production use. The reported Python version must
+be 3.12, 3.13, or 3.14. For repeatable production deployments, select a tested
+version from the [compatibility matrix](/docs/reference).
+
+### Initialise local configuration
+
+```bash
+.venv/bin/blitzecdn init --output .env
+cp ansible/inventory/hosts.example.yml ansible/inventory/hosts.yml
+cp examples/site.yml site.yml
+set -a; source .env; set +a
+```
+
+`init` writes a restrictive environment file without overwriting an existing
+one. Edit `hosts.yml` with your real addresses, deployment user, and at least
+one trusted management CIDR. The firewall role fails closed when
+`blitzecdn_firewall_ssh_sources` is empty:
+
+```yaml
+all:
+  children:
+    blitzecdn_edges:
+      hosts:
+        edge-01.example.net:
+          ansible_host: 192.0.2.10
+          ansible_user: deploy
+      vars:
+        blitzecdn_firewall_ssh_sources:
+          - 198.51.100.0/24
+```
+
+Replace the documentation addresses with your real edge and management
+networks before continuing. Then edit `site.yml`: replace every `example.com`
+hostname with a hostname and origin you control. Keep
+`certificate_mode: disabled` for this first deployment. That produces an
+HTTP-only edge; add HTTPS only after the HTTP path is proven.
+
+### Verify the SSH trust chain
+
+Fetch each host key into a temporary file, inspect its fingerprint, and compare
+that fingerprint with one obtained through a trusted channel:
+
+```bash
+EDGE_HOST=edge-01.example.net
+EDGE_KEYS=$(mktemp)
+ssh-keyscan -H "$EDGE_HOST" > "$EDGE_KEYS"
+ssh-keygen -lf "$EDGE_KEYS"
+```
+
+<Callout type="error">
+  `ssh-keyscan` discovers a key; it does not authenticate it. Only append the
+  scanned keys to `known_hosts` after their fingerprints match values obtained
+  through a trusted channel. Never disable host-key checking.
+</Callout>
+
+After every displayed fingerprint matches, install the keys and remove the
+temporary file:
+
+```bash
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+touch ~/.ssh/known_hosts
+chmod 600 ~/.ssh/known_hosts
+ssh-keygen -F "$EDGE_HOST" -f ~/.ssh/known_hosts
+ssh-keygen -R "$EDGE_HOST" -f ~/.ssh/known_hosts
+cat "$EDGE_KEYS" >> ~/.ssh/known_hosts
+rm "$EDGE_KEYS"
+```
+
+`ssh-keygen -F` shows existing entries. The `-R` step prevents duplicates, but
+it also removes old keys: run it only after confirming that a legitimate host
+key rotation occurred or that the existing entry is obsolete. Repeat this
+process for each inventory connection target.
+
+### Prove readiness, then deploy
+
+```bash
+.venv/bin/blitzecdn doctor --json
+.venv/bin/blitzecdn site add --file site.yml
+.venv/bin/blitzecdn validate
+.venv/bin/blitzecdn plan --json
+.venv/bin/blitzecdn deploy
+```
+
+- `doctor` reports local readiness without contacting remote servers.
+- `site add` registers a documented site; `validate` checks configuration,
+  desired state, inventory, and playbook syntax.
+- `plan` runs Ansible in check mode and shows the deployment record it would
+  produce.
+- `deploy` asks you to confirm before it applies the state. Use `--yes` only in
+  reviewed automation where no interactive terminal is available.
+
+The timestamps, paths, and deployment IDs vary. Look for these stable fields:
+
+```console
+$ .venv/bin/blitzecdn doctor --json
+{
+  "api_auth_configured": true,
+  "configuration_errors": [],
+  "python_supported": true,
+  "state_dir": "..."
+}
+```
+
+```console
+$ .venv/bin/blitzecdn validate
+valid: true
+errors: []
+```
+
+```console
+$ .venv/bin/blitzecdn plan --json
+{
+  "check_mode": true,
+  "status": "succeeded",
+  ...
+}
+
+$ .venv/bin/blitzecdn deploy
+Apply desired state to all blitzecdn_edges hosts? [y/N]: y
+status: succeeded
+check_mode: false
+...
+```
+
+</Steps>
+
+## Verify the deployment
+
+Inspect the latest deployment and the operator audit trail:
+
+```bash
+.venv/bin/blitzecdn status --limit 1
+.venv/bin/blitzecdn audit --limit 5
+```
+
+The latest records should contain these fields (IDs and timestamps vary):
+
+```console
+$ .venv/bin/blitzecdn status --limit 1
+- status: succeeded
+  check_mode: false
+  return_code: 0
+  ...
+
+$ .venv/bin/blitzecdn audit --limit 5
+- operator: cli
+  action: deployment.succeeded
+  resource_type: deployment
+  ...
+```
+
+Now exercise the real HTTP path without waiting for public DNS. Substitute the
+hostname from `site.yml` and one edge IP:
+
+```bash
+SITE_HOST=cdn.your-domain.example
+EDGE_IP=192.0.2.10
+curl --fail --silent --show-error \
+  --resolve "$SITE_HOST:80:$EDGE_IP" \
+  "http://$SITE_HOST/" \
+  --output /dev/null \
+  --write-out 'HTTP %{http_code}\n'
+```
+
+A healthy origin normally returns a success such as `HTTP 200`; the exact 2xx
+or 3xx code depends on your origin. `--fail` makes 4xx/5xx responses fail the
+command. BlitzeCDN records convergence, but only this external request proves
+the listener, virtual host, proxy path, and origin response together.
+
+## Clean up the lab site
+
+If this was only an evaluation, remove its desired state and converge that
+removal on the edges. Use the `name` value from `site.yml`:
+
+```bash
+.venv/bin/blitzecdn site remove example-cdn
+.venv/bin/blitzecdn validate
+.venv/bin/blitzecdn plan
+.venv/bin/blitzecdn deploy
+```
+
+Both destructive commands prompt for confirmation. Review the plan before the
+final deploy; removing desired state does not imply that unrelated origin data
+or DNS records are deleted.
+
+## Recover from a failed first deployment
+
+Do not immediately retry a failed or timed-out run. Read its retained output,
+correct the inventory or desired state, then run `validate` and `plan` again.
+See [Deployment lifecycle troubleshooting](/docs/guides/troubleshooting#deployment-lifecycle)
+for timeout and partial-state guidance.
+
+## What's next
+
+- [Sites & deployment](/docs/guides/sites) — model your first real site.
+- [Certificates](/docs/guides/certificates) — serve it over HTTPS.
+- [Deployment checklist](/docs/guides/deployment) — what to check before and
+  after a production deploy.

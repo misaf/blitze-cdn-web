@@ -1,0 +1,107 @@
+---
+title: Deploying
+description: The operator's checklist for deploying and rolling back site changes.
+---
+
+# Deploying
+
+Use this guide to apply desired state safely and recover from an unsuccessful
+run. Always review check mode before changing an edge.
+
+## Before you begin
+
+- Back up the controller database and certificate state.
+- Verify inventory, SSH fingerprints, and management CIDRs.
+- Make sure no other deployment or rollback is running.
+
+<Callout type="warning">
+  A timeout does not prove that no edge changed. Always run a new plan before
+  retrying a timed-out or interrupted deployment.
+</Callout>
+
+```bash
+blitzecdn plan          # check mode, shows the deployment record
+blitzecdn deploy --yes  # apply current desired state to every edge
+```
+
+## Deployment checklist
+
+<Steps>
+
+### Protect controller state
+
+Verify a current backup of `.state/control-plane.db` and managed certificate
+state. Use the [backup procedure](/docs/guides/backup#backup-routine).
+
+### Verify remote trust
+
+Verify inventory addresses and SSH host fingerprints out of band. Confirm the
+non-root deployment user has narrowly managed sudo access.
+
+### Confirm firewall access
+
+Set trusted management CIDRs. An empty
+`blitzecdn_firewall_ssh_sources` list deliberately fails closed.
+
+### Validate and plan
+
+Run `blitzecdn doctor`, `blitzecdn validate`, and `blitzecdn plan`. Review the
+complete check-mode result.
+
+### Apply and inspect
+
+Run `blitzecdn deploy --yes`, inspect `blitzecdn status DEPLOYMENT_ID`, and
+probe edge health externally.
+
+</Steps>
+
+## Understand the deployment record
+
+`plan` runs Ansible in check mode and returns a deployment record. `deploy`
+records an immutable snapshot, transitions it `queued → running`, invokes
+Ansible, then records `succeeded`, `failed`, or `timed_out`. If the controller
+restarts mid-run, startup marks unfinished records `abandoned` — rerun plan
+before retrying.
+
+Only one deployment can hold the lock at a time. Work that can be rejected before
+queuing — no rollback target, a deployment already running — fails synchronously
+rather than queueing.
+
+## Rollback
+
+See [Sites & deployment](/docs/guides/sites) for the rollback semantics. In
+short, rollback is safe under concurrency because selection, convergence, and
+state replacement occur under a single lock hold.
+
+```bash
+blitzecdn rollback            # latest successful state different from current
+blitzecdn rollback --check    # preview
+blitzecdn rollback DEPLOYMENT_ID
+```
+
+Applied rollback prompts interactively. Add `--yes` only after reviewing the
+target when running non-interactively.
+
+## Verify the result
+
+```bash
+blitzecdn status --limit 1
+blitzecdn audit --limit 5
+```
+
+Require `status: succeeded`, then probe traffic through at least one edge in the
+rollout. For staged fleets, verify each stage before widening the inventory.
+
+## Recover from failure
+
+Read the retained deployment output and determine whether any edge changed.
+Correct the cause, run `validate`, and create a new plan. Use rollback only when
+you have selected a known successful applied snapshot; rollback is another
+convergence, not an undo of remote side effects outside BlitzeCDN.
+
+## Rate and scope
+
+For a large fleet, roll out in stages rather than all at once — a bad config
+converged onto 25% of edges is recoverable; converged onto 100% is an incident.
+The bundled playbook uses `serial: 25%`. Control staging by inventory scope when
+you need a smaller canary than the playbook batch size.

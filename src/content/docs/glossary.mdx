@@ -1,0 +1,56 @@
+---
+title: Glossary
+description: The terms used consistently throughout the BlitzeCDN documentation.
+---
+
+# Glossary
+
+Use this page when a deployment or architecture term is unfamiliar. The rest
+of the documentation uses these terms consistently.
+
+## Controller
+
+The single machine running the BlitzeCDN Python application, SQLite database,
+Certbot, and local Ansible processes. **Control plane** means the software and
+state running on this machine; **controller** means the machine itself.
+
+## Edge
+
+A remote Nginx server managed by the controller. Edges continue serving traffic
+when the controller is unavailable.
+
+## Operator
+
+A person or automation identity that uses the CLI or authenticated API. API
+operators are identities, not authorization roles.
+
+## Desired state
+
+The canonical, validated collection of CDN sites stored in the controller's
+database. Editing desired state does not change an edge until you deploy it.
+
+## Convergence
+
+The Ansible run that changes every targeted edge to match a desired-state
+snapshot.
+
+## Deployment
+
+One recorded convergence attempt. A deployment includes its immutable snapshot,
+status, output, operator, and timestamps. A check-mode deployment is also called
+a plan.
+
+## Deployment snapshot
+
+The immutable copy of desired state attached to a deployment. Rollback converges
+a previously successful snapshot.
+
+## Canonical state
+
+The desired state used for the next normal deployment. A successful applied
+rollback replaces canonical state with the selected snapshot.
+
+## Managed certificate
+
+A certificate uploaded through the API or requested through ACME. The controller
+owns its storage path and distributes it to the edges during deployment.

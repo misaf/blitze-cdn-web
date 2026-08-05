@@ -1,0 +1,67 @@
+---
+title: Contributing
+description: Develop the control plane, edge collection, or documentation without mixing operator and contributor workflows.
+---
+
+# Contributing
+
+Contributor setup is intentionally separate from the operator guides. Operators
+should install reviewed releases; editable installs and repository-local tooling
+belong here.
+
+## Repositories
+
+| Repository        | Owns                                                              |
+| ----------------- | ----------------------------------------------------------------- |
+| `blitze-cdn-cp`   | Python CLI, API, state, deployment workflow, and release contract |
+| `blitze-cdn-edge` | Ansible roles and remote Linux state                              |
+| `blitze-cdn-web`  | This static Next.js documentation site                            |
+
+## Documentation development
+
+```bash
+git clone https://github.com/misaf/blitze-cdn-web.git
+cd blitze-cdn-web
+npm ci
+npm run dev
+```
+
+Before opening a pull request, run:
+
+```bash
+npm run check
+npm run test:e2e
+```
+
+`npm run check` verifies formatting, lint, documentation policy, the static
+build, and internal links. Browser tests cover desktop and mobile rendering plus
+WCAG A/AA checks.
+
+## Control-plane development
+
+Use an editable Python environment only when changing the control plane:
+
+```bash
+git clone https://github.com/misaf/blitze-cdn-cp.git
+cd blitze-cdn-cp
+python3.14 -m venv .venv
+.venv/bin/pip install -e '.[dev]'
+```
+
+Follow that repository's test and formatting instructions. Never point a
+development controller at production inventory or copy production `.state`
+into a test workspace.
+
+## Reference review checklist
+
+When a public interface changes, review all affected surfaces:
+
+- CLI commands, flags, confirmation behavior, JSON output, and exit codes.
+- API paths, authentication, request bodies, responses, errors, and retry rules.
+- Environment variables, TOML keys, precedence, defaults, and secret handling.
+- Role variables, defaults, choices, desired-state format, and supported hosts.
+- The [compatibility matrix](/docs/reference), upgrade guide, release guide, and
+  examples that use the changed interface.
+
+Update `verifiedAgainst` and `lastVerified` on every affected reference page.
+CI rejects missing metadata and stale generator-era wording.

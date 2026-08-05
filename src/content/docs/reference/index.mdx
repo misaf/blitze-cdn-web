@@ -1,0 +1,26 @@
+---
+title: Reference compatibility
+description: Versions covered by the maintained BlitzeCDN reference.
+---
+
+# Reference compatibility
+
+Reference pages describe exact public interfaces. Check this table before using
+a command, route, configuration key, or role variable with another release.
+
+| Control plane | Edge collection | Desired-state format | Last verified | Status |
+| --- | --- | --- | --- | --- |
+| `0.1.0` | `1.0.0` | `1` | 2026-08-05 | [Verified together](/docs/guides/upgrading) |
+
+“Verified together” means the documentation was reviewed against both releases;
+it does not promise compatibility with versions absent from the table. See the
+[upgrade guide](/docs/guides/upgrading) before changing either component.
+
+## Reference maintenance
+
+- [CLI](/docs/reference/cli) and [HTTP API](/docs/reference/api) apply to the
+  control-plane version above.
+- [Configuration](/docs/reference/configuration) applies to the same controller.
+- [Ansible roles](/docs/reference/roles) applies to the edge collection above.
+- Interface changes must update this matrix and the affected page in the same
+  documentation pull request.

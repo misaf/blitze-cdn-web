@@ -1,0 +1,115 @@
+---
+title: Production
+description: Sizing, scaling, and the operational caveats that bite in production.
+---
+
+# Production
+
+Use this checklist to move a working BlitzeCDN installation from a lab into
+production. Complete the [deployment checklist](/docs/guides/deployment#deployment-checklist)
+first.
+
+## Before you begin
+
+- Document the controller recovery owner and recovery-time objective.
+- Test an encrypted backup restore without access to production edges.
+- Establish external probes for every served hostname.
+- Define a staged inventory strategy and certificate-renewal schedule.
+
+## One controller
+
+This release supports **one controller node**. There is no active/active job
+execution and no distributed job queue. Plan around that:
+
+- The controller is a single point of failure for _changes_, not for serving —
+  edges keep serving when it is down.
+- Failover is restore-and-repoint: recover the database and certificate state on
+  a second host, and use the same `.env` (or a reconciled copy). See
+  [Backup & recovery](/docs/guides/backup).
+
+## Sizing the controller
+
+The controller runs one local `ansible-playbook` process per deployment, with
+`BLITZE_DEPLOYMENT_TIMEOUT_SECONDS` (default 900 s) and bounded retained output
+(`BLITZE_DEPLOYMENT_OUTPUT_LIMIT_BYTES`, default 1 MiB). It also runs Certbot.
+Sizing guidance:
+
+- Give it enough CPU and network for the largest planned concurrent Ansible run;
+  convergence fans out per-host from the controller.
+- Keep `BLITZE_STATE_DIR` on persistent storage with room for snapshots and
+  certificate material.
+- Raise the output limit only if bounded output is truncating the diagnostics
+  you actually need.
+
+## Deployment cadence
+
+- **Stage rollouts.** Converge a changed config onto a subset of edges first. A
+  bad config on 25% of edges is an incident you can fix; on 100% it is an outage.
+- **Rerun plan after anything ambiguous.** A timeout is not proof that no remote
+  changes occurred. Always `plan` before retrying after a partial or unknown run.
+- **Renew certificates on a schedule, not on demand.** Poll the certificate
+  endpoint for metadata changes and deploy when it changes — see
+  [Renewal](/docs/guides/certificates#renewal).
+
+BlitzeCDN v0.1.0 has no `--limit` flag. Create an inventory containing only the
+canary hosts, verify its SSH fingerprints and group variables, and point
+`BLITZE_INVENTORY` at it for both plan and deploy:
+
+```bash
+BLITZE_INVENTORY=ansible/inventory/canary.yml blitzecdn plan
+BLITZE_INVENTORY=ansible/inventory/canary.yml blitzecdn deploy --yes
+```
+
+After external probes pass, remove the override, run a new plan against the
+complete inventory, and deploy. A canary success records convergence only for
+that inventory; it is not proof that the remaining edges changed.
+
+## Reverse proxies and the API
+
+Ten failed authentications per minute from one source address throttle that
+address. Behind a reverse proxy every client shares the proxy's address, so a
+brute-force attempt or a broken client can throttle everyone. Rate-limit and log
+at the proxy, and monitor `429`s.
+
+## Network and DNS
+
+- ACME HTTP-01 requires each requested hostname to resolve to the edge addresses
+  with port 80 public. Changing DNS is outside the tool's scope; coordinate it
+  before requesting certificates.
+- There is no DNS management and no wildcard issuance in this release. Both are
+  explicit non-goals; plan your certificate layout accordingly.
+
+## Version discipline
+
+The control plane, the edge collection, and the state-version contract must stay
+in step:
+
+- Bump `DESIRED_STATE_VERSION` when a shape change would break older roles.
+  Adding a key older roles can safely ignore does not need a bump.
+- Keep the control-plane and edge collection versions aligned, and update the
+  maintained reference pages when either public interface changes.
+
+## Verify production readiness
+
+- Restore the latest backup and compare site and deployment records.
+- Run `doctor`, `validate`, and `plan` from the production controller.
+- Complete one canary deployment and probe traffic before widening the rollout.
+- Exercise API authentication failure and proxy rate limiting without using a
+  production operator key.
+- Confirm alerts cover controller storage, certificate expiry, failed or timed
+  out deployments, and external edge availability.
+
+<Callout type="warning">
+  The controller is a single point of failure for changes. Keep serving and
+  control-plane recovery procedures separate: edges continue serving while the
+  controller is unavailable.
+</Callout>
+
+## Recover production control
+
+If the controller fails, keep serving recovery separate from change recovery:
+edges normally continue serving. Restore controller state onto an isolated host,
+validate it, then reconnect and plan before deploying. If a rollout is partial
+or timed out, do not retry blindly; inspect the deployment and edges, narrow the
+canary scope, and converge a known snapshot. Use the
+[incident runbook](/docs/guides/incidents) when current serving state is unknown.
