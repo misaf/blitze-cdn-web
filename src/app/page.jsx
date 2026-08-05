@@ -1,20 +1,24 @@
 import Link from 'next/link'
 import HeroGlobe from '@/components/hero-globe'
 import {
-  Arrow,
+  BandLinkList,
   Check,
   Icon,
   band,
   bandArt,
   btnGhost,
   btnPrimary,
+  closingNote,
   eyebrow,
+  flow,
   focusInsetDark,
   grid,
   gridCell,
   h2,
+  h3,
   inner,
   lede,
+  principleRow,
   section,
   split,
 } from '@/components/ui'
@@ -54,7 +58,7 @@ const stack = [
   { name: 'Append-only history', note: 'Snapshots, deployments, audit trail.' },
 ]
 
-const flow = [
+const stages = [
   {
     owner: 'Python',
     title: 'Validate and pin',
@@ -142,7 +146,14 @@ const referenceLinks = [
 
 export default function LandingPage() {
   return (
-    <div className="canvas bg-surface text-fg antialiased [font-synthesis-weight:none]">
+    /* `main` with Nextra's skip-target id: the theme renders "Skip to Content"
+       into every page, but only emits the landmark it points at on MDX routes.
+       This route is hand-built, so it has to supply both itself or the first
+       control on the site's most-visited page does nothing. */
+    <main
+      id="nextra-skip-nav"
+      className="canvas bg-surface text-fg antialiased [font-synthesis-weight:none]"
+    >
       {/*
         Nextra renders this route straight into <body> with no container of its
         own — no max-width, no padding — so these sections are already
@@ -155,7 +166,14 @@ export default function LandingPage() {
           <h1 className="max-w-[12ch] text-hero leading-[1.06] font-book tracking-display text-balance">
             The control plane for your Nginx edge
           </h1>
-          <ul className="mt-[clamp(2rem,4vw,2.75rem)] grid gap-[0.9rem]">
+          {/* `role="list"` because `.canvas` removes `list-style`, and WebKit
+              drops the implicit list role along with it — VoiceOver would
+              otherwise not announce "list, 3 items" here. Same everywhere a
+              `ul` appears on the hand-designed pages. */}
+          <ul
+            role="list"
+            className="mt-[clamp(2rem,4vw,2.75rem)] grid gap-[0.9rem]"
+          >
             {[
               'Typed desired state, enforced on both sides',
               'Auditable deployments and real rollback',
@@ -199,7 +217,11 @@ export default function LandingPage() {
             the canvas — which has nothing useful to announce — but the panel
             now carries an argument, so that argument is given to assistive
             technology as text alongside it rather than being lost. */}
-        <div className="relative min-h-72">
+        {/* Short on mobile, tall on desktop. Below `lg` the hero stacks, so
+            this panel lands between the CTAs and the first real section; at
+            18rem it read as the end of the page. It is decoration, and gets
+            the height decoration deserves until it can sit alongside copy. */}
+        <div className="relative min-h-44 lg:min-h-72">
           <p className="sr-only">
             Diagram: a client request enters the network at a single anycast
             address, which routes it to the nearest edge server. That edge
@@ -218,23 +240,18 @@ export default function LandingPage() {
 
       <section className={section}>
         <div className={inner}>
-          <div className="grid items-start gap-[clamp(1.25rem,4vw,4rem)] lg:grid-cols-2">
+          <div className={split}>
             <h2 className={h2}>Opinionated about its stack, on purpose</h2>
-            <p className="text-[clamp(1rem,1.15vw,1.15rem)] leading-relaxed text-muted">
+            <p className={lede}>
               BlitzeCDN does not try to abstract over every edge platform. It
               targets a narrow, well-understood stack and commits to it — which
               is what makes enforcing the same rules on both the controller and
               the host tractable in the first place.
             </p>
           </div>
-          {/* Cells draw only their top and left rules and the container closes
-              the outer right and bottom, so interior rules never double up. */}
-          <dl className="mt-[clamp(2.5rem,5vw,4rem)] grid grid-cols-2 border-r border-b border-line sm:grid-cols-4">
+          <dl className={`${grid} grid-cols-2 sm:grid-cols-4`}>
             {stack.map((item) => (
-              <div
-                key={item.name}
-                className="flex min-h-34 flex-col justify-center gap-1.5 border-t border-l border-line p-[clamp(1.5rem,3vw,2.25rem)]"
-              >
+              <div key={item.name} className={`${gridCell} min-h-34`}>
                 <dt className="text-[1.18rem] font-medium tracking-tight">
                   {item.name}
                 </dt>
@@ -250,9 +267,9 @@ export default function LandingPage() {
       <section className={section}>
         <div className={inner}>
           <p className={eyebrow}>Introduction</p>
-          <div className="grid items-start gap-[clamp(1.25rem,4vw,4rem)] lg:grid-cols-2">
+          <div className={split}>
             <h2 className={h2}>What is BlitzeCDN?</h2>
-            <p className="text-[clamp(1rem,1.15vw,1.15rem)] leading-relaxed text-muted">
+            <p className={lede}>
               BlitzeCDN converges Nginx CDN edge servers from a single
               controller. The split between its two halves is deliberate and
               absolute: Python owns validation, desired state, history, planning
@@ -262,22 +279,27 @@ export default function LandingPage() {
           </div>
           {/* A 1px gap over a line-coloured background is what draws the
               interior rules here. */}
-          <div className="mt-[clamp(2.5rem,5vw,4rem)] grid gap-px border border-line bg-line md:grid-cols-3">
-            {flow.map((stage) => (
+          <div
+            className={`${flow} grid gap-px border border-line bg-line md:grid-cols-3`}
+          >
+            {stages.map((stage) => (
               <div
                 key={stage.title}
-                className="flex flex-col gap-3.5 bg-surface p-[clamp(1.5rem,3vw,2.25rem)]"
+                className="flex flex-col gap-3.5 bg-surface p-card"
               >
                 <p className="font-mono text-[0.72rem] tracking-[0.12em] text-accent-ink uppercase">
                   {stage.owner}
                 </p>
-                <h3 className="text-xl font-book tracking-display">
-                  {stage.title}
-                </h3>
+                {/* `h3` rather than a one-off `text-xl`: these are card
+                    titles, and the guarantee cards below use `text-card`. */}
+                <h3 className={h3}>{stage.title}</h3>
                 <p className="text-[0.92rem] leading-relaxed text-muted">
                   {stage.body}
                 </p>
-                <ul className="mt-1.5 grid gap-2 font-mono text-[0.8rem]">
+                <ul
+                  role="list"
+                  className="mt-1.5 grid gap-2 font-mono text-[0.8rem]"
+                >
                   {stage.steps.map((step) => (
                     <li key={step} className="flex items-baseline gap-2.5">
                       <span className="shrink-0 text-accent-ink">→</span>
@@ -288,7 +310,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          <div className="mt-[clamp(2.5rem,5vw,4rem)] flex justify-center">
+          <div className="mt-flow flex justify-center">
             <Link href="/docs/architecture" className={btnGhost}>
               Read the architecture
             </Link>
@@ -300,7 +322,7 @@ export default function LandingPage() {
         <div className={inner}>
           <p className={eyebrow}>How it works</p>
           <h2 className={h2}>A BlitzeCDN deployment</h2>
-          <div className="mt-[clamp(2.5rem,5vw,3.5rem)] grid lg:grid-cols-3">
+          <div className="mt-flow grid lg:grid-cols-3">
             {[
               {
                 n: '1',
@@ -376,12 +398,17 @@ export default function LandingPage() {
                   index > 0 ? 'mt-8 lg:mt-0 lg:border-l lg:pl-7' : ''
                 } ${index < 2 ? 'lg:pr-7' : ''}`}
               >
-                <p className="flex items-center gap-2.5 pb-[1.1rem] text-[1.05rem]">
+                {/* A heading, not a paragraph: this is the clearest
+                    explanation of the product on the site, and as a `p` the
+                    whole three-step walkthrough was skipped by heading
+                    navigation — and left this the only `h2` on the page with
+                    no `h3` beneath it. */}
+                <h3 className="flex items-center gap-2.5 pb-[1.1rem] text-[1.05rem] font-medium">
                   <span className="inline-flex size-5.5 shrink-0 items-center justify-center bg-accent font-mono text-[0.78rem] font-semibold text-accent-contrast">
                     {panel.n}
                   </span>
                   {panel.title}
-                </p>
+                </h3>
                 <pre
                   className={codeBlock}
                   tabIndex={0}
@@ -393,7 +420,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          <div className="mt-[clamp(2.5rem,5vw,4rem)] flex justify-center">
+          <div className="mt-flow flex justify-center">
             <Link href="/docs/reference/cli" className={btnPrimary}>
               See every command
             </Link>
@@ -401,15 +428,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-band text-band-fg">
-        <div
-          className="pointer-events-none absolute right-0 bottom-0 h-full w-[min(30%,26rem)] band-art"
-          aria-hidden="true"
-        />
+      <section className={band}>
+        <div className={bandArt} aria-hidden="true" />
         <div className={`relative z-10 ${inner} ${section}`}>
           <p className={`${eyebrow} text-accent!`}>Operational guarantees</p>
           <h2 className={h2}>Built for the day something goes wrong</h2>
-          <div className="mt-[clamp(2.5rem,5vw,3.5rem)] grid border border-band-line lg:grid-cols-3">
+          <div
+            className={`${flow} grid border border-band-line lg:grid-cols-3`}
+          >
             {guarantees.map((card, index) => (
               <div
                 key={card.title}
@@ -419,14 +445,14 @@ export default function LandingPage() {
                     : ''
                 }`}
               >
-                <h3 className="flex min-h-22 items-center border-b border-band-line p-[clamp(1.25rem,2.5vw,1.75rem)] text-card font-book tracking-display">
+                <h3 className="flex min-h-22 items-center border-b border-band-line p-card-sm text-card font-book tracking-display">
                   {card.title}
                 </h3>
-                <div className="flex flex-1 flex-col gap-5 p-[clamp(1.25rem,2.5vw,1.75rem)]">
+                <div className="flex flex-1 flex-col gap-5 p-card-sm">
                   <p className="text-[0.95rem] leading-relaxed text-band-muted">
                     {card.body}
                   </p>
-                  <ul className="grid gap-2.5 text-[0.88rem]">
+                  <ul role="list" className="grid gap-2.5 text-[0.88rem]">
                     {card.points.map((point) => (
                       <li key={point} className="flex items-start gap-2.5">
                         <Check />
@@ -438,7 +464,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          <div className="mt-[clamp(2.5rem,5vw,4rem)] flex justify-center">
+          <div className="mt-flow flex justify-center">
             <Link href="/docs/guides/deployment" className={btnPrimary}>
               Read the deployment guide
             </Link>
@@ -450,24 +476,13 @@ export default function LandingPage() {
         <div className={inner}>
           <p className={eyebrow}>Design principles</p>
           <h2 className={h2}>Five commitments</h2>
-          <div className="mt-[clamp(2.5rem,5vw,4rem)]">
+          <div className={flow}>
             {principles.map((principle) => (
-              <div
-                key={principle.name}
-                className="grid items-start gap-x-8 gap-y-3 border-t border-line py-[clamp(1.75rem,3vw,2.5rem)] last:border-b md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]"
-              >
+              <div key={principle.name} className={principleRow()}>
                 <h3 className="flex items-center gap-4 text-principle font-book tracking-display">
-                  <svg
-                    className="size-[1.4rem] shrink-0 text-accent-ink"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="square"
-                    aria-hidden="true"
-                  >
+                  <Icon className="size-[1.4rem] shrink-0 text-accent-ink">
                     {principle.icon}
-                  </svg>
+                  </Icon>
                   {principle.name}
                 </h3>
                 <p className="leading-relaxed text-muted">{principle.body}</p>
@@ -477,14 +492,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-band text-band-fg">
-        <div
-          className="pointer-events-none absolute right-0 bottom-0 h-full w-[min(30%,26rem)] band-art"
-          aria-hidden="true"
-        />
+      <section className={band}>
+        <div className={bandArt} aria-hidden="true" />
         <div className={`relative z-10 ${inner} ${section}`}>
           <div className="grid border border-band-line lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-            <div className="flex flex-col gap-5 p-[clamp(2rem,4vw,3.5rem)]">
+            <div className="flex flex-col gap-5 p-card-lg">
               <h2 className={h2}>Reference checked against reality</h2>
               <p className="leading-relaxed text-band-muted">
                 Everything under Reference is maintained in this repository and
@@ -494,34 +506,13 @@ export default function LandingPage() {
                 releases covered by that review.
               </p>
             </div>
-            <div className="flex flex-col border-t border-band-line lg:border-t-0 lg:border-l">
-              {referenceLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="group flex flex-1 items-center justify-between gap-6 px-[clamp(1.25rem,2.5vw,2rem)] py-[clamp(1.1rem,2.2vw,1.5rem)] text-[1.05rem] no-underline transition-colors duration-100 not-first:border-t not-first:border-band-line hover:bg-white/7 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
-                >
-                  <span>{link.label}</span>
-                  <svg
-                    className="size-[1.35rem] shrink-0 text-accent transition-transform duration-150 group-hover:translate-x-1"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="square"
-                    aria-hidden="true"
-                  >
-                    <path d="M4 12h15M13 6l6 6-6 6" />
-                  </svg>
-                </Link>
-              ))}
-            </div>
+            <BandLinkList links={referenceLinks} />
           </div>
         </div>
       </section>
 
       <div className={inner}>
-        <p className="max-w-3xl border-t border-line py-[clamp(3rem,5vw,4.5rem)] text-[0.92rem] leading-relaxed text-muted">
+        <p className={closingNote}>
           This site ships nothing to edge servers, never runs on a controller,
           and holds no credentials. See{' '}
           <Link
@@ -533,6 +524,6 @@ export default function LandingPage() {
           for the limits this release deliberately accepts.
         </p>
       </div>
-    </div>
+    </main>
   )
 }

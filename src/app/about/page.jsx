@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import {
-  Arrow,
   Check,
+  ExternalCardGrid,
   Icon,
   PageHero,
   band,
@@ -9,13 +9,14 @@ import {
   btnGhost,
   btnPrimary,
   eyebrow,
-  focusInset,
+  flow,
   grid,
   gridCell,
   h2,
   h3,
   inner,
   lede,
+  principleRow,
   section,
   split,
 } from '@/components/ui'
@@ -96,23 +97,26 @@ const repositories = [
   {
     name: 'blitze-cdn-cp',
     href: 'https://github.com/misaf/blitze-cdn-cp',
-    owns: 'Control plane: CLI, HTTP API, domain models, deployment history.',
+    note: 'Control plane: CLI, HTTP API, domain models, deployment history.',
   },
   {
     name: 'blitze-cdn-edge',
     href: 'https://github.com/misaf/blitze-cdn-edge',
-    owns: 'The Ansible roles that converge the edge hosts.',
+    note: 'The Ansible roles that converge the edge hosts.',
   },
   {
     name: 'blitze-cdn',
     href: 'https://github.com/misaf/blitze-cdn-web',
-    owns: 'This site. Holds no credentials and never runs on a controller.',
+    note: 'This site. Holds no credentials and never runs on a controller.',
   },
 ]
 
 export default function AboutPage() {
   return (
-    <div
+    /* `main` + Nextra's skip-target id: the theme's "Skip to Content" link is
+       rendered on every route but its target only exists on MDX ones. */
+    <main
+      id="nextra-skip-nav"
       className="canvas bg-surface text-fg antialiased [font-synthesis-weight:none]"
       /* Keeps the page in the Pagefind index now that it is a hand-built route
          rather than an MDX page Nextra would have marked for us. */
@@ -161,12 +165,9 @@ export default function AboutPage() {
         <div className={`relative z-10 ${inner} ${section}`}>
           <p className={`${eyebrow} text-accent!`}>What we believe</p>
           <h2 className={h2}>Five commitments the design is held to</h2>
-          <div className="mt-[clamp(2.5rem,5vw,4rem)]">
+          <div className={flow}>
             {beliefs.map((belief) => (
-              <div
-                key={belief.name}
-                className="grid items-start gap-x-8 gap-y-3 border-t border-band-line py-[clamp(1.75rem,3vw,2.5rem)] last:border-b md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]"
-              >
+              <div key={belief.name} className={principleRow('band')}>
                 <h3 className="flex items-center gap-4 text-principle font-book tracking-display">
                   <Icon className="size-[1.4rem] shrink-0 text-accent">
                     {belief.icon}
@@ -177,7 +178,7 @@ export default function AboutPage() {
               </div>
             ))}
           </div>
-          <div className="mt-[clamp(2.5rem,5vw,4rem)] flex justify-center">
+          <div className="mt-flow flex justify-center">
             <Link href="/docs/architecture" className={btnPrimary}>
               See how they play out
             </Link>
@@ -196,11 +197,13 @@ export default function AboutPage() {
               plainly than imply otherwise.
             </p>
           </div>
-          <div className="mt-[clamp(2.5rem,5vw,4rem)] grid border border-line md:grid-cols-2">
+          <div className={`${flow} grid border border-line md:grid-cols-2`}>
             {people.map((person, index) => (
               <div
                 key={person.name}
-                className={`flex flex-col gap-3 p-[clamp(1.75rem,3vw,2.5rem)] ${
+                /* `p-card`, matching every other card on the site — this was
+                   the one place using a fourth, slightly larger padding. */
+                className={`flex flex-col gap-3 p-card ${
                   index > 0
                     ? 'border-t border-line md:border-t-0 md:border-l'
                     : ''
@@ -247,26 +250,8 @@ export default function AboutPage() {
               pair fails before the first host is touched.
             </p>
           </div>
-          <div className="mt-[clamp(2.5rem,5vw,4rem)] grid gap-px border border-line bg-line md:grid-cols-3">
-            {repositories.map((repo) => (
-              <a
-                key={repo.name}
-                href={repo.href}
-                className={`group flex flex-col gap-3 bg-surface p-[clamp(1.5rem,3vw,2.25rem)] no-underline ${focusInset}`}
-              >
-                <span className="flex items-center justify-between gap-3">
-                  <span className="font-mono text-[0.95rem] text-fg underline-offset-4 group-hover:underline">
-                    {repo.name}
-                  </span>
-                  <Arrow className="size-[1.1rem] shrink-0 text-accent-ink transition-transform duration-150 group-hover:translate-x-1" />
-                </span>
-                <span className="text-[0.92rem] leading-relaxed text-muted">
-                  {repo.owns}
-                </span>
-              </a>
-            ))}
-          </div>
-          <div className="mt-[clamp(2.5rem,5vw,4rem)] flex justify-center">
+          <ExternalCardGrid items={repositories} />
+          <div className="mt-flow flex justify-center">
             <Link href="/blog/a-version-is-an-interface" className={btnGhost}>
               Why a version is an interface
             </Link>
@@ -277,7 +262,7 @@ export default function AboutPage() {
       <section className={band}>
         <div className={bandArt} aria-hidden="true" />
         <div className={`relative z-10 ${inner} ${section}`}>
-          <div className="grid gap-10 border border-band-line p-[clamp(2rem,4vw,3.5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="grid gap-10 border border-band-line p-card-lg lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-5">
               <p className={`${eyebrow} mb-0 text-accent!`}>Licence</p>
               <h2 className={h2}>MIT, warranty and all</h2>
@@ -288,7 +273,7 @@ export default function AboutPage() {
                 no warranty — which, for software that reconfigures production
                 web servers as root, is worth reading literally.
               </p>
-              <ul className="grid gap-2.5 text-[0.95rem]">
+              <ul role="list" className="grid gap-2.5 text-[0.95rem]">
                 <li className="flex items-start gap-2.5">
                   <Check />
                   <span>Commercial use, modification, redistribution</span>
@@ -302,6 +287,6 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
-    </div>
+    </main>
   )
 }
