@@ -1,26 +1,24 @@
 ---
-title: Reference compatibility
-description: Versions covered by the maintained BlitzeCDN reference.
+title: Reference
+description: Exact behavior of the CLI, HTTP API, configuration, and Ansible roles.
 ---
 
-# Reference compatibility
+# Reference
 
-Reference pages describe exact public interfaces. Check this table before using
-a command, route, configuration key, or role variable with another release.
+These pages describe exact public interfaces. They are maintained MDX, not
+generated, so read them alongside the release you are running.
 
-| Control plane | Edge collection | Desired-state format | Last verified | Status |
-| --- | --- | --- | --- | --- |
-| `0.1.0` | `1.0.0` | `1` | 2026-08-05 | [Verified together](/docs/guides/upgrading) |
+- [CLI](/docs/reference/cli) — every command, flag, and exit code.
+- [Domains and records](/docs/reference/domains) — zones, A records, and the
+  per-record CDN proxy toggle.
+- [HTTP API](/docs/reference/api) — every route, model, and status code.
+- [Configuration](/docs/reference/configuration) — every `BLITZE_*` variable and
+  its TOML equivalent.
+- [Ansible roles](/docs/reference/roles) — every role variable, typed, with
+  defaults.
 
-“Verified together” means the documentation was reviewed against both releases;
-it does not promise compatibility with versions absent from the table. See the
-[upgrade guide](/docs/guides/upgrading) before changing either component.
-
-## Reference maintenance
-
-- [CLI](/docs/reference/cli) and [HTTP API](/docs/reference/api) apply to the
-  control-plane version above.
-- [Configuration](/docs/reference/configuration) applies to the same controller.
-- [Ansible roles](/docs/reference/roles) applies to the edge collection above.
-- Interface changes must update this matrix and the affected page in the same
-  documentation pull request.
+The control plane and the edge collection release separately and share a
+versioned desired-state contract. `EDGE_COLLECTION_VERSION` in the control plane
+records the collection it deploys, and the Nginx role refuses a desired-state
+version it was not written against — a mismatched pair fails before the first
+host is touched.

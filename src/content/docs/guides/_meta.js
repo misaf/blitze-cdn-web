@@ -1,6 +1,5 @@
 export default {
   quickstart: 'Quick start',
-  upgrading: 'Upgrading',
   sites: 'Sites & deployment',
   deployment: 'Deploying',
   certificates: 'Certificates',

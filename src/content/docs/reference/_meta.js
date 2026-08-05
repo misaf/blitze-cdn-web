@@ -1,6 +1,7 @@
 export default {
-  index: 'Compatibility',
+  index: 'Overview',
   cli: 'CLI',
+  domains: 'Domains and records',
   api: 'HTTP API',
   configuration: 'Configuration',
   roles: 'Ansible roles',
