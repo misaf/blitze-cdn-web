@@ -6,69 +6,48 @@ controller, and holds no credentials.
 
 ## Setup
 
-This site documents two other repositories, both pinned:
-
-| Source | Pin | Provides |
-| --- | --- | --- |
-| [blitze-cdn-cp](https://github.com/misaf/blitze-cdn-cp) | `requirements.txt` | CLI, HTTP API, configuration |
-| [blitze-cdn-edge](https://github.com/misaf/blitze-cdn-edge) | `requirements.yml` | Ansible role variables |
-
 ```bash
-python3 -m venv .venv
-npm run sources    # install both pinned sources
 npm ci
-npm run generate   # refresh generated reference pages
 npm run dev        # http://localhost:3000
 npm run build      # static export to out/
+npm run check      # lint, formatting, build, and internal links
+npm run test:e2e   # browser and accessibility checks against out/
 ```
 
-Keep the two pins in step with each other, and with the edge version pinned in
-the control plane's `ansible/requirements.yml`. Otherwise the role reference
-describes roles the documented control plane does not actually deploy. The
-generated role page records the exact collection version it came from.
-
-`npm run generate` and `generate:check` enforce this rather than trusting it.
-Before generating anything they assert that the installed edge collection, the
-version `requirements.yml` asks for, and the version the control plane pinned
-in `requirements.txt` actually deploys (`blitzecdn.EDGE_COLLECTION_VERSION`)
-are all the same. Moving one pin without the others fails in CI.
-
-To preview unreleased role changes without publishing, point
-`BLITZECDN_EDGE_COLLECTION` at a checkout — a sibling `../blitze-cdn-edge` is
-picked up automatically — and pass `--allow-unreleased`. A source checkout
-carries no `MANIFEST.json` and so no version, so this is refused by default:
-without the flag it would quietly produce committable pages that name no edge
-version at all. Output generated this way is for local preview only.
+Set `NEXT_PUBLIC_SITE_URL` to the deployed origin when building for production.
+It is used for canonical, Open Graph, robots and sitemap URLs. Until hosting is
+configured it defaults to the repository's conventional GitHub Pages URL.
 
 ## Layout
 
-| Path | Contents |
-| --- | --- |
-| `src/app/page.jsx` | Landing page — hand-written, safe to restyle |
-| `src/app/globals.css` | Tailwind entry point and site theme |
-| `src/app/layout.jsx` | Shared shell: navbar, footer, theme |
-| `src/content/docs/*.mdx` | Hand-written prose (architecture, operations) |
-| `src/content/docs/reference/*.mdx` | **Generated — do not edit** |
-| `src/app/about/page.jsx` | About us — hand-designed, not MDX |
-| `src/app/contact/page.jsx` | Contact us — hand-designed, not MDX |
-| `src/components/ui.jsx` | Shared design recipes for the designed pages |
-| `src/content/faq.mdx` | FAQ |
-| `src/content/blog/` | Blog: `index.mdx` lists the posts beside it |
-| `src/components/post-list.jsx` | Builds the blog index from the page map |
-| `postcss.config.mjs` | Loads `@tailwindcss/postcss` |
-| `scripts/generate_reference.py` | The generators |
+| Path                               | Contents                                                                                                                       |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `src/app/page.jsx`                 | Landing page — hand-written, safe to restyle                                                                                   |
+| `src/app/globals.css`              | Tailwind entry point and site theme                                                                                            |
+| `src/app/layout.jsx`               | Shared shell: navbar, footer, theme                                                                                            |
+| `src/content/docs/*.mdx`           | Hand-written prose (overview, architecture, release)                                                                           |
+| `src/content/docs/guides/*.mdx`    | Hand-written operator guides (quickstart, sites, deployment, certificates, API, security, backup, production, troubleshooting) |
+| `src/content/docs/reference/*.mdx` | Maintained CLI, API, configuration, and role reference                                                                         |
+| `src/app/about/page.jsx`           | About us — hand-designed, not MDX                                                                                              |
+| `src/app/contact/page.jsx`         | Contact us — hand-designed, not MDX                                                                                            |
+| `src/components/ui.jsx`            | Shared design recipes for the designed pages                                                                                   |
+| `src/content/faq.mdx`              | FAQ                                                                                                                            |
+| `src/content/blog/`                | Blog: `index.mdx` lists the posts beside it                                                                                    |
+| `src/components/post-list.jsx`     | Builds the blog index from the page map                                                                                        |
+| `postcss.config.mjs`               | Loads `@tailwindcss/postcss`                                                                                                   |
+| `DOCUMENTATION.md`                 | Voice, page structure, callouts, and verification rules                                                                        |
 
 ## Sections and routing
 
 There is no `contentDirBasePath`, so the content tree maps to URLs directly:
 
-| Path on disk | URL |
-| --- | --- |
-| `src/app/page.jsx` | `/` |
-| `src/content/docs/**` | `/docs/**` |
-| `src/content/faq.mdx` | `/faq` |
-| `src/content/blog/**` | `/blog/**` |
-| `src/app/about/page.jsx` | `/about` |
+| Path on disk               | URL        |
+| -------------------------- | ---------- |
+| `src/app/page.jsx`         | `/`        |
+| `src/content/docs/**`      | `/docs/**` |
+| `src/content/faq.mdx`      | `/faq`     |
+| `src/content/blog/**`      | `/blog/**` |
+| `src/app/about/page.jsx`   | `/about`   |
 | `src/app/contact/page.jsx` | `/contact` |
 
 Two consequences worth knowing:
@@ -120,34 +99,16 @@ deliberate:
 Nextra's own utilities are compiled under an `x:` prefix and its theme values
 are inlined, so nothing here collides with them.
 
-## Generated reference
+## Reference documentation
 
-`scripts/generate_reference.py` writes `src/content/docs/reference/` from four
-machine-readable sources, so the reference cannot drift from what it documents:
+The pages under `src/content/docs/reference/` are ordinary MDX and are reviewed
+like the guides. When the control plane or edge collection changes, update the
+affected reference page in the same pull request and verify its examples against
+the released interface.
 
-| Page | Source |
-| --- | --- |
-| `cli.mdx` | The Typer command tree of the installed `blitzecdn` |
-| `api.mdx` | The OpenAPI schema from `create_app()` |
-| `configuration.mdx` | An AST walk of `Settings.from_environment` |
-| `roles.mdx` | Each role's `meta/argument_specs.yml` and `defaults/main.yml` in the installed collection |
+## Nextra versioning
 
-Output is committed. CI runs `generate_reference.py --check` and fails when it
-is stale, so regenerate and commit after bumping either pin.
-
-Free prose taken from those sources is escaped before it reaches MDX: `{...}`
-is a JavaScript expression in MDX, so a docstring mentioning
-`/v1/deployments/{id}` would otherwise fail the build with `id is not defined`.
-
-## Why nextra is pinned to 4.5.1
-
-`nextra-theme-docs@4.6.1` cannot prerender any page. Its `Layout` destructures
-`children` out of its props (`{ children, ...themeConfig }`) and then validates
-the remainder against a `z.strictObject` that still requires `children`, so the
-key is always absent and every render throws `Invalid input → at children`.
-This is independent of anything in this repository — a minimal layout with no
-custom props reproduces it.
-
-Before unpinning, run `npm run build` and confirm all pages generate. If it is
-fixed upstream, move both `nextra` and `nextra-theme-docs` together; they must
-stay on the same version.
+Keep `nextra` and `nextra-theme-docs` on the same release because the theme
+declares an exact peer dependency on the core package. After either dependency
+changes, run `npm run build` and confirm every static page and the Pagefind index
+generate successfully.
