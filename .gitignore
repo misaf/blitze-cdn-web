@@ -6,3 +6,4 @@ public/_pagefind/
 .state/
 __pycache__/
 .DS_Store
+test-results/
