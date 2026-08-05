@@ -1,0 +1,147 @@
+---
+title: Domains and records
+---
+
+# Domains and DNS records
+
+A **domain** is a zone a customer has delegated to BlitzeCDN. A **record** is one
+name in that zone. Each record carries a `proxied` flag, which is the CDN on/off
+switch for that name.
+
+Records are the source of truth. A proxied record produces the virtual host the
+edge serves; an unproxied one produces nothing at all. You cannot create a
+virtual host any other way — see [`blitzecdn site`](/docs/reference/cli).
+
+## What `proxied` controls
+
+| `proxied` | The edge | DNS should answer with |
+| --- | --- | --- |
+| `true` | Serves the hostname and fetches from `value` as its origin | An edge address |
+| `false` | Does not know the hostname exists | `value` |
+
+<Callout type="warning">
+  Both halves must change together. BlitzeCDN owns the edge half only; DNS
+  publication is a separate system. An unproxied hostname whose DNS still points
+  at an edge is answered by the catch-all server block with `444` — a closed
+  connection, not your origin. Flip the record, deploy, and confirm DNS.
+</Callout>
+
+## Add a domain and its subdomains
+
+```bash
+blitzecdn domain add example.com
+
+blitzecdn record add example.com api --value 198.51.100.20 --proxied
+blitzecdn record add example.com img --value 198.51.100.21 --proxied
+blitzecdn record add example.com db  --value 198.51.100.22
+```
+
+Each record points at its own address, so `api` and `img` are proxied through
+the edge to different origins while `db` bypasses the CDN entirely.
+
+Use `@` for the zone apex and `*` for a wildcard:
+
+```bash
+blitzecdn record add example.com @ --value 198.51.100.5 --proxied
+blitzecdn record add example.com '*' --value 198.51.100.6 --proxied
+```
+
+## Turn the CDN on or off
+
+```bash
+blitzecdn record proxy example.com api --off   # bypass the edge
+blitzecdn record proxy example.com api --on    # route through the edge
+blitzecdn deploy
+```
+
+## Verify
+
+`site list` shows what the edge will serve. Only proxied records appear:
+
+```bash
+blitzecdn record proxy example.com api --off
+blitzecdn validate
+blitzecdn site list --json
+```
+
+`api.example.com` is absent from the output. Turn it back on, run `validate`
+again, and it returns.
+
+## Fields
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `domain` | `str` | `true` | — | Zone the record belongs to. |
+| `name` | `str` | `true` | — | Subdomain label, `@`, or `*`. |
+| `type` | `A` \| `AAAA` | `false` | `A` | Record type. |
+| `value` | `str` | `true` | — | IP address; must match `type`. |
+| `ttl` | `int` | `false` | `300` | Seconds, 1–604800. |
+| `proxied` | `bool` | `false` | `false` | Route through the CDN edge. |
+
+The fields below apply only while `proxied` is `true`. They are kept, not
+cleared, when you turn the proxy off, so turning it back on does not lose a
+cache or TLS setting.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `origin_scheme` | `http` \| `https` | `https` | Scheme used to reach the origin. |
+| `origin_port` | `int` | — | Origin port. |
+| `origin_request_host` | `str` | — | `Host` header sent to the origin. |
+| `origin_sni` | `str` | — | TLS SNI sent to the origin. |
+| `enabled` | `bool` | `true` | Render the virtual host but leave it unlinked when `false`. |
+| `cache_enabled` | `bool` | `true` | Cache responses at the edge. |
+| `cache_valid_success` | `str` | `10m` | Cache lifetime for 200, 301, 302. |
+| `cache_valid_not_found` | `str` | `1m` | Cache lifetime for 404. |
+| `certificate_mode` | `disabled` \| `existing` \| `uploaded` \| `requested` | `disabled` | See [certificates](/docs/guides/certificates). |
+
+## Derived site names
+
+Each proxied record derives an internal site name from its hostname by replacing
+dots with hyphens (`api.example.com` becomes `api-example-com`). You do not set
+it, but it is worth knowing two things:
+
+- Certificates are stored under it, so it is deterministic and stable.
+- Two hostnames can collide — `a.b.example.com` and `a-b.example.com` both give
+  `a-b-example-com`. The second one is refused with a conflict; rename it.
+
+## Migrating sites created before v1.1.0
+
+Earlier releases let you create sites directly. Those sites keep working right
+up until the first record change rewrites the derived state, at which point they
+disappear. Import them before changing anything else, naming **every** zone in
+one command:
+
+```bash
+blitzecdn domain import example.com other.example
+blitzecdn validate
+blitzecdn site list
+```
+
+<Callout type="error">
+  Import every zone in a single command. The first import rewrites the derived
+  table and destroys the sites a second run would have read, so importing one
+  zone at a time loses the rest. The command refuses and writes nothing when a
+  hostname belongs to a zone you did not list — read that list rather than
+  reaching for `--force`, which drops those hostnames deliberately.
+</Callout>
+
+`site list` after the import must show every hostname you served before. Two
+cases need you:
+
+- **A site whose origin is a hostname.** An A record needs an address. The
+  import reports these and converts nothing for them; add the record by hand
+  with the address the origin resolves to.
+- **A certificate filed under a site name the record does not derive.** The
+  import reports it and leaves TLS off on that record; re-upload or re-request
+  the certificate.
+
+The desired-state format is unchanged, so no edge upgrade is required.
+Automation calling `POST`, `PATCH`, or `DELETE` on `/v1/sites` must move to the
+record routes above before it will work again.
+
+## Reserved domains cannot get public certificates
+
+`certificate_mode: requested` uses ACME, and no public CA will issue for a name
+reserved by RFC 6761 or RFC 2606 — `.test`, `.invalid`, `.localhost`,
+`.example`. `blitzecdn validate` reports this before certbot is invoked. Upload
+a certificate instead, or leave TLS disabled.

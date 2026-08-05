@@ -1,10 +1,12 @@
 ---
 title: Configuration
-verifiedAgainst: blitzecdn 0.1.0
-lastVerified: 2026-08-05
 ---
 
 # Configuration
+
+The CLI automatically reads `.env` from the project directory. Values already
+present in the process environment take precedence, so production services can
+continue to use systemd or a secret manager without changing local workflows.
 
 Describes `Settings.from_environment` in `src/blitzecdn/config.py`.
 

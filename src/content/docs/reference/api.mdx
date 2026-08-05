@@ -1,12 +1,10 @@
 ---
 title: HTTP API
-verifiedAgainst: blitzecdn 0.1.0
-lastVerified: 2026-08-05
 ---
 
 # HTTP API
 
-Verified against the OpenAPI schema of `BlitzeCDN control plane` v0.1.0.
+Verified against the OpenAPI schema of `BlitzeCDN control plane` v1.1.0.
 
 Every route below except `GET /health` requires the `X-API-Key` header.
 Ten failed authentications from one client address within a minute return
@@ -19,11 +17,11 @@ record; poll `GET /v1/deployments/{id}` for the outcome.
   `401`; repeated failures can return `429` for the source address.
 - Read-only `GET` requests are safe to retry with bounded backoff.
 - Do not blindly retry `POST` mutations. A timeout can occur after the server
-  committed a site mutation or queued a deployment. Query sites, deployments,
+  committed a record mutation or queued a deployment. Query records, deployments,
   and audit events before deciding what to do next.
 - `202` means queued, not converged. Poll the returned deployment ID until it is
   terminal and inspect retained output on any non-success status.
-- The API has no client-supplied idempotency key in v0.1.0.
+- The API has no client-supplied idempotency key in v1.1.0.
 
 Common error bodies use FastAPI validation details for `422`. Authentication,
 conflict, and missing-resource responses contain a short `detail` string:
@@ -71,7 +69,7 @@ Deployments
 | Name | In | Required | Type | Description |
 | --- | --- | --- | --- | --- |
 | `limit` | `query` | `false` | `integer` | — |
-| `x-api-key` | `header` | `true` | `string` | Required operator credential. ||| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
 
 **Responses**
 
@@ -88,7 +86,7 @@ Queue a convergence; poll GET /v1/deployments/\{id\} for the outcome.
 
 | Name | In | Required | Type | Description |
 | --- | --- | --- | --- | --- |
-| `x-api-key` | `header` | `true` | `string` | Required operator credential. ||| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
 
 **Request body** (required): `application/json` → `DeployRequest`
 
@@ -108,7 +106,7 @@ Deployment
 | Name | In | Required | Type | Description |
 | --- | --- | --- | --- | --- |
 | `deployment_id` | `path` | `true` | `string` | — |
-| `x-api-key` | `header` | `true` | `string` | Required operator credential. ||| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
 
 **Responses**
 
@@ -125,7 +123,7 @@ Queue a rollback; poll GET /v1/deployments/\{id\} for the outcome.
 
 | Name | In | Required | Type | Description |
 | --- | --- | --- | --- | --- |
-| `x-api-key` | `header` | `true` | `string` | Required operator credential. ||| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
 
 **Request body** (required): `application/json` → `RollbackRequest`
 
@@ -138,13 +136,14 @@ Queue a rollback; poll GET /v1/deployments/\{id\} for the outcome.
 
 ## `GET /v1/sites`
 
-List Sites
+List Sites. Sites are derived from proxied DNS records and are read-only —
+there is no `POST`, `PATCH`, or `DELETE`. Change the record instead.
 
 **Parameters**
 
 | Name | In | Required | Type | Description |
 | --- | --- | --- | --- | --- |
-| `x-api-key` | `header` | `true` | `string` | Required operator credential. ||| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
 
 **Responses**
 
@@ -153,62 +152,115 @@ List Sites
 | `200` | Successful Response | `CdnSite[]` |
 | `422` | Validation Error | `HTTPValidationError` |
 
-## `POST /v1/sites`
+## `GET /v1/domains`
 
-Create Site
+List Domains
 
 **Parameters**
 
 | Name | In | Required | Type | Description |
 | --- | --- | --- | --- | --- |
-| `x-api-key` | `header` | `true` | `string` | Required operator credential. ||| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
-
-**Request body** (required): `application/json` → `CdnSite`
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
 
 **Responses**
 
 | Status | Description | Body |
 | --- | --- | --- |
-| `201` | Successful Response | `CdnSite` |
+| `200` | Successful Response | `Domain[]` |
+
+## `POST /v1/domains`
+
+Create Domain
+
+**Request body** (required): `application/json` → `Domain`
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `201` | Successful Response | `Domain` |
+| `409` | Domain already exists | — |
 | `422` | Validation Error | `HTTPValidationError` |
 
-## `DELETE /v1/sites/{name}`
+## `DELETE /v1/domains/{domain}`
 
-Delete Site
-
-**Parameters**
-
-| Name | In | Required | Type | Description |
-| --- | --- | --- | --- | --- |
-| `name` | `path` | `true` | `string` | — |
-| `x-api-key` | `header` | `true` | `string` | Required operator credential. ||| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+Delete Domain, and every record in it.
 
 **Responses**
 
 | Status | Description | Body |
 | --- | --- | --- |
 | `204` | Successful Response | — |
-| `422` | Validation Error | `HTTPValidationError` |
+| `404` | Domain does not exist | — |
 
-## `PATCH /v1/sites/{name}`
+## `GET /v1/domains/{domain}/records`
 
-Update Site
-
-**Parameters**
-
-| Name | In | Required | Type | Description |
-| --- | --- | --- | --- | --- |
-| `name` | `path` | `true` | `string` | — |
-| `x-api-key` | `header` | `true` | `string` | Required operator credential. ||| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
-
-**Request body** (required): `application/json` → `SitePatch`
+List Records
 
 **Responses**
 
 | Status | Description | Body |
 | --- | --- | --- |
-| `200` | Successful Response | `CdnSite` |
+| `200` | Successful Response | `DnsRecord[]` |
+| `404` | Domain does not exist | — |
+
+## `POST /v1/domains/{domain}/records`
+
+Create Record. The body's `domain` must match the path segment.
+
+**Request body** (required): `application/json` → `DnsRecord`
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `201` | Successful Response | `DnsRecord` |
+| `404` | Domain does not exist | — |
+| `409` | Record exists, or its derived site name collides | — |
 | `422` | Validation Error | `HTTPValidationError` |
+
+## `PATCH /v1/domains/{domain}/records/{name}`
+
+Update Record. This is the CDN on/off switch: send `{"proxied": true}` or
+`{"proxied": false}`.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `type` | `query` | `false` | `A` \| `AAAA` | Record type; defaults to `A`. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Request body** (required): `application/json` → `RecordPatch`
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `DnsRecord` |
+| `404` | Record does not exist | — |
+
+## `DELETE /v1/domains/{domain}/records/{name}`
+
+Delete Record
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `204` | Successful Response | — |
+| `404` | Record does not exist | — |
+
+## `GET /v1/dns/export`
+
+Every record, for the system that publishes DNS. Proxied records omit `value`:
+they must resolve to an edge, and edge addressing belongs to that system.
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `object[]` |
 
 ## `GET /v1/sites/{name}/certificate`
 
@@ -219,7 +271,7 @@ Certificate
 | Name | In | Required | Type | Description |
 | --- | --- | --- | --- | --- |
 | `name` | `path` | `true` | `string` | — |
-| `x-api-key` | `header` | `true` | `string` | Required operator credential. ||| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
 
 **Responses**
 
@@ -237,7 +289,7 @@ Request Certificate
 | Name | In | Required | Type | Description |
 | --- | --- | --- | --- | --- |
 | `name` | `path` | `true` | `string` | — |
-| `x-api-key` | `header` | `true` | `string` | Required operator credential. ||| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
 
 **Request body** (required): `application/json` → `CertificateRequest`
 
@@ -257,7 +309,7 @@ Upload Certificate
 | Name | In | Required | Type | Description |
 | --- | --- | --- | --- | --- |
 | `name` | `path` | `true` | `string` | — |
-| `x-api-key` | `header` | `true` | `string` | Required operator credential. ||| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
 
 **Request body** (required): `multipart/form-data` → `Body_upload_certificate_v1_sites__name__certificate_upload_post`
 
@@ -379,23 +431,56 @@ _None._
 | `check` | `boolean` | `false` | `false` |
 | `deployment_id` | `string \\| null` | `false` | — |
 
-### `SitePatch`
+### `Domain`
 
 | Field | Type | Required | Default |
 | --- | --- | --- | --- |
-| `cache_enabled` | `boolean \\| null` | `false` | — |
-| `cache_valid_not_found` | `string \\| null` | `false` | — |
-| `cache_valid_success` | `string \\| null` | `false` | — |
-| `certificate_key_path` | `string \\| null` | `false` | — |
-| `certificate_mode` | `CertificateMode \\| null` | `false` | — |
-| `certificate_path` | `string \\| null` | `false` | — |
-| `enabled` | `boolean \\| null` | `false` | — |
-| `origin_host` | `string \\| null` | `false` | — |
-| `origin_port` | `integer \\| null` | `false` | — |
-| `origin_request_host` | `string \\| null` | `false` | — |
-| `origin_scheme` | `OriginScheme \\| null` | `false` | — |
-| `origin_sni` | `string \\| null` | `false` | — |
-| `server_names` | `string[] \\| null` | `false` | — |
+| `name` | `string` | `true` | — |
+
+### `DnsRecord`
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `cache_enabled` | `boolean` | `false` | `true` |
+| `cache_valid_not_found` | `string` | `false` | `1m` |
+| `cache_valid_success` | `string` | `false` | `10m` |
+| `certificate_key_path` | `string \| null` | `false` | — |
+| `certificate_mode` | `CertificateMode` | `false` | `disabled` |
+| `certificate_path` | `string \| null` | `false` | — |
+| `domain` | `string` | `true` | — |
+| `enabled` | `boolean` | `false` | `true` |
+| `name` | `string` | `true` | — |
+| `origin_port` | `integer \| null` | `false` | — |
+| `origin_request_host` | `string \| null` | `false` | — |
+| `origin_scheme` | `OriginScheme` | `false` | `https` |
+| `origin_sni` | `string \| null` | `false` | — |
+| `proxied` | `boolean` | `false` | `false` |
+| `ttl` | `integer` | `false` | `300` |
+| `type` | `RecordType` | `false` | `A` |
+| `value` | `string` | `true` | — |
+
+### `RecordPatch`
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `cache_enabled` | `boolean \| null` | `false` | — |
+| `cache_valid_not_found` | `string \| null` | `false` | — |
+| `cache_valid_success` | `string \| null` | `false` | — |
+| `certificate_key_path` | `string \| null` | `false` | — |
+| `certificate_mode` | `CertificateMode \| null` | `false` | — |
+| `certificate_path` | `string \| null` | `false` | — |
+| `enabled` | `boolean \| null` | `false` | — |
+| `origin_port` | `integer \| null` | `false` | — |
+| `origin_request_host` | `string \| null` | `false` | — |
+| `origin_scheme` | `OriginScheme \| null` | `false` | — |
+| `origin_sni` | `string \| null` | `false` | — |
+| `proxied` | `boolean \| null` | `false` | — |
+| `ttl` | `integer \| null` | `false` | — |
+| `value` | `string \| null` | `false` | — |
+
+### `RecordType`
+
+`A`, `AAAA`
 
 ### `ValidationError`
 

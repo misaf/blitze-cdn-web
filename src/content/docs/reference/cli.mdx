@@ -1,12 +1,10 @@
 ---
 title: CLI
-verifiedAgainst: blitzecdn 0.1.0
-lastVerified: 2026-08-05
 ---
 
 # CLI
 
-Verified against the Typer command tree in `src/blitzecdn/cli.py` at v0.1.0.
+Verified against the Typer command tree in `src/blitzecdn/cli.py` at v1.1.0.
 
 ## Safety and automation
 
@@ -14,8 +12,9 @@ Verified against the Typer command tree in `src/blitzecdn/cli.py` at v0.1.0.
 | --- | --- | --- | --- |
 | `doctor`, `validate`, `status`, `audit` | None | Yes | Prefer `--json` where available. |
 | `plan` | Ansible check mode; should not converge | Rerun after any state change | Review the resulting record before deploy. |
-| `site add`, `site remove` | Controller state only | No | Validate the resulting desired state. |
-| `deploy` | Converges every host in the selected inventory | No | Requires `--yes`; inspect unknown or timed-out outcomes first. |
+| `domain add/remove`, `record add/proxy/remove`, `edge add/remove` | Controller state only | No | Review the resulting desired state. |
+| `dns export` | None | Yes | Feed to the system that publishes DNS. |
+| `deploy` | Previews, then converges every configured edge | No | Interactive by default; use `--yes` only after separate checks in automation. |
 | `rollback` | Converges a snapshot, then changes canonical state | No | Preview with `--check`; select a known successful snapshot. |
 
 Commands that accept `--json` write stable machine-readable output. Diagnostic
@@ -51,7 +50,7 @@ Show immutable operator audit events.
 
 ## `blitzecdn deploy`
 
-Apply current desired state to every configured edge.
+Validate, preview, and apply current desired state to every configured edge.
 
 | Flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
@@ -73,6 +72,45 @@ Create a restrictive local environment file without overwriting one.
 | Flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `--output` | `path` | `false` | `.env` | Environment file to create. |
+
+## `blitzecdn setup`
+
+Create private local configuration and an empty edge inventory. Existing files
+are preserved, so this command is safe to run again.
+
+## `blitzecdn edge`
+
+Manage edge servers without editing Ansible inventory YAML directly.
+
+```bash
+blitzecdn edge add edge-01 --host 192.0.2.10 \
+  --user deploy --ssh-source 198.51.100.0/24
+blitzecdn edge list
+blitzecdn edge remove edge-01
+```
+
+### `blitzecdn edge add`
+
+| Argument or flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `name` | `str` | `true` | — | Stable edge name. |
+| `--host` | `str` | `true` | — | SSH hostname or address. |
+| `--ssh-source` | `str` | `true` | — | Trusted management CIDR; repeatable and at least one is required. |
+| `--user` | `str` | `false` | `deploy` | Non-root SSH user. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+### `blitzecdn edge list`
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+### `blitzecdn edge remove`
+
+| Argument or flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `name` | `str` | `true` | — | Edge name to stop managing. |
+| `--yes` | `boolean` | `false` | — | Skip interactive confirmation. |
 
 ## `blitzecdn plan`
 
@@ -102,11 +140,127 @@ Run the authenticated HTTP control plane.
 | `--host` | `str` | `false` | `127.0.0.1` | Bind address. |
 | `--port` | `int range` | `false` | `8000` | Listening TCP port. |
 
+## `blitzecdn domain`
+
+Manage DNS zones delegated to BlitzeCDN. See
+[Domains and records](/docs/reference/domains).
+
+### `blitzecdn domain add`
+
+| Argument or flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `name` | `str` | `true` | — | Zone to serve, such as `example.com`. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+### `blitzecdn domain list`
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+### `blitzecdn domain import`
+
+Converts sites created before v1.1.0 into the proxied records that reproduce
+them. See [Domains and records](/docs/reference/domains).
+
+| Argument or flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `names` | `str...` | `true` | — | Every zone to import. List them all at once. |
+| `--force` | `boolean` | `false` | — | Drop hostnames whose zone you did not list. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+Reports three lists: `imported`, `skipped` (sites needing a human, such as a
+hostname origin), and `dropped` (hostnames that will stop being served).
+
+<Callout type="error">
+  Pass every zone in one command. The first import rewrites the derived table
+  and destroys the sites a second run would have read. The command refuses and
+  writes nothing when a hostname belongs to a zone you did not list.
+</Callout>
+
+### `blitzecdn domain remove`
+
+Deletes the zone and every record in it. The virtual hosts its proxied records
+produced leave the edge on the next deploy.
+
+| Argument or flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `name` | `str` | `true` | — | Zone to delete. |
+| `--yes` | `boolean` | `false` | — | Skip interactive confirmation. |
+
+## `blitzecdn record`
+
+Manage records in a zone.
+
+### `blitzecdn record add`
+
+| Argument or flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `domain` | `str` | `true` | — | Zone the record belongs to. |
+| `name` | `str` | `true` | — | Subdomain label, `@` for the apex, or `*`. |
+| `--value` | `str` | `true` | — | IP address. Must match `--type`. |
+| `--type` | `A` \| `AAAA` | `false` | `A` | Record type. |
+| `--ttl` | `int` | `false` | `300` | Seconds, 1–604800. |
+| `--proxied` / `--no-proxied` | `boolean` | `false` | `--no-proxied` | Serve through the edge, or resolve straight to `--value`. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+### `blitzecdn record list`
+
+| Argument or flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `domain` | `str` | `false` | — | Limit to one zone. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+### `blitzecdn record proxy`
+
+Turns the CDN on or off for one record.
+
+| Argument or flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `domain` | `str` | `true` | — | Zone the record belongs to. |
+| `name` | `str` | `true` | — | Record name. |
+| `--on` / `--off` | `boolean` | `true` | — | Route through the CDN, or bypass it. |
+| `--type` | `A` \| `AAAA` | `false` | `A` | Record type. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+<Callout type="warning">
+  The edge changes on the next deploy, but the switch only reaches clients once
+  DNS answers accordingly. Change both together: an unproxied hostname whose DNS
+  still points at an edge is answered by the catch-all with `444`, not by your
+  origin.
+</Callout>
+
+### `blitzecdn record remove`
+
+| Argument or flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `domain` | `str` | `true` | — | Zone the record belongs to. |
+| `name` | `str` | `true` | — | Record to delete. |
+| `--type` | `A` \| `AAAA` | `false` | `A` | Record type. |
+| `--yes` | `boolean` | `false` | — | Skip interactive confirmation. |
+
+## `blitzecdn dns`
+
+### `blitzecdn dns export`
+
+Emits every record for the system that publishes DNS. Proxied records carry no
+address: they must resolve to an edge, and edge addressing is owned by that
+system.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
 ## `blitzecdn site`
 
-Manage CDN sites.
+Inspect the virtual hosts the edge serves. Sites are **derived** from proxied
+records and cannot be created or edited directly — change the record instead.
 
-_None._
+### `blitzecdn site list`
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
 
 ## `blitzecdn status`
 

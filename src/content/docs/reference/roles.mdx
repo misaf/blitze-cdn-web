@@ -1,12 +1,10 @@
 ---
 title: Ansible roles
-verifiedAgainst: blitzecdn.edge 1.0.0
-lastVerified: 2026-08-05
 ---
 
 # Ansible role variables
 
-Verified against **blitzecdn.edge 1.0.0** — each role's
+Verified against **blitzecdn.edge v1.2.0** — each role's
 `meta/argument_specs.yml` and `defaults/main.yml`. Roles validate these
 at the start of every run, so an unsupported value fails before the host
 is touched.
@@ -26,7 +24,7 @@ directory anywhere else is silently ignored.
 - Never set a required variable to an empty value unless its description
   explicitly permits it; the firewall source list intentionally fails closed.
 - A role rejecting `blitzecdn_desired_state_version` indicates an incompatible
-  controller/edge pair. Stop and consult the [compatibility matrix](/docs/reference).
+  controller/edge pair. Upgrade the control plane and edge collection together.
 - Verify role changes with Nginx configuration tests and external traffic/TLS
   probes, not only an Ansible `changed=0` result.
 
@@ -67,11 +65,46 @@ Apply conservative edge kernel settings.
 
 | Variable | Type | Required | Default | Choices |
 | --- | --- | --- | --- | --- |
+| `blitzecdn_kernel_sysctl_file` | `path` | `true` | `/etc/sysctl.d/60-blitzecdn.conf` | — |
 | `blitzecdn_kernel_sysctl` | `dict` | `true` | `{'net.core.somaxconn': 16384, 'net.ipv4.tcp_syncookies': 1, 'net.ipv4.tcp_keepalive_time': 90, 'net.ipv4.tcp_keepalive_intvl': 30, 'net.ipv4.tcp_keepalive_probes': 5}` | — |
 
 ## `blitzecdn_nginx`
 
 Converge Nginx CDN virtual hosts.
+
+The role renders each site to `/etc/nginx/sites-available`, links the enabled
+ones, and runs `nginx -t` before it records anything or reloads. If validation
+fails it restores the previous file for every site it changed, removes the files
+it created, confirms the restored tree still loads, and fails the play. The edge
+keeps serving its previous configuration, so a bad render costs you a failed run
+rather than an Nginx that refuses to start at the next reboot.
+
+`blitzecdn_nginx_default_server` installs a catch-all server block that answers
+requests for hostnames no site declares. It serves `/.well-known/acme-challenge/`
+so a new domain can pass HTTP-01 validation before its site exists, returns
+`444` for everything else, and rejects TLS handshakes for unrecognized SNI. Turn
+it off only on a single-tenant edge fronted by something else.
+
+<Callout type="warning">
+  With `blitzecdn_nginx_default_server` set to `false`, Nginx answers a request
+  whose `Host` matches no `server_name` using whichever site loaded first. On a
+  shared edge that serves one customer's configuration for another customer's
+  hostname. Leave it enabled unless a proxy in front already rejects unknown
+  hosts.
+</Callout>
+
+`blitzecdn_nginx_normalize_accept_encoding` collapses client `Accept-Encoding`
+values to `br`, `gzip`, or empty, forwards that to the origin, and adds it to
+the cache key. Leave it enabled: without it, encoded and unencoded responses for
+one URL share a cache entry, and clients receive bodies they cannot decode.
+
+<Callout type="warning">
+  `blitzecdn_nginx_hsts_enabled` applies to every site on the edge and commits
+  the customer's domain, not yours. A browser that has seen `max-age` honors it
+  until it expires — you cannot withdraw it by redeploying. Confirm every domain
+  on the edge will serve HTTPS for at least `blitzecdn_nginx_hsts_max_age`
+  seconds before enabling it.
+</Callout>
 
 | Variable | Type | Required | Default | Choices |
 | --- | --- | --- | --- | --- |
@@ -83,13 +116,20 @@ Converge Nginx CDN virtual hosts.
 | `blitzecdn_nginx_cache_size` | `str` | `true` | `100m` | — |
 | `blitzecdn_nginx_cache_zone` | `str` | `true` | `blitzecdn_cache` | — |
 | `blitzecdn_nginx_certificate_path_pattern` | `str` | `true` | `^/(?!.*(?:^\|/)\.\.(?:/\|$))etc/(?:blitzecdn/tls\|ssl\|letsencrypt)/[^;{}]+$` | — |
+| `blitzecdn_nginx_default_server` | `bool` | `true` | `true` | — |
+| `blitzecdn_nginx_default_site_file` | `path` | `true` | `/etc/nginx/sites-available/blitzecdn-default.conf` | — |
+| `blitzecdn_nginx_hsts_enabled` | `bool` | `true` | `false` | — |
+| `blitzecdn_nginx_hsts_max_age` | `int` | `true` | `31536000` | — |
 | `blitzecdn_nginx_managed_sites_file` | `path` | `true` | `/etc/nginx/blitzecdn-managed-sites` | — |
+| `blitzecdn_nginx_normalize_accept_encoding` | `bool` | `true` | `true` | — |
 | `blitzecdn_nginx_proxy_connect_timeout` | `str` | `true` | `5s` | — |
 | `blitzecdn_nginx_proxy_read_timeout` | `str` | `true` | `30s` | — |
 | `blitzecdn_nginx_resolver_timeout` | `str` | `true` | `5s` | — |
 | `blitzecdn_nginx_resolver_valid` | `str` | `true` | `30s` | — |
 | `blitzecdn_nginx_resolvers` | `list` | `true` | `127.0.0.53` | — |
 | `blitzecdn_nginx_sites` | `list` | `true` | — | — |
+| `blitzecdn_nginx_ssl_ciphers` | `str` | `true` | Mozilla intermediate TLS 1.2 suites | — |
+| `blitzecdn_nginx_ssl_stapling` | `bool` | `true` | `true` | — |
 | `blitzecdn_nginx_supported_state_versions` | `list` | `true` | `1` | — |
 
 ### `blitzecdn_nginx_sites` element keys
@@ -112,3 +152,40 @@ Converge Nginx CDN virtual hosts.
 | `origin_scheme` | `str` | `false` | `https` | `http`, `https` |
 | `origin_sni` | `str` | `false` | — | — |
 | `server_names` | `list` | `true` | — | — |
+
+## `blitzecdn_sshd`
+
+Enforce public-key-only SSH authentication.
+
+Writes `/etc/ssh/sshd_config.d/50-blitzecdn.conf` with
+`AuthenticationMethods publickey`, then reads the effective policy back with
+`sshd -T` and fails the play if anything else is still accepted. Before it
+writes, every account in `blitzecdn_sshd_allow_users` — or the connecting
+`ansible_user` when that list is empty — must already have a non-empty
+`~/.ssh/authorized_keys`, so hardening cannot lock you out. The daemon is
+reloaded, never restarted, so the connection running the deploy survives.
+
+The key check also enforces what `StrictModes` requires: the home directory,
+`~/.ssh`, and `~/.ssh/authorized_keys` must each be owned by the account or by
+root and must not be group- or world-writable. Sshd ignores a key file that
+fails those tests, so an account with a readable `authorized_keys` on a
+world-writable home would still lose access when passwords are disabled. The
+role fails the play instead, naming the path to correct.
+
+The role does not manage the listening port; that belongs to
+`blitzecdn_firewall_ssh_port` and `blitzecdn_fail2ban_ssh_port`.
+
+| Variable | Type | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| `blitzecdn_sshd_allow_agent_forwarding` | `bool` | `true` | `false` | — |
+| `blitzecdn_sshd_allow_tcp_forwarding` | `bool` | `true` | `false` | — |
+| `blitzecdn_sshd_allow_users` | `list` | `true` | — | — |
+| `blitzecdn_sshd_client_alive_count_max` | `int` | `true` | `2` | — |
+| `blitzecdn_sshd_client_alive_interval` | `int` | `true` | `300` | — |
+| `blitzecdn_sshd_config_path` | `str` | `true` | `/etc/ssh/sshd_config.d/50-blitzecdn.conf` | — |
+| `blitzecdn_sshd_enabled` | `bool` | `true` | `true` | — |
+| `blitzecdn_sshd_login_grace_time` | `int` | `true` | `20` | — |
+| `blitzecdn_sshd_max_auth_tries` | `int` | `true` | `3` | — |
+| `blitzecdn_sshd_max_sessions` | `int` | `true` | `10` | — |
+| `blitzecdn_sshd_permit_root_login` | `str` | `true` | `no` | `no`, `prohibit-password`, `forced-commands-only` |
+| `blitzecdn_sshd_service` | `str` | `true` | `ssh` | — |
