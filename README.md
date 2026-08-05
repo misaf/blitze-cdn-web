@@ -20,22 +20,22 @@ configured it defaults to the repository's conventional GitHub Pages URL.
 
 ## Layout
 
-| Path                               | Contents                                                                                                                       |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `src/app/page.jsx`                 | Landing page — hand-written, safe to restyle                                                                                   |
-| `src/app/globals.css`              | Tailwind entry point and site theme                                                                                            |
-| `src/app/layout.jsx`               | Shared shell: navbar, footer, theme                                                                                            |
-| `src/content/docs/*.mdx`           | Hand-written prose (overview, architecture, release)                                                                           |
-| `src/content/docs/guides/*.mdx`    | Hand-written operator guides (quickstart, sites, deployment, certificates, API, security, backup, production, troubleshooting) |
-| `src/content/docs/reference/*.mdx` | Maintained CLI, API, configuration, and role reference                                                                         |
-| `src/app/about/page.jsx`           | About us — hand-designed, not MDX                                                                                              |
-| `src/app/contact/page.jsx`         | Contact us — hand-designed, not MDX                                                                                            |
-| `src/components/ui.jsx`            | Shared design recipes for the designed pages                                                                                   |
-| `src/content/faq.mdx`              | FAQ                                                                                                                            |
-| `src/content/blog/`                | Blog: `index.mdx` lists the posts beside it                                                                                    |
-| `src/components/post-list.jsx`     | Builds the blog index from the page map                                                                                        |
-| `postcss.config.mjs`               | Loads `@tailwindcss/postcss`                                                                                                   |
-| `DOCUMENTATION.md`                 | Voice, page structure, callouts, and verification rules                                                                        |
+| Path                               | Contents                                                                                                                                                    |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/page.jsx`                 | Landing page — hand-written, safe to restyle                                                                                                                |
+| `src/app/globals.css`              | Tailwind entry point and site theme                                                                                                                         |
+| `src/app/layout.jsx`               | Shared shell: navbar, footer, theme                                                                                                                         |
+| `src/content/docs/*.mdx`           | Hand-written prose (index, architecture, glossary)                                                                                                          |
+| `src/content/docs/guides/*.mdx`    | Hand-written operator guides (quickstart, sites, deployment, certificates, API, security, API key rotation, backup, incidents, production, troubleshooting) |
+| `src/content/docs/reference/*.mdx` | Maintained CLI, domains, API, configuration, and role reference                                                                                             |
+| `src/app/about/page.jsx`           | About us — hand-designed, not MDX                                                                                                                           |
+| `src/app/contact/page.jsx`         | Contact us — hand-designed, not MDX                                                                                                                         |
+| `src/components/ui.jsx`            | Shared design recipes for the designed pages                                                                                                                |
+| `src/content/faq.mdx`              | FAQ                                                                                                                                                         |
+| `src/content/blog/`                | Blog: `index.mdx` lists the posts beside it                                                                                                                 |
+| `src/components/post-list.jsx`     | Builds the blog index from the page map                                                                                                                     |
+| `postcss.config.mjs`               | Loads `@tailwindcss/postcss`                                                                                                                                |
+| `DOCUMENTATION.md`                 | Voice, page structure, callouts, and verification rules                                                                                                     |
 
 ## Sections and routing
 

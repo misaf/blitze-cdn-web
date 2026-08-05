@@ -61,11 +61,12 @@ output only when it is stable; use an ellipsis or label abbreviated output.
 Every state-changing procedure must say how to prove it succeeded and how to
 recover when it does not.
 
-Reference pages are maintained MDX. Verify changes against the corresponding
-control-plane or edge release. Each reference page must include
-`verifiedAgainst` and `lastVerified` frontmatter. Review commands and exit codes,
-API requests/responses/errors, configuration precedence/defaults, role
-variables, the compatibility matrix, and the upgrade guide whenever a public
+Reference pages are maintained MDX and record the reviewed version inline
+(for example, "Verified against the Typer command tree in
+`src/blitzecdn/cli.py` at v1.1.0"). Verify changes against the corresponding
+control-plane or edge release and keep that version note current. Review
+commands and exit codes, API requests/responses/errors, configuration
+precedence/defaults, role variables, and the upgrade guide whenever a public
 interface changes. Before submitting documentation changes, run:
 
 ```bash
