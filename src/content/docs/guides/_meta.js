@@ -3,6 +3,7 @@ export default {
   sites: 'Sites & deployment',
   deployment: 'Deploying',
   certificates: 'Certificates',
+  manage: 'Managing edge hosts',
   api: 'API usage',
   security: 'Security',
   'api-key-rotation': 'API key rotation',
