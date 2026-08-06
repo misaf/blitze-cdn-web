@@ -21,6 +21,14 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      # `npm ci` runs the `postinstall: patch-package` script, which applies
+      # patches/nextra-theme-docs+4.6.1.patch. That patch is load-bearing: with
+      # zod 4.4.x, nextra-theme-docs 4.6.1 validates `children` as required on
+      # its Layout props schema after the Layout component has already removed
+      # it, so every page fails to prerender with `Invalid input → at children`
+      # unless the schema is patched to make it optional. Without the patch
+      # committed, a clean install builds red while a stale local node_modules
+      # builds green — exactly the divergence this fixes.
       - name: Install site dependencies
         run: npm ci
       - name: Dependency audit
