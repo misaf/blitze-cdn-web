@@ -17,6 +17,7 @@ import {
   section,
   split,
 } from '@/components/ui'
+import { basePath } from '@/lib/base-path.mjs'
 import { absoluteUrl } from '@/lib/site'
 
 export const metadata = {
@@ -184,9 +185,13 @@ export default function AboutPage() {
                     circular crop is the one shape this design does not have.
                     `next/image` rather than a bare `<img>`: the build runs with
                     `images: { unoptimized: true }`, so it emits a plain tag
-                    anyway while keeping the intrinsic size declared. */}
+                    anyway while keeping the intrinsic size declared. The src is
+                    prefixed with `basePath` because unoptimized export does not
+                    add it — a root-relative `/team/...` would resolve to the
+                    Pages domain root and 404 on the project site, exactly the
+                    break this line fixed. */}
                 <Image
-                  src={person.avatar}
+                  src={`${basePath}${person.avatar}`}
                   alt=""
                   width={400}
                   height={400}
