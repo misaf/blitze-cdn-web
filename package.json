@@ -4,7 +4,6 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "postinstall": "patch-package",
     "dev": "next",
     "build": "next build --webpack",
     "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind && node scripts/copy-search-index.mjs",
@@ -32,9 +31,11 @@
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.0",
     "pagefind": "^1.5.2",
-    "patch-package": "^8.0.1",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4.3.3"
+  },
+  "overrides": {
+    "zod": "4.3.6"
   }
 }
