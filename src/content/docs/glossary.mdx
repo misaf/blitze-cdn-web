@@ -50,6 +50,30 @@ a previously successful snapshot.
 The desired state used for the next normal deployment. A successful applied
 rollback replaces canonical state with the selected snapshot.
 
+## How the state terms relate
+
+<Callout type="info">
+  **Canonical state is not a separate copy** — it is a designation of which
+  state the next deploy uses. Normally that is the desired state itself; after
+  an applied rollback it is the selected snapshot.
+</Callout>
+
+```text
+edit ──► desired state ──deploy──► snapshot ──converge──► edges
+                 │                     │
+                 ▼                     │
+          (next deploy)          (rollback target)
+                 │                     │
+                 └───────► canonical state ◄───────┘
+```
+
+- **Desired state** is the collection you edit. Editing it does not reach an edge
+  until you deploy.
+- **Deployment snapshot** is a frozen copy of desired state at deploy time. It is
+  what a convergence applies to the edges and what rollback selects.
+- **Canonical state** names which of those the next deploy uses — normally the
+  desired state, and after a successful applied rollback, the selected snapshot.
+
 ## Managed certificate
 
 A certificate uploaded through the API or requested through ACME. The controller
