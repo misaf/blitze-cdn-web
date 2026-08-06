@@ -249,6 +249,50 @@ export function ExternalCardGrid({ items }) {
 }
 
 /**
+ * The internal counterpart to `ExternalCardGrid`: a grid of routes into the
+ * documentation, used by the docs overview through `mdx-components.js`.
+ *
+ * `items` is `[{ title, href, note }]`.
+ *
+ * This exists because Nextra's own `<Cards.Card>` renders its children BEFORE
+ * its title — `[children, title]`, deliberately, because the component is built
+ * for a card whose body is an image with the title as a caption underneath.
+ * Filled with a prose description instead, every card on the overview read
+ * backwards: the reader met "Deploy the example site from a fresh controller"
+ * and only then learned it was the tutorial. The whole cell is one link, so
+ * that order was also the link's accessible name — six links that each
+ * announced their explanation before their destination.
+ *
+ * Here the title leads and the note explains, which is the order every other
+ * card on the site already uses.
+ */
+export function RouteCardGrid({ items }) {
+  return (
+    <div
+      className={`${flow} grid gap-px border border-line bg-line sm:grid-cols-2`}
+    >
+      {items.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          className={`group flex flex-col gap-2 bg-panel p-card no-underline ${focusInset}`}
+        >
+          <span className="flex items-center justify-between gap-3">
+            <span className="font-display text-[1.05rem] font-book tracking-display text-fg underline-offset-4 group-hover:underline">
+              {item.title}
+            </span>
+            <Arrow className="size-[1.15rem] text-rule-ink transition-transform motion-safe:duration-150 motion-safe:group-hover:translate-x-1" />
+          </span>
+          <span className="text-[0.9rem] leading-relaxed text-muted">
+            {item.note}
+          </span>
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+/**
  * The compact page header used by `/about` and `/contact`: a dark cover with
  * the book's ruling showing through. The landing page has its own taller
  * ledger spread; these get the same cover at a size that does not upstage it.

@@ -1,4 +1,5 @@
 import { useMDXComponents as getDocsMDXComponents } from 'nextra-theme-docs'
+import { RouteCardGrid } from '@/components/ui'
 import {
   Callout,
   Cards,
@@ -39,6 +40,10 @@ export const useMDXComponents = (components) => ({
   table: Table,
   Callout,
   Cards,
+  /* The docs overview's route grid. Nextra's `Cards` is still exported above
+     for anything that wants the theme's own card; see the note on
+     `RouteCardGrid` for why the overview does not. */
+  RouteCardGrid,
   Details,
   FileTree,
   ImageZoom,

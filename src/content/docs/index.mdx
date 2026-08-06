@@ -16,34 +16,40 @@ The product has a strict responsibility split:
 - **Ansible** exclusively owns remote Linux state. It carries defensive
   validation but no product workflow decisions.
 
-<Cards num={2}>
-  <Cards.Card
-    title="Start with a tutorial"
-    href="/docs/guides/quickstart"
-    arrow
-  >
-    Deploy the example site from a fresh controller.
-  </Cards.Card>
-  <Cards.Card title="Operate safely" href="/docs/guides/deployment" arrow>
-    Plan, deploy, verify, and recover production changes.
-  </Cards.Card>
-  <Cards.Card title="Understand the design" href="/docs/architecture" arrow>
-    Follow state, trust, and execution across both halves.
-  </Cards.Card>
-  <Cards.Card title="Look up exact behavior" href="/docs/reference/cli" arrow>
-    Use versioned CLI, API, configuration, and role reference.
-  </Cards.Card>
-  <Cards.Card title="Route a domain" href="/docs/reference/domains" arrow>
-    Add a zone, point subdomains at origins, and toggle the CDN per record.
-  </Cards.Card>
-  <Cards.Card
-    title="Respond to an incident"
-    href="/docs/guides/incidents"
-    arrow
-  >
-    Establish serving state, contain risk, and recover controller truth.
-  </Cards.Card>
-</Cards>
+<RouteCardGrid
+  items={[
+    {
+      title: 'Start with a tutorial',
+      href: '/docs/guides/quickstart',
+      note: 'Deploy the example site from a fresh controller.',
+    },
+    {
+      title: 'Operate safely',
+      href: '/docs/guides/deployment',
+      note: 'Plan, deploy, verify, and recover production changes.',
+    },
+    {
+      title: 'Understand the design',
+      href: '/docs/architecture',
+      note: 'Follow state, trust, and execution across both halves.',
+    },
+    {
+      title: 'Look up exact behavior',
+      href: '/docs/reference/cli',
+      note: 'Use versioned CLI, API, configuration, and role reference.',
+    },
+    {
+      title: 'Route a domain',
+      href: '/docs/reference/domains',
+      note: 'Add a zone, point subdomains at origins, and toggle the CDN per record.',
+    },
+    {
+      title: 'Respond to an incident',
+      href: '/docs/guides/incidents',
+      note: 'Establish serving state, contain risk, and recover controller truth.',
+    },
+  ]}
+/>
 
 The project is opinionated: Debian 12+ and Ubuntu 24.04+ edges, OpenSSH
 host-key verification, non-root SSH users with explicit sudo, UFW, Fail2Ban,
@@ -51,12 +57,12 @@ centrally coordinated ACME HTTP-01 issuance, managed certificate uploads, and
 existing TLS certificate paths. Certificates are issued once by the controller
 and distributed to every edge.
 
-## Where to go
+## Every page
+
+### Guides — how to operate it
 
 - [Quick start](/docs/guides/quickstart) — stand up a controller and make the
   first deploy, end to end.
-- [Architecture](/docs/architecture) — trust boundaries, execution flow, and the
-  limits this release deliberately accepts.
 - [Sites & deployment](/docs/guides/sites) — what a site is, how desired state,
   snapshots, and rollback work.
 - [Deploying](/docs/guides/deployment) — the operator's deployment checklist.
@@ -65,15 +71,18 @@ and distributed to every edge.
 - [API usage](/docs/guides/api) — authenticate operators and drive the control
   plane over HTTP.
 - [Security](/docs/guides/security) — hardening the control plane and edges.
-- [Backup & recovery](/docs/guides/backup) — what to back up and how to recover.
-- [Production](/docs/guides/production) — sizing, scaling, and operational
-  caveats.
 - [API key rotation](/docs/guides/api-key-rotation) — replace operator secrets
   without locking out every client.
+- [Backup & recovery](/docs/guides/backup) — what to back up and how to recover.
 - [Incident response](/docs/guides/incidents) — contain and recover when serving
   state or controller truth is uncertain.
+- [Production](/docs/guides/production) — sizing, scaling, and operational
+  caveats.
 - [Troubleshooting](/docs/guides/troubleshooting) — errors, stalls, and how to
   resolve them.
+
+### Reference — exact values, looked up
+
 - [CLI](/docs/reference/cli) — every command, flag, and exit code.
 - [HTTP API](/docs/reference/api) — every route, model, and status code.
 - [Configuration](/docs/reference/configuration) — every `BLITZE_*` variable and
@@ -82,13 +91,14 @@ and distributed to every edge.
   defaults.
 - [Domains and records](/docs/reference/domains) — zones, A records, and the
   per-record CDN proxy toggle.
-- [Glossary](/docs/glossary) — definitions for controller, convergence,
-  snapshots, canonical state, and other recurring terms.
 
-## About the reference pages
-
-Everything under **Reference** is maintained as MDX in this repository. When a
+Everything under Reference is maintained as MDX in this repository. When a
 public interface changes, update its reference page alongside the release and
 verify commands and examples against the corresponding project version.
 
-Without a running controller, start with the [Quick start](/docs/guides/quickstart).
+### Concepts — what the words mean
+
+- [Architecture](/docs/architecture) — trust boundaries, execution flow, and the
+  limits this release deliberately accepts.
+- [Glossary](/docs/glossary) — definitions for controller, convergence,
+  snapshots, canonical state, and other recurring terms.
