@@ -1,5 +1,5 @@
 import { getPageMap } from 'nextra/page-map'
-import { contentLastModified, siteUrl } from '@/lib/site'
+import { absoluteUrl, contentLastModified } from '@/lib/site'
 
 export const dynamic = 'force-static'
 
@@ -15,7 +15,7 @@ export default async function sitemap() {
   const routes = new Set(['/', '/about', '/contact', ...contentRoutes])
 
   return [...routes].sort().map((route) => ({
-    url: new URL(route, siteUrl).toString(),
+    url: absoluteUrl(route),
     changeFrequency: route.startsWith('/blog') ? 'monthly' : 'weekly',
     lastModified: contentLastModified,
   }))

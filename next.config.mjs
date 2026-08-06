@@ -1,4 +1,5 @@
 import nextra from 'nextra'
+import { basePath } from './src/lib/base-path.mjs'
 
 const withNextra = nextra({
   // No `contentDirBasePath`: the content tree maps to URLs directly, so
@@ -25,4 +26,7 @@ export default withNextra({
   // controller state. See SECURITY.md.
   output: 'export',
   images: { unoptimized: true },
+  // Empty for `next dev` and for a custom domain; `/blitze-cdn-web` when CI
+  // publishes to the GitHub Pages project site. See `src/lib/base-path.mjs`.
+  basePath,
 })

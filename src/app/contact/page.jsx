@@ -14,9 +14,11 @@ import {
   section,
   split,
 } from '@/components/ui'
+import { absoluteUrl } from '@/lib/site'
 
 export const metadata = {
   title: 'Contact us',
+  alternates: { canonical: absoluteUrl('/contact') },
   description:
     'Where to report a bug, how to disclose a security issue privately, and ' +
     'what response to expect.',

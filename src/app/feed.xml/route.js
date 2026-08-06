@@ -1,4 +1,4 @@
-import { siteUrl } from '@/lib/site'
+import { absoluteUrl, siteUrl } from '@/lib/site'
 
 export const dynamic = 'force-static'
 
@@ -30,7 +30,7 @@ function escapeXml(value) {
 export function GET() {
   const items = posts
     .map((post) => {
-      const url = new URL(`/blog/${post.slug}`, siteUrl).toString()
+      const url = absoluteUrl(`/blog/${post.slug}`)
       return `<item><title>${escapeXml(post.title)}</title><link>${url}</link><guid>${url}</guid><pubDate>${new Date(post.date).toUTCString()}</pubDate><description>${escapeXml(post.description)}</description></item>`
     })
     .join('')

@@ -3,7 +3,7 @@ import { IBM_Plex_Mono, Public_Sans, Zilla_Slab } from 'next/font/google'
 import { Footer, Layout, Navbar } from 'nextra-theme-docs'
 import { Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
-import { siteUrl } from '@/lib/site'
+import { absoluteUrl, siteUrl } from '@/lib/site'
 import DocsBanner from '@/components/docs-banner'
 import ThemeToggle from '@/components/theme-toggle'
 import 'nextra-theme-docs/style.css'
@@ -124,8 +124,27 @@ function FooterLink({ href, label, external }) {
   )
 }
 
+/*
+ * `metadataBase` is the ORIGIN only — no path — and that is load-bearing under
+ * a project-site deployment.
+ *
+ * `opengraph-image.jsx` beside this file is a Next file convention: the
+ * framework generates the card's URL itself, and it builds it as
+ * `metadataBase + basePath + /opengraph-image`. With the deployed `siteUrl`
+ * (`https://misaf.github.io/blitze-cdn-web`) used as the base, that prefix is
+ * present twice and every scraper fetches a 404 at
+ * `/blitze-cdn-web/blitze-cdn-web/opengraph-image`. Handing it the bare origin
+ * lets `basePath` supply the prefix exactly once.
+ *
+ * The cost is that relative metadata values elsewhere would then resolve
+ * against the origin and lose the prefix — `basePath` is not applied to them —
+ * so the two below are written absolute instead. They are the only ones, and
+ * `absoluteUrl` is the single place that joins a route onto `siteUrl` safely.
+ */
+const origin = new URL(siteUrl).origin
+
 export const metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(origin),
   title: {
     default: 'BlitzeCDN',
     template: '%s – BlitzeCDN',
@@ -133,9 +152,17 @@ export const metadata = {
   description:
     'A security-focused control plane for converging Nginx CDN edge servers.',
   applicationName: 'BlitzeCDN',
+  /*
+   * No `canonical` here. Metadata is merged per-field, so a canonical set in
+   * this layout is inherited by every page that does not set its own — and
+   * this one is the root, which meant all 26 pages declared themselves
+   * duplicates of the homepage. That is an instruction to search engines to
+   * index one page and drop the rest, including the entire reference. Each
+   * route states its own instead; the catch-all does it for all of `/docs`,
+   * `/blog` and `/faq` in `[...mdxPath]/page.jsx`.
+   */
   alternates: {
-    canonical: '/',
-    types: { 'application/rss+xml': '/feed.xml' },
+    types: { 'application/rss+xml': absoluteUrl('/feed.xml') },
   },
   openGraph: {
     type: 'website',
@@ -143,15 +170,13 @@ export const metadata = {
     title: 'BlitzeCDN – edge control plane',
     description:
       'A security-focused control plane for converging Nginx CDN edge servers.',
-    url: '/',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
+    url: absoluteUrl('/'),
   },
   twitter: {
     card: 'summary_large_image',
     title: 'BlitzeCDN – edge control plane',
     description:
       'A security-focused control plane for converging Nginx CDN edge servers.',
-    images: ['/opengraph-image'],
   },
   robots: { index: true, follow: true },
 }

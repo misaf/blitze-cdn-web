@@ -17,9 +17,11 @@ import {
   section,
   split,
 } from '@/components/ui'
+import { absoluteUrl } from '@/lib/site'
 
 export const metadata = {
   title: 'About us',
+  alternates: { canonical: absoluteUrl('/about') },
   description:
     'Who maintains BlitzeCDN, why it was rebuilt, and the rule each of the ' +
     'old system’s failures produced.',

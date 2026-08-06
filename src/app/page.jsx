@@ -22,9 +22,11 @@ import {
   section,
   split,
 } from '@/components/ui'
+import { absoluteUrl } from '@/lib/site'
 
 export const metadata = {
   title: 'BlitzeCDN – edge control plane',
+  alternates: { canonical: absoluteUrl('/') },
   description:
     'A security-focused control plane for converging Nginx CDN edge servers. ' +
     'Python owns desired state and history; Ansible owns remote Linux state.',
