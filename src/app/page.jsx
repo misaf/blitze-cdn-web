@@ -1,15 +1,15 @@
 import Link from 'next/link'
-import HeroGlobe from '@/components/hero-globe'
 import {
-  BandLinkList,
-  Check,
+  Attest,
+  CoverLinkList,
   Icon,
-  band,
-  bandArt,
   btnGhost,
   btnPrimary,
   closingNote,
+  cover,
+  coverRuling,
   eyebrow,
+  eyebrowOnCover,
   flow,
   focusInsetDark,
   grid,
@@ -38,8 +38,48 @@ export const metadata = {
    named region (see the `tabIndex` and `aria-label` at the call site) and
    carries its own focus ring. */
 const codeBlock =
-  `overflow-x-auto border border-line bg-ink px-5 py-[1.15rem] font-mono ` +
-  `text-[0.82rem] leading-[1.72] text-code-fg ${focusInsetDark}`
+  `overflow-x-auto border border-ink-line bg-ink px-5 py-[1.15rem] font-mono ` +
+  `text-[0.8rem] leading-[1.75] text-code-fg ${focusInsetDark}`
+
+/*
+ * The hero ledger.
+ *
+ * This is the page's argument, not an illustration of it: each row is a real
+ * constraint, written in the controller's book and independently written again
+ * in the edge's book. `left` is what the controller enforces before a value can
+ * reach a template; `right` is what the role re-checks against the live host.
+ *
+ * Every entry here corresponds to something that actually exists — the TLS path
+ * confinement, the public-key-only SSH posture, the firewall's fail-closed
+ * refusal — because a fabricated row would make the whole device a decoration.
+ */
+const entries = [
+  {
+    constraint: 'certificate_path',
+    left: 'confined to /etc/blitzecdn/tls',
+    right: 'refuses paths outside it',
+  },
+  {
+    constraint: 'ssh_authentication',
+    left: 'publickey, no password',
+    right: 'verified with sshd -T',
+  },
+  {
+    constraint: 'firewall_ssh_sources',
+    left: 'must be non-empty',
+    right: 'aborts rather than open',
+  },
+  {
+    constraint: 'origin_scheme',
+    left: 'typed enum, immutable',
+    right: 'choices re-declared in role',
+  },
+  {
+    constraint: 'state_version',
+    left: 'emitted as 4',
+    right: 'unsupported versions refused',
+  },
+]
 
 /* The stack this release commits to. This occupies the slot a project with
    adopters would fill with a logo wall; the honest equivalent for a young
@@ -144,6 +184,115 @@ const referenceLinks = [
   },
 ]
 
+/*
+ * The double-entry spread.
+ *
+ * Structurally a description list would be wrong — this is tabular data with
+ * two headed columns and a summary row, and a screen reader user needs the
+ * column association to understand that the right-hand cell is a *second,
+ * independent* check rather than a restatement. So it is a real `<table>` with
+ * a `<caption>`, and the visual ruling is the table's own borders.
+ *
+ * The `--entry` custom property drives the staggered posting animation in
+ * `globals.css`; it is inline because the delay is per-row and there is no
+ * utility for "the nth value of a sequence".
+ */
+function LedgerSpread() {
+  return (
+    /* Three columns of prose do not fit a phone, and collapsing them would
+       destroy the point — the whole device is the two books sitting side by
+       side. So it scrolls sideways instead, under the site's existing rule
+       for wide tables: a scroll container is only reachable by keyboard if it
+       is focusable, so it is a tabbable named region with its own focus ring.
+       Same treatment as the code panels below and the docs reference tables. */
+    <div
+      className={`overflow-x-auto border border-ink-line bg-ink/40 backdrop-blur-[1px] ${focusInsetDark}`}
+      tabIndex={0}
+      role="region"
+      aria-label="Desired state: every constraint as enforced by the controller and re-checked on the edge"
+    >
+      <table className="w-full min-w-[30rem] border-collapse text-left">
+        <caption className="border-b border-ink-line px-4 py-3 text-left font-mono text-[0.68rem] font-medium tracking-head text-ink-faint uppercase">
+          Desired state · snapshot a41f9c2
+        </caption>
+        <thead>
+          <tr className="font-mono text-[0.68rem] tracking-head uppercase">
+            <th
+              scope="col"
+              className="border-b border-ink-line px-4 py-2.5 font-medium text-ink-faint"
+            >
+              Constraint
+            </th>
+            {/* The oxblood rule between the two books is the one structural
+                line in the design: left of it the controller decides, right of
+                it the host re-decides. It is heavier than the horizontals
+                because it carries more meaning than they do. */}
+            <th
+              scope="col"
+              className="border-b border-l-2 spread-rule border-b-ink-line px-4 py-2.5 font-medium text-ink-fg"
+            >
+              Controller
+            </th>
+            <th
+              scope="col"
+              className="border-b border-ink-line px-4 py-2.5 font-medium text-ink-fg"
+            >
+              Edge
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((entry, index) => (
+            <tr
+              key={entry.constraint}
+              className="posts-in align-top"
+              style={{ '--entry': index }}
+            >
+              <th
+                scope="row"
+                className="border-b border-ink-line px-4 py-3 font-mono text-[0.78rem] font-normal text-ink-fg"
+              >
+                {entry.constraint}
+              </th>
+              <td className="border-b border-l-2 spread-rule border-b-ink-line px-4 py-3 text-[0.82rem] leading-snug text-ink-muted">
+                {entry.left}
+              </td>
+              <td className="border-b border-ink-line px-4 py-3 text-[0.82rem] leading-snug text-ink-muted">
+                <span
+                  className="confirms-in flex items-start gap-2"
+                  style={{ '--entry': index }}
+                >
+                  <Attest className="text-attest-bright" />
+                  <span>{entry.right}</span>
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          {/* The closing line of a double-entry page. It is the only place on
+              the site where balance-green is used at this size, and it is
+              earned: it states the property the whole architecture exists to
+              produce. */}
+          <tr>
+            <td
+              colSpan={3}
+              className="px-4 py-3.5 font-mono text-[0.72rem] tracking-head uppercase"
+            >
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="text-attest-bright">Balances</span>
+                <span className="text-ink-faint">
+                  5 constraints · 2 independent books · 0 disagreements
+                </span>
+              </span>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  )
+}
+
 export default function LandingPage() {
   return (
     /* `main` with Nextra's skip-target id: the theme renders "Skip to Content"
@@ -161,106 +310,35 @@ export default function LandingPage() {
         breakout: it overhangs by half a scrollbar width on platforms with
         classic (non-overlay) scrollbars, and buys nothing here.
       */}
-      <section className="grid min-h-[min(80vh,46rem)] items-stretch bg-ink text-ink-fg lg:grid-cols-2">
-        <div className="ml-auto flex w-full max-w-[calc(var(--spacing-measure)/2)] flex-col justify-center px-gutter py-[clamp(3.5rem,8vw,7rem)]">
-          <h1 className="max-w-[12ch] text-hero leading-[1.06] font-book tracking-display text-balance">
-            The control plane for your Nginx edge
-          </h1>
-          {/* `role="list"` because `.canvas` removes `list-style`, and WebKit
-              drops the implicit list role along with it — VoiceOver would
-              otherwise not announce "list, 3 items" here. Same everywhere a
-              `ul` appears on the hand-designed pages. */}
-          <ul
-            role="list"
-            className="mt-[clamp(2rem,4vw,2.75rem)] grid gap-[0.9rem]"
-          >
-            {[
-              'Typed desired state, enforced on both sides',
-              'Auditable deployments and real rollback',
-              'Certificates issued once, distributed everywhere',
-            ].map((item) => (
-              <li
-                key={item}
-                className="flex items-start gap-3 text-[1.02rem] text-ink-muted"
-              >
-                <Check />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-[clamp(2.25rem,4vw,3rem)] flex flex-wrap gap-3.5">
-            <Link href="/docs" className={btnPrimary}>
-              Read the docs
-            </Link>
-            <Link href="/docs/reference/cli" className={btnGhost}>
-              CLI reference
-            </Link>
-          </div>
-          <p className="mt-9 font-mono text-[0.78rem] tracking-[0.04em] text-ink-faint">
-            Debian 12+ / Ubuntu 24.04+ &nbsp;·&nbsp; one controller node
-          </p>
-          {/* Caption for the panel alongside. The art shows a request being
-              routed and proxied, and hostile traffic being dropped; without
-              this, that is only legible to a reader who already knows the
-              path. */}
-          <p className="mt-2 font-mono text-[0.78rem] tracking-[0.04em] text-ink-faint">
-            anycast to the nearest edge &nbsp;·&nbsp; hostile traffic never
-            reaches your origin
-          </p>
-        </div>
-        {/* The CSS bloom is the base layer and the fallback: the WebGL scene
-            mounts on top of it client-side, and simply never appears where
-            WebGL is unavailable. The `after:` scrim feathers the left edge
-            into the copy column and sits above both.
-
-            `aria-hidden` was right when this was a gradient. It still hides
-            the canvas — which has nothing useful to announce — but the panel
-            now carries an argument, so that argument is given to assistive
-            technology as text alongside it rather than being lost. */}
-        {/* Short on mobile, tall on desktop. Below `lg` the hero stacks, so
-            this panel lands between the CTAs and the first real section; at
-            18rem it read as the end of the page. It is decoration, and gets
-            the height decoration deserves until it can sit alongside copy. */}
-        <div className="relative min-h-44 lg:min-h-72">
-          <p className="sr-only">
-            Diagram: a client request enters the network at a single anycast
-            address, which routes it to the nearest edge server. That edge
-            proxies the request on to the origin the client asked for, and the
-            response returns the same way. Hostile requests are dropped at the
-            edge and never reach the origin.
-          </p>
-          <div
-            className="absolute inset-0 hero-art after:absolute after:inset-0 after:bg-[linear-gradient(90deg,#0c0e14_0%,rgba(12,14,20,0)_22%)] after:content-['']"
-            aria-hidden="true"
-          >
-            <HeroGlobe />
-          </div>
-        </div>
-      </section>
-
-      <section className={section}>
-        <div className={inner}>
-          <div className={split}>
-            <h2 className={h2}>Opinionated about its stack, on purpose</h2>
-            <p className={lede}>
-              BlitzeCDN does not try to abstract over every edge platform. It
-              targets a narrow, well-understood stack and commits to it — which
-              is what makes enforcing the same rules on both the controller and
-              the host tractable in the first place.
+      <section className={cover}>
+        <div className={coverRuling} aria-hidden="true" />
+        <div
+          className={`relative z-10 ${inner} grid items-center gap-x-16 gap-y-14 py-[clamp(3.5rem,7vw,6.5rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]`}
+        >
+          <div>
+            <p className={eyebrowOnCover}>Edge control plane</p>
+            <h1 className="font-display text-hero leading-[1.04] font-book tracking-display text-balance">
+              Every rule is written down twice
+            </h1>
+            <p className="mt-7 max-w-[46ch] text-[1.05rem] leading-relaxed text-ink-muted">
+              BlitzeCDN converges Nginx CDN edge servers from a single
+              controller. Python owns validation, desired state, history and
+              rollback. Ansible exclusively owns remote Linux state. Neither
+              half takes the other&rsquo;s word for anything.
+            </p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link href="/docs" className={btnPrimary}>
+                Read the docs
+              </Link>
+              <Link href="/docs/reference/cli" className={btnGhost}>
+                CLI reference
+              </Link>
+            </div>
+            <p className="mt-9 font-mono text-[0.74rem] tracking-[0.06em] text-ink-faint">
+              Debian 12+ / Ubuntu 24.04+ &nbsp;·&nbsp; one controller node
             </p>
           </div>
-          <dl className={`${grid} grid-cols-2 sm:grid-cols-4`}>
-            {stack.map((item) => (
-              <div key={item.name} className={`${gridCell} min-h-34`}>
-                <dt className="text-[1.18rem] font-medium tracking-tight">
-                  {item.name}
-                </dt>
-                <dd className="text-[0.88rem] leading-normal text-muted">
-                  {item.note}
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <LedgerSpread />
         </div>
       </section>
 
@@ -270,11 +348,11 @@ export default function LandingPage() {
           <div className={split}>
             <h2 className={h2}>What is BlitzeCDN?</h2>
             <p className={lede}>
-              BlitzeCDN converges Nginx CDN edge servers from a single
-              controller. The split between its two halves is deliberate and
-              absolute: Python owns validation, desired state, history, planning
-              and rollback; Ansible exclusively owns remote Linux state. Nothing
-              reaches an edge that has not been through both.
+              A deployment is three movements, and the boundary between them is
+              absolute: the controller decides what should be true, Ansible
+              makes it true on the host, and canonical state only advances once
+              the host agrees. Nothing reaches an edge that has not been through
+              both.
             </p>
           </div>
           {/* A 1px gap over a line-coloured background is what draws the
@@ -285,24 +363,24 @@ export default function LandingPage() {
             {stages.map((stage) => (
               <div
                 key={stage.title}
-                className="flex flex-col gap-3.5 bg-surface p-card"
+                className="flex flex-col gap-3.5 bg-panel p-card"
               >
-                <p className="font-mono text-[0.72rem] tracking-[0.12em] text-accent-ink uppercase">
+                <p className="font-mono text-[0.68rem] tracking-head text-rule-ink uppercase">
                   {stage.owner}
                 </p>
                 {/* `h3` rather than a one-off `text-xl`: these are card
                     titles, and the guarantee cards below use `text-card`. */}
                 <h3 className={h3}>{stage.title}</h3>
-                <p className="text-[0.92rem] leading-relaxed text-muted">
+                <p className="text-[0.9rem] leading-relaxed text-muted">
                   {stage.body}
                 </p>
                 <ul
                   role="list"
-                  className="mt-1.5 grid gap-2 font-mono text-[0.8rem]"
+                  className="mt-1.5 grid gap-2 font-mono text-[0.78rem]"
                 >
                   {stage.steps.map((step) => (
                     <li key={step} className="flex items-baseline gap-2.5">
-                      <span className="shrink-0 text-accent-ink">→</span>
+                      <span className="shrink-0 text-rule-ink">→</span>
                       {step}
                     </li>
                   ))}
@@ -322,6 +400,9 @@ export default function LandingPage() {
         <div className={inner}>
           <p className={eyebrow}>How it works</p>
           <h2 className={h2}>A BlitzeCDN deployment</h2>
+          {/* Numbered because this genuinely is a sequence — you cannot plan a
+              change you have not described, or converge one you have not
+              planned — and the order is the thing a reader needs. */}
           <div className="mt-flow grid lg:grid-cols-3">
             {[
               {
@@ -394,8 +475,14 @@ export default function LandingPage() {
             ].map((panel, index) => (
               <div
                 key={panel.n}
-                className={`border-t border-line pt-[1.1rem] ${
-                  index > 0 ? 'mt-8 lg:mt-0 lg:border-l lg:pl-7' : ''
+                /* `flex flex-col` with a `flex-1` panel below: the three
+                   transcripts are different lengths, and left to themselves
+                   they ended at three different heights against a shared rule
+                   above them, which read as a mistake rather than as data. */
+                className={`flex flex-col border-t-2 border-rule pt-[1.1rem] ${
+                  index > 0
+                    ? 'mt-8 lg:mt-0 lg:border-l lg:border-l-line lg:pl-7'
+                    : ''
                 } ${index < 2 ? 'lg:pr-7' : ''}`}
               >
                 {/* A heading, not a paragraph: this is the clearest
@@ -403,14 +490,14 @@ export default function LandingPage() {
                     whole three-step walkthrough was skipped by heading
                     navigation — and left this the only `h2` on the page with
                     no `h3` beneath it. */}
-                <h3 className="flex items-center gap-2.5 pb-[1.1rem] text-[1.05rem] font-medium">
-                  <span className="inline-flex size-5.5 shrink-0 items-center justify-center bg-accent font-mono text-[0.78rem] font-semibold text-accent-contrast">
+                <h3 className="flex items-baseline gap-3 pb-[1.1rem] font-display text-[1.05rem] font-book">
+                  <span className="font-mono text-[0.8rem] font-semibold text-rule-ink">
                     {panel.n}
                   </span>
                   {panel.title}
                 </h3>
                 <pre
-                  className={codeBlock}
+                  className={`${codeBlock} flex-1`}
                   tabIndex={0}
                   role="region"
                   aria-label={`Step ${panel.n}: ${panel.title}`}
@@ -428,34 +515,32 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className={band}>
-        <div className={bandArt} aria-hidden="true" />
+      <section className={cover}>
+        <div className={coverRuling} aria-hidden="true" />
         <div className={`relative z-10 ${inner} ${section}`}>
-          <p className={`${eyebrow} text-accent!`}>Operational guarantees</p>
+          <p className={eyebrowOnCover}>Operational guarantees</p>
           <h2 className={h2}>Built for the day something goes wrong</h2>
-          <div
-            className={`${flow} grid border border-band-line lg:grid-cols-3`}
-          >
+          <div className={`${flow} grid border border-ink-line lg:grid-cols-3`}>
             {guarantees.map((card, index) => (
               <div
                 key={card.title}
                 className={`flex flex-col ${
                   index > 0
-                    ? 'border-t border-band-line lg:border-t-0 lg:border-l'
+                    ? 'border-t border-ink-line lg:border-t-0 lg:border-l'
                     : ''
                 }`}
               >
-                <h3 className="flex min-h-22 items-center border-b border-band-line p-card-sm text-card font-book tracking-display">
+                <h3 className="flex min-h-20 items-center border-b border-ink-line p-card-sm font-display text-card font-book tracking-display">
                   {card.title}
                 </h3>
                 <div className="flex flex-1 flex-col gap-5 p-card-sm">
-                  <p className="text-[0.95rem] leading-relaxed text-band-muted">
+                  <p className="text-[0.92rem] leading-relaxed text-ink-muted">
                     {card.body}
                   </p>
-                  <ul role="list" className="grid gap-2.5 text-[0.88rem]">
+                  <ul role="list" className="grid gap-2.5 text-[0.86rem]">
                     {card.points.map((point) => (
                       <li key={point} className="flex items-start gap-2.5">
-                        <Check />
+                        <Attest className="text-attest-bright" />
                         <span>{point}</span>
                       </li>
                     ))}
@@ -472,15 +557,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className={section}>
+      {/* The one place the stock's own ruling is allowed to show. These rows
+          are literally entries in the book — one commitment per line — so the
+          lines behind them are describing the content rather than decorating
+          it. Everywhere else the ruling stays on the dark covers. */}
+      <section className={`${section} ruled-paper`}>
         <div className={inner}>
           <p className={eyebrow}>Design principles</p>
           <h2 className={h2}>Five commitments</h2>
           <div className={flow}>
             {principles.map((principle) => (
               <div key={principle.name} className={principleRow()}>
-                <h3 className="flex items-center gap-4 text-principle font-book tracking-display">
-                  <Icon className="size-[1.4rem] shrink-0 text-accent-ink">
+                <h3 className="flex items-center gap-4 font-display text-principle font-book tracking-display">
+                  <Icon className="size-[1.35rem] shrink-0 text-rule-ink">
                     {principle.icon}
                   </Icon>
                   {principle.name}
@@ -492,21 +581,53 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className={band}>
-        <div className={bandArt} aria-hidden="true" />
+      <section className={section}>
+        <div className={inner}>
+          <p className={eyebrow}>Scope</p>
+          <div className={split}>
+            <h2 className={h2}>Opinionated about its stack, on purpose</h2>
+            <p className={lede}>
+              BlitzeCDN does not try to abstract over every edge platform. It
+              targets a narrow, well-understood stack and commits to it — which
+              is what makes enforcing the same rules on both the controller and
+              the host tractable in the first place.
+            </p>
+          </div>
+          <dl className={`${grid} grid-cols-2 sm:grid-cols-4`}>
+            {stack.map((item) => (
+              <div key={item.name} className={`${gridCell} min-h-32`}>
+                <dt className="font-display text-[1.1rem] font-book tracking-display">
+                  {item.name}
+                </dt>
+                <dd className="text-[0.85rem] leading-normal text-muted">
+                  {item.note}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
+      <section className={cover}>
+        <div className={coverRuling} aria-hidden="true" />
         <div className={`relative z-10 ${inner} ${section}`}>
-          <div className="grid border border-band-line lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+          <div className="grid border border-ink-line lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-5 p-card-lg">
               <h2 className={h2}>Reference checked against reality</h2>
-              <p className="leading-relaxed text-band-muted">
+              <p className="leading-relaxed text-ink-muted">
                 Everything under Reference is maintained in this repository and
                 reviewed against the OpenAPI schema, the Typer command tree,{' '}
-                <code>Settings.from_environment</code>, and each role&rsquo;s{' '}
-                <code>argument_specs.yml</code>. Version labels record the exact
-                releases covered by that review.
+                <code className="font-mono text-[0.92em]">
+                  Settings.from_environment
+                </code>
+                , and each role&rsquo;s{' '}
+                <code className="font-mono text-[0.92em]">
+                  argument_specs.yml
+                </code>
+                .
               </p>
             </div>
-            <BandLinkList links={referenceLinks} />
+            <CoverLinkList links={referenceLinks} />
           </div>
         </div>
       </section>
@@ -517,7 +638,7 @@ export default function LandingPage() {
           and holds no credentials. See{' '}
           <Link
             href="/docs/architecture"
-            className="text-accent-ink underline underline-offset-2"
+            className="text-rule-ink underline underline-offset-2"
           >
             architecture
           </Link>{' '}

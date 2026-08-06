@@ -11,7 +11,7 @@ import { expect, test } from '@playwright/test'
  * If you delete or rename a page, this array is the other half of the change.
  */
 const routes = [
-  ['/', 'The control plane for your Nginx edge'],
+  ['/', 'Every rule is written down twice'],
   ['/docs', 'BlitzeCDN'],
   ['/about', 'Two people, one narrow tool'],
   ['/contact', 'Where to send what'],

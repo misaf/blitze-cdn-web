@@ -4,14 +4,14 @@
  * (see below), and Nextra inlines its own theme values rather than reading
  * variables from `:root`, so nothing here collides with them.
  *
- * Three things here are deliberate and worth not "fixing" later:
+ * Three things here are structural and worth not "fixing" later:
  *
  * 1. Tailwind is imported WITHOUT preflight. `nextra-theme-docs` ships a
  *    precompiled Tailwind build that contains no preflight of its own (it
  *    styles its own prose explicitly instead), so every docs page currently
  *    relies on browser defaults. Dropping a global reset in would restyle all
- *    of them. The landing page therefore zeroes its own margins with `m-0`
- *    and friends rather than inheriting a reset.
+ *    of them. The hand-designed pages therefore zero their own margins via the
+ *    `.canvas` mini-preflight below rather than inheriting a reset.
  *
  * 2. Because the imports are granular, Tailwind's automatic source detection
  *    does not run — that only happens for a bare `@import "tailwindcss"`. The
@@ -38,6 +38,31 @@
    `prefers-color-scheme` media query Tailwind defaults to. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ==========================================================================
+ * The ledger.
+ *
+ * BlitzeCDN's architecture is double-entry: every constraint the controller
+ * enforces is re-enforced independently on the edge, and every deployment is
+ * an append-only record. The site is styled as the artifact that produces —
+ * an operations ledger — rather than as a network dashboard.
+ *
+ * Which is why the palette is not decorative and should not be extended
+ * casually. It has exactly three jobs:
+ *
+ *   ledger / ink   the record and the writing on it
+ *   rule (oxblood) the ruling of the book: column rules, markers, emphasis
+ *   attest (green) RESERVED. Means "the two sides agree" — a constraint
+ *                  re-checked, a deployment settled. Never decoration.
+ *
+ * The green token is named `attest`, not `balance`, for a mechanical reason:
+ * `--color-balance-*` makes Tailwind emit `text-balance` as a colour utility,
+ * which silently shadows the built-in `text-wrap: balance` one. Every balanced
+ * heading on the site turns green. Do not rename it back.
+ *
+ * Using attest-green for an arbitrary accent is the one change that breaks
+ * the system, because it is load-bearing signal everywhere else.
+ * ========================================================================== */
+
 /*
  * Semantic colours flip between themes; `@theme inline` is what makes that
  * work. It emits `var(--surface)` into the utility instead of copying the
@@ -48,59 +73,88 @@
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-line: var(--line);
-  --color-accent-ink: var(--accent-ink);
+  --color-panel: var(--panel);
+  --color-rule-ink: var(--rule-ink);
+  --color-attest-ink: var(--attest-ink);
 }
 
-/* Fixed colours. The hero, the code panels and the colour bands stay dark in
-   both themes, so they do not participate in the flip above. */
+/* Fixed colours. The dark bands and the code panels hold their tone in both
+   themes, so they do not participate in the flip above. */
 @theme {
-  --color-accent: #ffb61f;
-  --color-accent-bright: #ffc752;
-  --color-accent-contrast: #17130a;
+  /*
+   * Three faces, three jobs, loaded in `layout.jsx` via `next/font/google`
+   * (which self-hosts them at build time — nothing is fetched from Google at
+   * runtime, which matters for a static export that must hold no third-party
+   * requests).
+   *
+   *   display  Zilla Slab   the book's own hand: headings, column heads
+   *   sans     Public Sans  prose. A public-sector design-system face; the
+   *                         register of a record rather than a pitch
+   *   mono     IBM Plex Mono data, keys, code, and every ledger entry
+   *
+   * `--font-sans` and `--font-mono` are overridden rather than added to, so
+   * the Nextra docs routes inherit the same three faces as the hand-designed
+   * pages and the site reads as one book.
+   */
+  --font-display: var(--font-zilla-slab), Georgia, 'Times New Roman', serif;
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, 'SFMono-Regular', monospace;
 
-  --color-ink: #0c0e14;
-  --color-ink-fg: #f4f6fa;
-  --color-ink-muted: #a3acbd;
-  --color-ink-faint: #78849a;
+  /* The ruling of the book. Oxblood, as ledger stock is actually ruled. */
+  --color-rule: #a63a2e;
+  --color-rule-bright: #c9503f;
 
-  --color-band: #1d1b4b;
-  --color-band-fg: #f2f1fb;
-  --color-band-muted: #b9b6dd;
-  --color-band-line: #443f86;
+  /* Reserved: agreement between the two halves. See the note above. */
+  --color-attest: #1f6e4c;
+  --color-attest-bright: #3f9a71;
 
-  --color-code-fg: #d6dbe6;
-  --color-tok-key: #7fd6c4;
-  --color-tok-str: #ffc85c;
-  --color-tok-num: #9db8ff;
-  --color-tok-com: #7b879c;
-  --color-tok-ok: #6ddba0;
+  /* Ledger stock. Cool and slightly green — this is accounting paper, not
+     the warm cream that every other landing page is printed on. This is the
+     fixed tone used *on* the oxblood fill (the primary button's label); the
+     page's own paper is `--surface`, which flips with the theme. */
+  --color-ledger: #dce0dd;
 
-  /* A book weight. The headings want the light, wide geometric feel of the
-     reference design, which bold system fonts destroy. */
-  --font-weight-book: 450;
+  /* The dark half of the book: covers, bands, code panels. */
+  --color-ink: #151a1b;
+  --color-ink-fg: #e8ebe8;
+  --color-ink-muted: #9aa4a1;
+  --color-ink-faint: #85908c;
+  --color-ink-line: #2a3234;
 
-  --tracking-display: -0.022em;
+  /* Code panels sit on `ink`. Tokens are drawn from the same three-job
+     palette rather than a rainbow: keys are paper, values are ruling,
+     confirmations are attest-green. */
+  --color-code-fg: #cfd6d3;
+  --color-tok-key: #e8ebe8;
+  --color-tok-str: #e08a7c;
+  --color-tok-num: #a8bfd8;
+  --color-tok-com: #85908c;
+  --color-tok-ok: #3f9a71;
 
-  --text-hero: clamp(2.75rem, 6.4vw, 5.25rem);
-  --text-section: clamp(2rem, 4vw, 3.4rem);
-  --text-card: clamp(1.25rem, 1.8vw, 1.6rem);
-  --text-principle: clamp(1.35rem, 2.2vw, 1.9rem);
+  /* Zilla Slab reads heavy at display sizes; 500 is the working display
+     weight and 600 is the emphasis, so neither is left to synthesis. */
+  --font-weight-book: 500;
+
+  --tracking-display: -0.012em;
+  /* Ledger column heads and eyebrows are set as small caps, wide. */
+  --tracking-head: 0.16em;
+
+  --text-hero: clamp(2.5rem, 5.4vw, 4.5rem);
+  --text-section: clamp(1.9rem, 3.6vw, 3rem);
+  --text-card: clamp(1.2rem, 1.7vw, 1.5rem);
+  --text-principle: clamp(1.3rem, 2vw, 1.75rem);
 
   /*
-   * The spacing scale. Every one of these was previously a `clamp()` literal
-   * repeated at the call site — `mt-[clamp(2.5rem,5vw,4rem)]` alone appeared
-   * fourteen times, and had already drifted into a second near-identical
-   * variant. They are tokens now so a section gap is one edit, not fourteen.
-   *
-   * `gutter` / `band` / `measure` set the page frame; `flow` and below are the
-   * rhythm inside a section.
+   * The spacing scale. `gutter` / `band` / `measure` set the page frame;
+   * `flow` and below are the rhythm inside a section. They are tokens so a
+   * section gap is one edit rather than fourteen `clamp()` literals.
    */
   --spacing-gutter: clamp(1.25rem, 5vw, 5.5rem);
-  --spacing-band: clamp(4rem, 9vw, 8.5rem);
-  --spacing-measure: 82rem;
+  --spacing-band: clamp(4rem, 8vw, 7.5rem);
+  --spacing-measure: 80rem;
 
   /* Section heading to the content it introduces. */
-  --spacing-flow: clamp(2.5rem, 5vw, 4rem);
+  --spacing-flow: clamp(2.25rem, 4.5vw, 3.5rem);
   /* The gap between a split header's heading and its supporting prose. */
   --spacing-split: clamp(1.25rem, 4vw, 4rem);
 
@@ -112,28 +166,35 @@
   /* The closing note that ends a page above the footer. */
   --spacing-note: clamp(3rem, 5vw, 4.5rem);
 
-  /* Full-bleed list rows: the principle/belief rows, and the band link rows. */
-  --spacing-row: clamp(1.75rem, 3vw, 2.5rem);
+  /* Full-bleed ledger rows: the principle/belief rows, and the band links. */
+  --spacing-row: clamp(1.5rem, 2.6vw, 2.25rem);
   --spacing-row-x: clamp(1.25rem, 2.5vw, 2rem);
   --spacing-row-y: clamp(1.1rem, 2.2vw, 1.5rem);
 }
 
 :root {
-  --surface: #ffffff;
-  --fg: #10131a;
-  --muted: #4d5563;
-  --line: #e2e5ea;
-  /* Amber is legible on dark surfaces but not on white, so labels and links in
-     the light theme use a darkened version of it. */
-  --accent-ink: #8a5300;
+  /* Ledger stock, and the lighter leaf laid on top of it. Two tones rather
+     than one: cards are `panel` and the page is `surface`, so a card is
+     legible as a separate piece of paper without needing a shadow — which
+     this design does not have and should not acquire. */
+  --surface: #e4e8e4;
+  --panel: #f0f2ef;
+  --fg: #151a1b;
+  --muted: #5c6462;
+  --line: #ccd2ce;
+  /* Oxblood is legible on paper as-is; on the dark bands it needs lifting. */
+  --rule-ink: #a63a2e;
+  --attest-ink: #17573c;
 }
 
 .dark {
-  --surface: #0c0e14;
-  --fg: #f4f6fa;
-  --muted: #9aa4b6;
-  --line: #23283a;
-  --accent-ink: #ffb61f;
+  --surface: #151a1b;
+  --panel: #1b2122;
+  --fg: #e8ebe8;
+  --muted: #9aa4a1;
+  --line: #2a3234;
+  --rule-ink: #e08a7c;
+  --attest-ink: #3f9a71;
 }
 
 /*
@@ -147,6 +208,25 @@
  * utility class still wins.
  */
 @layer base {
+  /* The one genuinely global rule in this file. Nextra's compiled theme sets
+     no font stack of its own, so the docs routes fall through to the browser
+     default unless the faces are named here — which is what makes the docs
+     and the hand-designed pages read as the same book. It sits in `base` and
+     targets `body`, so any utility on any element still wins. */
+  body {
+    font-family: var(--font-sans);
+  }
+
+  /* Headings take the display face everywhere, including the docs routes,
+     whose prose styles are precompiled inside the theme and cannot be reached
+     with utilities. Scoped to `main` so the navbar and sidebar are untouched,
+     and in `base` with `:where()` so it carries no specificity — the
+     hand-designed pages set `font-display` as a utility and still win. */
+  main :where(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+    letter-spacing: var(--tracking-display);
+  }
+
   .canvas,
   .canvas *,
   .canvas *::before,
@@ -168,81 +248,73 @@
  * Inline `<code>` inside a Nextra callout, light theme only.
  *
  * The theme tints both the callout and the code chip, and the two tints
- * compose to #a65f00 on #f6f4e1 — 4.44:1, which misses the 4.5:1 WCAG AA
- * threshold for body text. It is a near miss rather than an obviously broken
- * colour, which is why it survived: nothing was checking these routes until
- * the reference and guide pages were added to `tests/e2e/site.spec.js`.
+ * compose to a value that misses the 4.5:1 WCAG AA threshold for body text.
+ * It is a near miss rather than an obviously broken colour, which is why it
+ * survived until the reference and guide pages were added to
+ * `tests/e2e/site.spec.js`.
  *
- * `--accent-ink` is the site's existing darkened amber, already used for links
- * and labels on light surfaces, so this introduces no new colour — it reaches
- * 5.7:1 against the same background.
+ * `--rule-ink` is the site's oxblood, already used for links and markers on
+ * light surfaces, so this introduces no new colour.
  *
- * Scoped away from `.dark`: the dark callout pairs yellow-500 with a
- * translucent yellow-700 and passes as it stands.
+ * Scoped away from `.dark`, whose pairing passes as it stands.
  */
 :where(html:not(.dark)) .nextra-callout :where(code.nextra-code) {
-  color: var(--accent-ink);
+  color: var(--rule-ink);
 }
 
 /*
  * The same near-miss one step over: inline `<code>` inside a link. The theme's
- * link blue is measured against the page, but the code chip puts a grey tint
- * behind it, and #006be6 on #f3f3f3 comes to 4.45:1. Darkening the blue for
- * this case only keeps the link colour recognisable — same hue, one step down
- * — and reaches 5.9:1. Light theme only; the dark pairing passes.
+ * link colour is measured against the page, but the code chip puts a grey tint
+ * behind it. Darkening it for this case only keeps the link recognisable.
  */
 :where(html:not(.dark)) a :where(code.nextra-code) {
-  color: #0059c2;
+  color: #8c2f24;
 }
 
 /*
- * The hero's vertical-bar gradient: a radial amber bloom sliced into bars by a
- * repeating hard-stop gradient. Pure CSS, because this site is a static export
- * that ships no images. Too many layered stops to express as utilities.
+ * ---------------------------------------------------------------------------
+ * Ruled stock.
+ *
+ * The horizontal ruling of a ledger page, drawn as a repeating gradient rather
+ * than an image — this site is a static export and ships no bitmaps. The rules
+ * are pinned to a 2rem rhythm so rows land on them.
+ *
+ * `ruled-paper` is the light stock; `ruled-cover` is the dark half of the book.
+ * Both are decoration and always sit behind content with `aria-hidden`.
  */
-@utility hero-art {
-  background-color: #0c0e14;
-  background-image:
-    repeating-linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.55) 0 1px,
-      transparent 1px 7px
-    ),
-    radial-gradient(
-      120% 78% at 62% 82%,
-      #ffb61f 0%,
-      #f0761d 26%,
-      #7a2f6b 52%,
-      #241b4b 72%,
-      #0c0e14 100%
-    );
+@utility ruled-paper {
+  background-image: repeating-linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-rule) 14%, transparent) 0 1px,
+    transparent 1px 2rem
+  );
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .hero-art {
-    animation: hero-bloom 14s ease-in-out infinite alternate;
-  }
+@utility ruled-cover {
+  background-image: repeating-linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-rule) 22%, transparent) 0 1px,
+    transparent 1px 2rem
+  );
 }
 
-@keyframes hero-bloom {
-  from {
-    background-position:
-      0 0,
-      54% 88%;
-  }
-  to {
-    background-position:
-      0 0,
-      70% 74%;
-  }
+/* The single vertical rule that divides a double-entry spread. Oxblood, a
+   hair heavier than the horizontals, because it is the one line in the book
+   that means something structural: left of it is the controller, right of it
+   is the edge. */
+@utility spread-rule {
+  border-color: var(--color-rule);
 }
 
-/* The WebGL globe mounts after hydration, on top of the CSS bloom. Without a
-   fade it pops in a frame or two late; this hides the seam. */
-@keyframes hero-globe-in {
+/*
+ * The hero ledger settles its rows on load: each entry is posted, then the
+ * edge column confirms it. Reduced motion gets the settled state immediately,
+ * which is the same information without the performance.
+ */
+@keyframes post-entry {
   from {
     opacity: 0;
-    transform: scale(0.96);
+    transform: translateY(0.5rem);
   }
   to {
     opacity: 1;
@@ -250,33 +322,326 @@
   }
 }
 
-/* The same bar motif, tucked into a colour band's trailing corner. Kept dim:
-   card text and link rows sit on top of it, and a hotter bloom eats their
-   contrast. */
-@utility band-art {
-  background-image:
-    repeating-linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.4) 0 1px,
-      transparent 1px 7px
-    ),
-    radial-gradient(
-      100% 82% at 88% 100%,
-      #ffb61f 0%,
-      #b4457a 34%,
-      rgba(29, 27, 75, 0) 72%
-    );
-  opacity: 0.45;
+@keyframes confirm-entry {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-/* The `▶` that opens each section label. */
-@utility eyebrow-marker {
-  &::before {
-    content: '';
-    width: 0;
-    height: 0;
-    border-style: solid;
-    border-width: 0.3rem 0 0.3rem 0.45rem;
-    border-color: transparent transparent transparent currentColor;
+@media (prefers-reduced-motion: no-preference) {
+  .posts-in {
+    animation: post-entry 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
+    animation-delay: calc(var(--entry) * 110ms);
   }
+
+  .confirms-in {
+    animation: confirm-entry 0.4s ease-out backwards;
+    /* Always after its own row has posted: the edge cannot confirm an entry
+       that has not been written yet, and the sequence is the argument. */
+    animation-delay: calc(var(--entry) * 110ms + 340ms);
+  }
+}
+
+/* ==========================================================================
+ * The docs routes.
+ *
+ * `nextra-theme-docs` ships precompiled CSS whose utilities are all prefixed
+ * `x:`, so its furniture cannot be restyled with our utilities the way the
+ * hand-designed pages are — the markup is not ours to put classes on. These
+ * rules are the alternative: they target the theme's own stable `nextra-*`
+ * class names and re-state the ledger vocabulary on them.
+ *
+ * Two deliberate constraints on everything below.
+ *
+ * 1. It is UNLAYERED. The theme's stylesheet is imported before this file in
+ *    `layout.jsx`, and these rules have to win against long utility chains
+ *    like `x:rounded-lg x:bg-gray-100 x:shadow`. Unlayered rules beat layered
+ *    ones outright, and against the theme's own unlayered rules source order
+ *    settles it in our favour. Wrapping this in `@layer` silently reverts the
+ *    whole section.
+ *
+ * 2. It never forces a fixed tone onto code. Syntax highlighting is emitted by
+ *    rehype-pretty-code as per-token `--shiki-light` / `--shiki-dark` values,
+ *    so pinning a code block to the dark ink in both themes — which is what
+ *    the landing page's transcripts do — would leave light-theme tokens dark
+ *    on dark. Code blocks get the ledger's square corners and its oxblood
+ *    head rule instead, and let the theme keep the fill.
+ * ========================================================================== */
+
+/*
+ * Nothing in this book is rounded. The theme rounds cards, callouts, code
+ * blocks, sidebar links and the search field; a ruled ledger has corners.
+ */
+.nextra-card,
+.nextra-callout,
+.nextra-filetree,
+.nextra-sidebar a,
+.nextra-toc a,
+.nextra-search input,
+.nextra-search kbd,
+.nextra-search-results,
+.nextra-search-results [role='option'],
+.nextra-mobile-nav a,
+.nextra-mobile-nav button,
+main pre.not-prose,
+main :where(.nextra-code) {
+  border-radius: 0;
+}
+
+/*
+ * The search panel is a leaf laid over the page, not a floating card: the
+ * theme's `x:rounded-xl x:shadow-xl` becomes a squared panel on a plain rule,
+ * and the highlighted result takes the same oxblood margin rule the sidebar
+ * uses for the current page, so "where you are" looks the same in both.
+ */
+.nextra-search-results {
+  background-color: var(--panel);
+  box-shadow: none;
+}
+
+/* Headless UI drives the highlight with `data-active`, NOT `aria-selected` —
+   every option reports `aria-selected="false"`, including the highlighted one,
+   so keying off that attribute silently matches nothing. */
+.nextra-search-results [role='option'][data-active] {
+  background-color: var(--surface);
+  box-shadow: inset 2px 0 0 0 var(--color-rule);
+  color: var(--fg);
+}
+
+/* Every rule in the theme is a ledger rule. */
+.nextra-border,
+.nextra-filetree,
+.nextra-sidebar,
+.nextra-toc {
+  border-color: var(--line);
+}
+
+/*
+ * The sidebar is the book's index. The theme marks the current page with a
+ * tinted rounded pill; a ledger marks its place with a rule in the margin, so
+ * the active entry gets the oxblood edge and the panel leaf instead.
+ */
+/* The mobile menu's open section header is the same kind of marker as the
+   active page, and the theme gives it the same tinted pill. */
+.nextra-mobile-nav li.active > button,
+.nextra-sidebar li.active > a,
+.nextra-mobile-nav li.active > a {
+  background-color: var(--panel);
+  box-shadow: inset 2px 0 0 0 var(--color-rule);
+  color: var(--fg);
+}
+
+/* Section headings in the sidebar and the TOC are column heads, set like
+   every other column head on the site. */
+.nextra-toc div > p:first-child,
+.nextra-sidebar button[data-href] {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: var(--tracking-head);
+  text-transform: uppercase;
+}
+
+/*
+ * Callouts are marginalia, not boxes. The theme draws a full tinted border on
+ * all four sides; this keeps the callout's own hue but spends it on a single
+ * edge rule, which is how a note is marked against a ruled page.
+ */
+.nextra-callout {
+  border-width: 0 0 0 3px;
+  padding-block: 0.85em;
+  padding-inline-start: 1em;
+}
+
+/*
+ * Cards become ruled cells: no shadow, no lift, no tinted fill that differs
+ * from the panels everywhere else on the site. The hover moves the rule to
+ * oxblood, which is the same hover the hand-designed pages use.
+ */
+.nextra-card {
+  background-color: var(--panel);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.nextra-card:hover {
+  border-color: var(--color-rule);
+  box-shadow: none;
+}
+
+/*
+ * Code blocks get the landing page's transcript treatment as far as the
+ * shiki constraint above allows: square, and opened by the oxblood head rule
+ * that marks the start of an entry everywhere else in the book.
+ */
+main pre.not-prose {
+  border-top: 2px solid var(--color-rule);
+  /* `panel` rather than the theme's white/black, so a code block reads as the
+     same leaf of paper as every other panel on the site. It flips with the
+     theme, which keeps the shiki token sets on the fill they were chosen
+     against — see the constraint at the top of this section. */
+  background-color: var(--panel);
+}
+
+/* The banner is the stamp across the top of the page. The theme's default is
+   a neutral gradient; this is the ink cover with the ruling under it. */
+.nextra-banner {
+  background: var(--color-ink);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+/* Breadcrumbs read as the page's filing line rather than as prose. */
+.nextra-breadcrumb {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+/*
+ * The colophon is the back cover of the book.
+ *
+ * It holds the ink tone in BOTH themes, the way the hero and the guarantee
+ * bands do — it is the one surface that bookends the page rather than
+ * belonging to it, and the markup in `layout.jsx` colours its text against ink
+ * accordingly. The theme's own `x:text-gray-600 x:dark:text-gray-400` is
+ * overridden here for the same reason: on ink it is a blue-cast grey that
+ * belongs to no palette on this site.
+ *
+ * The oxblood top rule is the closing rule of a ledger page, and the ruling
+ * repeats the cover texture from `ruled-cover`. It is spelled out rather than
+ * composed from that utility because the element is Nextra's and takes no
+ * class of ours — keep the two in step by hand if the rhythm changes.
+ */
+body footer {
+  background-color: var(--color-ink);
+  background-image: repeating-linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-rule) 22%, transparent) 0 1px,
+    transparent 1px 2rem
+  );
+  border-top: 2px solid var(--color-rule);
+  color: var(--color-ink-muted);
+}
+
+/*
+ * One syntax token, re-tuned for the paper.
+ *
+ * Shiki emits its comment grey `#6A737D` as an inline `--shiki-light` /
+ * `--shiki-dark` pair. It clears 4.5:1 against the white and black fills the
+ * theme ships by default, but the code blocks above sit on `panel` instead,
+ * and against that leaf it falls to 4.27:1 in light and 3.4:1 in dark.
+ *
+ * The inline style cannot be edited, and re-declaring `--shiki-light` from a
+ * stylesheet loses to it — an inline custom property wins without
+ * `!important`. So the token is matched on its inline value and its `color`
+ * is set directly, which outranks the theme's `color: var(--shiki-light)`
+ * on specificity alone. Same hue, one step darker on paper and one step
+ * lighter on ink; both land above 5:1. If the panel tones move, re-check
+ * these two rather than assuming they still hold.
+ */
+main pre [style*='--shiki-light:#6A737D'] {
+  color: #57606a;
+}
+
+.dark main pre [style*='--shiki-light:#6A737D'] {
+  color: #8b949e;
+}
+
+/*
+ * Mermaid diagrams.
+ *
+ * `@theguild/remark-mermaid` initialises mermaid with its stock `default` and
+ * `dark` themes and exposes no `themeVariables` hook through Nextra, so the
+ * diagrams on `/docs/architecture` render in mermaid's own blues and lilacs —
+ * the one place on the site with a palette nobody chose.
+ *
+ * Mermaid injects a `<style>` block into each diagram whose rules are scoped
+ * by the svg's generated id, so they carry id specificity (1,0,0) and the id
+ * itself changes every build. There is no selector that outranks them, which
+ * is the one honest reason for `!important` in this file. Everything is
+ * confined to `main svg[aria-roledescription]` so nothing else can be caught
+ * by it.
+ *
+ * Node text is rendered into a `foreignObject`, so `color` carries it; the
+ * shapes are real SVG, so `fill` and `stroke` carry those. Both are set.
+ */
+main svg[aria-roledescription] {
+  font-family: var(--font-sans) !important;
+}
+
+/* Boxes are panels with a ledger rule, matching every other card. */
+main svg[aria-roledescription] .label-container,
+main svg[aria-roledescription] .actor,
+main svg[aria-roledescription] .note {
+  fill: var(--panel) !important;
+  stroke: var(--line) !important;
+}
+
+/* Everything written inside a box is body text. */
+main svg[aria-roledescription] .nodeLabel,
+main svg[aria-roledescription] .messageText,
+main svg[aria-roledescription] .labelText,
+main svg[aria-roledescription] .loopText,
+main svg[aria-roledescription] text {
+  color: var(--fg) !important;
+  fill: var(--fg) !important;
+}
+
+/*
+ * Every connector is oxblood. In a diagram of this system an arrow is a
+ * hand-off between the two halves, which is exactly what the oxblood rule
+ * means everywhere else in the book.
+ */
+main svg[aria-roledescription] .flowchart-link,
+main svg[aria-roledescription] .messageLine0,
+main svg[aria-roledescription] .messageLine1 {
+  stroke: var(--color-rule) !important;
+}
+
+main svg[aria-roledescription] .arrowMarkerPath,
+main svg[aria-roledescription] marker path {
+  fill: var(--color-rule) !important;
+  stroke: var(--color-rule) !important;
+}
+
+/* Edge labels sit on the page, not on a tinted chip. */
+main svg[aria-roledescription] .edgeLabel .labelBkg,
+main svg[aria-roledescription] .edgeLabel rect {
+  fill: var(--surface) !important;
+}
+
+/*
+ * Inline code inside a heading.
+ *
+ * `code.nextra-code` carries its own background and padding, and inherits the
+ * heading's font-size — so a heading like "Why not use `ansible-runner`?" gets
+ * a grey box wedged into it at full display size, and the same chips make the
+ * table of contents lumpy. Scaling relative to the heading keeps the chip
+ * legible as code without letting it set the line's height.
+ *
+ * Two specificity traps here, both of which made earlier attempts do nothing
+ * at all:
+ *
+ * 1. `:where()` contributes zero specificity. Wrapping the heading list in it
+ *    scored the whole selector below the theme's rule.
+ * 2. The theme sets this size from a NESTED rule —
+ *    `code.nextra-code { :not(pre) > &:not([class*=twoslash-]) { font-size:
+ *    .9em } }` — which expands to (0,2,2). A plain
+ *    `main :is(h1,h2,h3,h4) code.nextra-code` is only (0,1,3) and loses.
+ *
+ * Repeating the theme's own `:not([class*='twoslash-'])` guard takes this to
+ * (0,2,3) and is honest about intent: twoslash code blocks are excluded here
+ * for the same reason the theme excludes them.
+ */
+main :is(h1, h2, h3, h4) code.nextra-code:not([class*='twoslash-']) {
+  font-size: 0.78em;
+  padding-inline: 0.35em;
+  vertical-align: 0.06em;
+}
+
+.nextra-toc a code.nextra-code:not([class*='twoslash-']) {
+  font-size: 0.85em;
+  padding-inline: 0.3em;
 }

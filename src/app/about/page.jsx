@@ -1,22 +1,19 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import {
-  Check,
+  Attest,
   ExternalCardGrid,
-  Icon,
   PageHero,
-  band,
-  bandArt,
   btnGhost,
-  btnPrimary,
+  cover,
+  coverRuling,
   eyebrow,
+  eyebrowOnCover,
   flow,
-  grid,
-  gridCell,
   h2,
   h3,
   inner,
   lede,
-  principleRow,
   section,
   split,
 } from '@/components/ui'
@@ -24,72 +21,92 @@ import {
 export const metadata = {
   title: 'About us',
   description:
-    'Who maintains BlitzeCDN, why it was rebuilt, and the principles the ' +
-    'current design commits to.',
+    'Who maintains BlitzeCDN, why it was rebuilt, and the rule each of the ' +
+    'old system’s failures produced.',
 }
 
-const FOUNDER_NAME = 'Misaf'
+const FOUNDER_NAME = 'Ehsan'
 
-/* The predecessor's failure modes, from the original system assessment in
-   docs/architecture. These are the reasons the current boundaries exist. */
-const inherited = [
-  {
-    title: 'Queued work vanished',
-    body: 'HTTP background tasks held an open fcntl lock and launched ansible-playbook. Restarting the process lost whatever was queued.',
-  },
-  {
-    title: 'Rollback wrote first',
-    body: 'Current desired state was rewritten before remote convergence, so a failed rollback left the controller describing a fleet that did not exist.',
-  },
-  {
-    title: 'Five places to disagree',
-    body: 'Validation and defaults were duplicated across Pydantic models, YAML serializers, Ansible assertions, role defaults and Jinja templates.',
-  },
-  {
-    title: 'Secrets in the repository',
-    body: 'The inventory carried real hosts, root SSH and a repository-local private-key path. The firewall role was commented out.',
-  },
-]
-
-const beliefs = [
-  {
-    name: 'One owner per concern',
-    body: 'Python owns validation, desired state, history, planning, rollback and audit. Ansible exclusively owns remote Linux state and carries no product workflow decisions. When two components can both decide something, they will eventually decide differently.',
-    icon: <path d="M4 6h16M4 12h16M4 18h10" />,
-  },
-  {
-    name: 'Enforce it twice',
-    body: 'Every constraint that holds on the controller is re-checked on the edge. A hand-edited desired-state file is not a supported input path, and it does not become one by accident.',
-    icon: <path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z" />,
-  },
-  {
-    name: 'Never claim more than you established',
-    body: 'Canonical state changes only after a convergence actually succeeds. An unknown outcome is recorded as unknown — abandoned is not a synonym for failed.',
-    icon: <path d="M12 8v5M12 16.5h.01M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z" />,
-  },
-  {
-    name: 'Secrets travel one way',
-    body: 'Private keys are validated on the way in and are never returned, never logged, never rendered into a plan, and never accepted as command-line arguments.',
-    icon: <path d="M6 11V8a6 6 0 0 1 12 0v3M5 11h14v9H5z" />,
-  },
-  {
-    name: 'Refuse clearly',
-    body: 'No VM provisioning, no DNS, no wildcard certificates, no cache invalidation fan-out, no active/active. Each needs a design we have not done, and a stated boundary is easier to operate against than a vague one.',
-    icon: <path d="M12 3v18M3 12h18" />,
-  },
-]
-
+/*
+ * The two people who keep the project.
+ *
+ * `avatar` is a path under `public/team/`. Both files are square, so the frame
+ * crops nothing. `alt` is deliberately empty: the person's name sits
+ * immediately beside the photo, and describing it again only makes a screen
+ * reader announce the name twice.
+ */
 const people = [
   {
     name: FOUNDER_NAME,
     handle: 'misaf',
     role: 'Founder',
+    avatar: '/team/misaf.jpg',
     body: 'Design, control plane, and edge roles.',
   },
   {
     name: 'Arefeh',
     role: 'Support',
+    avatar: '/team/arefeh.jpg',
     body: 'Issue triage, documentation, and operator questions.',
+  },
+]
+
+/*
+ * The page's argument, and the reason it is a two-column register rather than
+ * two lists.
+ *
+ * `failure` is what the predecessor actually did, from the system assessment in
+ * docs/architecture. `rule` is the constraint that exists BECAUSE of it. The
+ * pairing is the point: every rule here was bought with an outage, and a bare
+ * list of principles — which is what this page used to be, restating the
+ * landing page's "Five commitments" almost line for line — cannot show that.
+ */
+const reactions = [
+  {
+    failure: 'Queued work vanished',
+    failureBody:
+      'HTTP background tasks held an open fcntl lock and launched ansible-playbook. Restarting the process lost whatever was queued.',
+    rule: 'Never claim more than you established',
+    ruleBody:
+      'The record is committed before the work starts, so a restart leaves visible abandoned work rather than silently losing it. An unknown outcome is recorded as unknown.',
+  },
+  {
+    failure: 'Rollback wrote first',
+    failureBody:
+      'Current desired state was rewritten before remote convergence, so a failed rollback left the controller describing a fleet that did not exist.',
+    rule: 'Canonical state moves last',
+    ruleBody:
+      'Desired state is replaced only after a convergence actually succeeds, in one transaction, under a single hold of the deployment lock.',
+  },
+  {
+    failure: 'Five places to disagree',
+    failureBody:
+      'Validation and defaults were duplicated across Pydantic models, YAML serializers, Ansible assertions, role defaults and Jinja templates.',
+    rule: 'One owner per concern',
+    ruleBody:
+      'Python owns validation, desired state, history, planning, rollback and audit. Ansible exclusively owns remote Linux state. When two components can both decide something, they eventually decide differently.',
+  },
+  {
+    failure: 'Secrets in the repository',
+    failureBody:
+      'The inventory carried real hosts, root SSH and a repository-local private-key path. The firewall role was commented out.',
+    rule: 'Secrets travel one way',
+    ruleBody:
+      'Private keys are validated on the way in and never returned, never logged, never rendered into a plan, and never accepted as command-line arguments.',
+  },
+]
+
+/* The two rules that are not reactions. Stated separately rather than folded
+   into the register above, because implying they were paid for in outages
+   would be the same flattery this page exists to avoid. */
+const designedIn = [
+  {
+    name: 'Enforce it twice',
+    body: 'Every constraint that holds on the controller is re-checked on the edge. A hand-edited desired-state file is not a supported input path, and it does not become one by accident.',
+  },
+  {
+    name: 'Refuse clearly',
+    body: 'No VM provisioning, no DNS, no wildcard certificates, no cache invalidation fan-out, no active/active. Each needs a design we have not done, and a stated boundary is easier to operate against than a vague one.',
   },
 ]
 
@@ -130,6 +147,77 @@ export default function AboutPage() {
         that than impressive.
       </PageHero>
 
+      {/* People lead. On a page called "About us", who we are is the answer to
+          the question the reader arrived with; it used to sit fourth, below
+          three sections of architecture history. */}
+      <section className={section}>
+        <div className={inner}>
+          <p className={eyebrow}>Who keeps it</p>
+          <div className={split}>
+            <h2 className={h2}>The whole team</h2>
+            <p className={lede}>
+              Between us we cover the project&rsquo;s day-to-day, alongside
+              other work. We are not a 24/7 support desk and would rather say so
+              plainly than imply otherwise. What to expect is set out on{' '}
+              <Link
+                href="/contact"
+                className="text-rule-ink underline underline-offset-2"
+              >
+                Contact us
+              </Link>
+              .
+            </p>
+          </div>
+          <div className={`${flow} grid border border-line md:grid-cols-2`}>
+            {people.map((person, index) => (
+              <div
+                key={person.name}
+                className={`flex gap-5 p-card ${
+                  index > 0
+                    ? 'border-t border-line md:border-t-0 md:border-l'
+                    : ''
+                }`}
+              >
+                {/* Square and ruled, like every other frame in the book — a
+                    circular crop is the one shape this design does not have.
+                    `next/image` rather than a bare `<img>`: the build runs with
+                    `images: { unoptimized: true }`, so it emits a plain tag
+                    anyway while keeping the intrinsic size declared. */}
+                <Image
+                  src={person.avatar}
+                  alt=""
+                  width={400}
+                  height={400}
+                  className="size-20 shrink-0 border border-line bg-panel object-cover sm:size-24"
+                />
+                <div className="flex flex-col gap-2">
+                  <p className="font-mono text-[0.68rem] tracking-head text-rule-ink uppercase">
+                    {person.role}
+                  </p>
+                  <h3 className={h3}>{person.name}</h3>
+                  {person.handle && (
+                    <a
+                      href={`https://github.com/${person.handle}`}
+                      className="w-fit font-mono text-[0.82rem] text-muted underline underline-offset-4 hover:text-fg"
+                    >
+                      @{person.handle}
+                    </a>
+                  )}
+                  <p className="text-[0.95rem] leading-relaxed text-muted">
+                    {person.body}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/*
+        The register. Same double-entry device as the landing page's hero, doing
+        a different job: there the two columns are two enforcers agreeing, here
+        they are a failure and the rule it produced.
+      */}
       <section className={section}>
         <div className={inner}>
           <p className={eyebrow}>Why it was rebuilt</p>
@@ -139,102 +227,107 @@ export default function AboutPage() {
               BlitzeCDN is a rewrite. The earlier system combined a global
               FastAPI application, loosely typed service functions, a YAML site
               database, SQLite deployment records, a Bash and curl helper, and
-              Ansible roles. None of it was the result of one bad decision — it
-              was many reasonable ones accumulating without a boundary to stop
-              them. So the rewrite started from the boundary rather than the
-              features.
+              Ansible roles. None of it was one bad decision — it was many
+              reasonable ones accumulating without a boundary to stop them. So
+              the rewrite started from the boundary rather than the features.
             </p>
           </div>
-          <dl className={`${grid} sm:grid-cols-2`}>
-            {inherited.map((item) => (
-              <div key={item.title} className={`${gridCell} min-h-44`}>
-                <dt className="text-[1.18rem] font-medium tracking-tight">
-                  {item.title}
-                </dt>
-                <dd className="text-[0.92rem] leading-relaxed text-muted">
-                  {item.body}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
 
-      <section className={band}>
-        <div className={bandArt} aria-hidden="true" />
-        <div className={`relative z-10 ${inner} ${section}`}>
-          <p className={`${eyebrow} text-accent!`}>What we believe</p>
-          <h2 className={h2}>Five commitments the design is held to</h2>
-          <div className={flow}>
-            {beliefs.map((belief) => (
-              <div key={belief.name} className={principleRow('band')}>
-                <h3 className="flex items-center gap-4 text-principle font-book tracking-display">
-                  <Icon className="size-[1.4rem] shrink-0 text-accent">
-                    {belief.icon}
-                  </Icon>
-                  {belief.name}
-                </h3>
-                <p className="leading-relaxed text-band-muted">{belief.body}</p>
-              </div>
-            ))}
+          {/* A real table: two headed columns whose association is the whole
+              content. A screen reader user needs to know the right-hand cell is
+              the consequence of the left, not a second unrelated list. It
+              scrolls sideways on a phone under the same rule as the hero
+              ledger — a scroll container is only reachable by keyboard if it is
+              focusable, so it is a tabbable named region. */}
+          <div
+            className={`${flow} overflow-x-auto border border-line focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rule`}
+            tabIndex={0}
+            role="region"
+            aria-label="Each failure of the previous system, and the rule it produced"
+          >
+            <table className="w-full min-w-[36rem] border-collapse text-left">
+              <caption className="border-b border-line px-card py-3 text-left font-mono text-[0.68rem] tracking-head text-muted uppercase">
+                The previous system · assessed before the rewrite
+              </caption>
+              <thead>
+                <tr className="font-mono text-[0.68rem] tracking-head uppercase">
+                  <th
+                    scope="col"
+                    className="border-b border-line px-card py-2.5 font-medium text-muted"
+                  >
+                    What went wrong
+                  </th>
+                  {/* The oxblood divider, as in the hero ledger: left of it is
+                      what happened, right of it is what it cost. */}
+                  <th
+                    scope="col"
+                    className="border-b border-l-2 spread-rule border-b-line px-card py-2.5 font-medium text-rule-ink"
+                  >
+                    The rule it produced
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {reactions.map((row) => (
+                  <tr key={row.failure} className="align-top">
+                    <th
+                      scope="row"
+                      className="w-1/2 border-b border-line px-card py-5 font-normal"
+                    >
+                      <span className="flex flex-col gap-2">
+                        <span className="font-display text-[1.05rem] font-book tracking-display">
+                          {row.failure}
+                        </span>
+                        <span className="text-[0.88rem] leading-relaxed text-muted">
+                          {row.failureBody}
+                        </span>
+                      </span>
+                    </th>
+                    <td className="border-b border-l-2 spread-rule border-b-line px-card py-5">
+                      <span className="flex flex-col gap-2">
+                        <span className="font-display text-[1.05rem] font-book tracking-display text-rule-ink">
+                          {row.rule}
+                        </span>
+                        <span className="text-[0.88rem] leading-relaxed text-muted">
+                          {row.ruleBody}
+                        </span>
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+
+          <div className="mt-flow grid gap-x-10 gap-y-6 border-t-2 border-rule pt-6 md:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+            <h3 className="font-display text-card font-book tracking-display">
+              And two that cost nothing
+            </h3>
+            <div className="grid gap-5">
+              <p className="text-[0.95rem] leading-relaxed text-muted">
+                These two were designed in rather than paid for. Implying
+                otherwise would be the same flattery this page exists to avoid.
+              </p>
+              <dl className="grid gap-4">
+                {designedIn.map((item) => (
+                  <div key={item.name} className="grid gap-1.5">
+                    <dt className="font-display text-[1.05rem] font-book tracking-display">
+                      {item.name}
+                    </dt>
+                    <dd className="text-[0.9rem] leading-relaxed text-muted">
+                      {item.body}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+
           <div className="mt-flow flex justify-center">
-            <Link href="/docs/architecture" className={btnPrimary}>
+            <Link href="/docs/architecture" className={btnGhost}>
               See how they play out
             </Link>
           </div>
-        </div>
-      </section>
-
-      <section className={section}>
-        <div className={inner}>
-          <p className={eyebrow}>Who we are</p>
-          <div className={split}>
-            <h2 className={h2}>The whole team</h2>
-            <p className={lede}>
-              Between us we cover the project&rsquo;s day-to-day, alongside
-              other work. We are not a 24/7 support desk and would rather say so
-              plainly than imply otherwise.
-            </p>
-          </div>
-          <div className={`${flow} grid border border-line md:grid-cols-2`}>
-            {people.map((person, index) => (
-              <div
-                key={person.name}
-                /* `p-card`, matching every other card on the site — this was
-                   the one place using a fourth, slightly larger padding. */
-                className={`flex flex-col gap-3 p-card ${
-                  index > 0
-                    ? 'border-t border-line md:border-t-0 md:border-l'
-                    : ''
-                }`}
-              >
-                <p className="font-mono text-[0.72rem] tracking-[0.12em] text-accent-ink uppercase">
-                  {person.role}
-                </p>
-                <h3 className={h3}>{person.name}</h3>
-                {person.handle && (
-                  <a
-                    href={`https://github.com/${person.handle}`}
-                    className="w-fit font-mono text-[0.82rem] text-muted underline underline-offset-4 hover:text-fg"
-                  >
-                    @{person.handle}
-                  </a>
-                )}
-                <p className="leading-relaxed text-muted">{person.body}</p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-8 text-[0.95rem] text-muted">
-            What to expect from us is spelled out on{' '}
-            <Link
-              href="/contact"
-              className="text-accent-ink underline underline-offset-2"
-            >
-              Contact us
-            </Link>
-            .
-          </p>
         </div>
       </section>
 
@@ -259,15 +352,15 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className={band}>
-        <div className={bandArt} aria-hidden="true" />
+      <section className={cover}>
+        <div className={coverRuling} aria-hidden="true" />
         <div className={`relative z-10 ${inner} ${section}`}>
-          <div className="grid gap-10 border border-band-line p-card-lg lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div className="grid gap-10 border border-ink-line p-card-lg lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-5">
-              <p className={`${eyebrow} mb-0 text-accent!`}>Licence</p>
+              <p className={`${eyebrowOnCover} mb-0`}>Licence</p>
               <h2 className={h2}>MIT, warranty and all</h2>
             </div>
-            <div className="flex flex-col gap-4 text-band-muted">
+            <div className="flex flex-col gap-4 text-ink-muted">
               <p className="leading-relaxed">
                 Use it commercially, modify it, redistribute it. It comes with
                 no warranty — which, for software that reconfigures production
@@ -275,11 +368,11 @@ export default function AboutPage() {
               </p>
               <ul role="list" className="grid gap-2.5 text-[0.95rem]">
                 <li className="flex items-start gap-2.5">
-                  <Check />
+                  <Attest className="text-attest-bright" />
                   <span>Commercial use, modification, redistribution</span>
                 </li>
                 <li className="flex items-start gap-2.5">
-                  <Check />
+                  <Attest className="text-attest-bright" />
                   <span>Test against hosts you can afford to break first</span>
                 </li>
               </ul>

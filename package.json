@@ -18,15 +18,12 @@
     "check": "npm run lint && npm run format:check && npm run check:docs && npm run build && npm run check:links"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.7.0",
     "next": "^16.3.0",
     "next-themes": "^0.4.6",
     "nextra": "^4.6.1",
     "nextra-theme-docs": "^4.6.1",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "three": "^0.185.1"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

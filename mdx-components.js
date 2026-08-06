@@ -30,7 +30,7 @@ const Table = ({ className, ...props }) => (
   <docsComponents.table
     {...props}
     tabIndex={0}
-    className={`focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent-ink ${className ?? ''}`}
+    className={`focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-rule ${className ?? ''}`}
   />
 )
 

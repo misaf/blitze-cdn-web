@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import {
-  BandLinkList,
+  CoverLinkList,
   PageHero,
-  band,
-  bandArt,
+  cover,
+  coverRuling,
   closingNote,
   inner,
 } from '@/components/ui'
@@ -48,21 +48,21 @@ export default function NotFound() {
         with the site.
       </PageHero>
 
-      <section className={band}>
-        <div className={bandArt} aria-hidden="true" />
+      <section className={cover}>
+        <div className={coverRuling} aria-hidden="true" />
         <div className={`relative z-10 ${inner} py-band`}>
-          <div className="grid border border-band-line lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+          <div className="grid border border-ink-line lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-5 p-card-lg">
               <h2 className="text-section leading-[1.06] font-book tracking-display text-balance">
                 Where you were probably going
               </h2>
-              <p className="leading-relaxed text-band-muted">
+              <p className="leading-relaxed text-ink-muted">
                 Search is in the navbar above and covers every page, including
                 the reference tables — it is usually faster than guessing at a
                 URL.
               </p>
             </div>
-            <BandLinkList links={destinations} />
+            <CoverLinkList links={destinations} />
           </div>
         </div>
       </section>
@@ -73,7 +73,7 @@ export default function NotFound() {
           elsewhere, that is a bug worth knowing about —{' '}
           <Link
             href="/contact"
-            className="text-accent-ink underline underline-offset-2"
+            className="text-rule-ink underline underline-offset-2"
           >
             tell us where it was
           </Link>
