@@ -1,23 +1,6 @@
 import Link from 'next/link'
 import { getPageMap } from 'nextra/page-map'
-
-/*
- * Dates are formatted in UTC with a fixed locale on purpose. This site is a
- * static export, so the string is baked at build time; letting it depend on the
- * builder's timezone or locale would make the output differ between machines
- * and show up as noise in the committed build.
- */
-const formatter = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'UTC',
-})
-
-function formatDate(value) {
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : formatter.format(parsed)
-}
+import { formatDate } from '@/lib/format-date'
 
 /**
  * Lists every post under /blog, newest first.
@@ -52,14 +35,14 @@ export async function PostList() {
   return (
     <div className="mt-10 flex flex-col border-t border-line">
       {posts.map((post) => {
-        const date = post.date ? formatDate(post.date) : null
+        const date = formatDate(post.date)
         return (
           <Link
             key={post.route}
             href={post.route}
-            className="group border-b border-line py-7 no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-ink"
+            className="group border-b border-line py-7 no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rule"
           >
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-xs tracking-[0.12em] text-accent-ink uppercase">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-xs tracking-[0.12em] text-rule-ink uppercase">
               {date && <time dateTime={post.date}>{date}</time>}
               {post.author && (
                 <span className="tracking-normal text-muted normal-case">
