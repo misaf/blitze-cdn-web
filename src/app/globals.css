@@ -645,3 +645,21 @@ main :is(h1, h2, h3, h4) code.nextra-code:not([class*='twoslash-']) {
   font-size: 0.85em;
   padding-inline: 0.3em;
 }
+
+/*
+ * The production-checklist banner is docs-only.
+ *
+ * The root layout renders it on every route because a layout cannot know the
+ * pathname, so the gating happens here: `[...mdxPath]/page.jsx` emits a
+ * `data-docs-route` marker on docs pages, and the banner is hidden anywhere
+ * that marker is absent — the landing page, /about, /contact, the 404, /faq
+ * and /blog.
+ *
+ * Doing it this way rather than with `usePathname()` in a client component
+ * keeps the banner in the server HTML, so it neither pops in after hydration
+ * nor loses the inline script that hides it before first paint when it has
+ * already been dismissed. See `docs-banner.jsx`.
+ */
+body:not(:has([data-docs-route])) .nextra-banner {
+  display: none;
+}
