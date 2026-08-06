@@ -446,13 +446,32 @@ main :where(.nextra-code) {
 
 /*
  * Callouts are marginalia, not boxes. The theme draws a full tinted border on
- * all four sides; this keeps the callout's own hue but spends it on a single
- * edge rule, which is how a note is marked against a ruled page.
+ * all four sides; this spends it on a single edge rule instead, which is how a
+ * note is marked against a ruled page.
+ *
+ * The hue goes with the border. The theme ships amber, and on a page like
+ * `/docs/guides/quickstart` that fill was the largest field of colour on the
+ * site — a fourth hue, in a palette whose whole discipline is that it has
+ * exactly three (see the note at the top of this file). Since the box is
+ * already reduced to one edge, the edge can carry the oxblood that marks
+ * emphasis everywhere else, and the fill can drop to the same `panel` leaf
+ * every other inset on the site is printed on.
+ *
+ * `!important` is the same lever the rest of this section uses: the theme's
+ * own utilities are unlayered and would otherwise win. See the note above.
  */
 .nextra-callout {
+  background-color: var(--panel) !important;
+  border-color: var(--color-rule) !important;
   border-width: 0 0 0 3px;
+  color: var(--fg) !important;
   padding-block: 0.85em;
   padding-inline-start: 1em;
+}
+
+/* The emoji/icon the theme sets in its own amber goes with it. */
+.nextra-callout > :first-child:not(p) {
+  color: var(--rule-ink) !important;
 }
 
 /*
@@ -497,6 +516,152 @@ main pre.not-prose {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Reference pages get the width their content actually needs.
+ *
+ * A prose measure is right for a guide and wrong for a table of every command
+ * and its exit codes. The theme caps the whole layout at `90rem` and then
+ * spends 16rem of it on the sidebar and 16rem on the table of contents, so a
+ * reference table was left with 42rem at a 1280px viewport — enough to squeeze
+ * "Ansible check mode; should not converge" onto three lines while the page
+ * carried empty margin on a wide monitor.
+ *
+ * Two changes, because there were two separate causes:
+ *
+ * 1. Raising the cap gives wide screens the room they already had. Below about
+ *    1500px nothing changes — the viewport is the binding constraint there,
+ *    not the cap — so this is width for the monitors that have it, and no
+ *    reflow for the laptops that do not.
+ * 2. A floor under each column stops the narrow case shredding text. Past that
+ *    width the table scrolls instead of wrapping to two words a line, and it
+ *    is reachable by keyboard because `mdx-components.js` makes every docs
+ *    table a tabbable scroll container — the same reasoning as the landing
+ *    page's code panels. Scrolling a wide table is a familiar cost; a column
+ *    of single words is not.
+ *
+ *    The floor goes on the CELLS, not on the table. The theme makes the
+ *    `<table>` itself `display: block; overflow-x: auto`, so it is the scroll
+ *    container — a `min-width` there widens the viewport of the scroller
+ *    rather than its content, and the table simply overhangs the table of
+ *    contents instead of scrolling. Widening the cells grows the content
+ *    inside the scroller, which is what makes it scroll.
+ *
+ * Scoped by the marker `[...mdxPath]/page.jsx` emits, so guides keep the prose
+ * measure they are written for.
+ */
+body:has([data-docs-section='reference']) {
+  --nextra-content-width: 108rem;
+}
+
+/*
+ * 3. The tables bleed out through the article's own gutter. The theme pads the
+ *    article `md:px-12`, which is right for prose — a line of text should not
+ *    start at the page edge — and is 3rem a side that a table has no use for.
+ *    Pulling the table back out through it is width at EVERY viewport,
+ *    including the 1280px laptop the cap above does nothing for.
+ *
+ *    The bleed is END-SIDE ONLY, and that is the whole point. Bleeding both
+ *    ways is 3rem wider still, but it puts the table's left edge outside the
+ *    heading rule directly above it — and on a page whose entire discipline is
+ *    ruling that lines up, a table floating left of its own column head reads
+ *    as a mistake rather than as emphasis. Every entry on this site starts on
+ *    the same vertical; the table keeps that and spends its width on the
+ *    trailing side, where the gutter is dead space.
+ *
+ *    Only below `md` does the padding drop to `px-4`, so the pull matches it
+ *    there rather than dragging the table off-screen.
+ */
+body:has([data-docs-section='reference']) main table {
+  margin-inline-end: -1rem;
+  width: calc(100% + 1rem);
+}
+
+@media (min-width: 48rem) {
+  body:has([data-docs-section='reference']) main table {
+    margin-inline-end: -3rem;
+    width: calc(100% + 3rem);
+  }
+}
+
+body:has([data-docs-section='reference']) main :is(th, td) {
+  min-width: 8.5rem;
+}
+
+/* The first column carries the command itself and needs more room than the
+   prose columns beside it. */
+body:has([data-docs-section='reference']) main :is(th, td):first-child {
+  min-width: 14rem;
+}
+
+/* A command is one token: breaking `record add/proxy/remove` across lines makes
+   it read as three. The chips hold together, but the cell around them still
+   wraps between them — nowrapping the whole cell let the first column claim
+   half the table and squeezed the prose columns it was meant to relieve. */
+body:has([data-docs-section='reference']) main td code {
+  white-space: nowrap;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * The reference table of contents is a command index.
+ *
+ * `/docs/reference/cli` has thirty entries, and because every one of them is
+ * set in mono and starts with the same word, depth was carried by indentation
+ * alone — a flat grey column in which `blitzecdn record` and `blitzecdn record
+ * proxy` look like peers. The MDX already nests them correctly (commands are
+ * `h2`, subcommands `h3`), so the structure is there and only the typography
+ * was hiding it.
+ *
+ * Top-level entries get the oxblood edge that marks the start of an entry
+ * everywhere else in the book; nested ones drop to the muted tone and hang off
+ * a hairline, so the eye reads two ranks instead of one list. This is the one
+ * place on the site where a structural device encodes something true about the
+ * content rather than decorating it — the shape of the command tree.
+ *
+ * The theme carries TOC depth in the link's own class rather than in the list
+ * structure — the `<ul>` is flat, and `x:font-semibold` marks an `h2` while
+ * `x:ms-3` marks an `h3` (see `components/toc.js` in the theme). So these
+ * select on those two classes, escaped for the `x:` prefix. If a Nextra
+ * upgrade renames them the TOC quietly reverts to the theme's flat column,
+ * which is the failure this section is worth re-checking after.
+ */
+body:has([data-docs-section='reference']) .nextra-toc li > a {
+  border-inline-start: 1px solid var(--line);
+  padding-inline-start: 0.7rem;
+}
+
+body:has([data-docs-section='reference']) .nextra-toc a.x\:font-semibold {
+  border-inline-start: 2px solid var(--color-rule);
+  color: var(--fg);
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * The blog runs without the docs sidebar (see `blog/_meta.js`), which leaves
+ * its article in a row still sized around one.
+ *
+ * Switching the sidebar off empties it but does not reclaim its column: the
+ * theme lays the page out as a flex row whose first child is a `w-64` spacer
+ * holding the gutter open, and the sidebar itself collapses to zero beside it.
+ * The table of contents does the same on the index, where there is no prose to
+ * outline and the `nav` is rendered empty at its full 16rem.
+ *
+ * So both are removed and the article is re-centred on its own measure — the
+ * index reads as a page rather than as content stranded beside an absence.
+ * The TOC is only dropped on the index; posts keep theirs, which is why this
+ * pair of selectors is split rather than scoped to the section alone.
+ */
+body:has([data-route-section='blog']) div:has(+ .nextra-sidebar),
+body:has([data-route-section='blog'][data-docs-section='index']) .nextra-toc {
+  display: none;
+}
+
+body:has([data-route-section='blog']) main {
+  margin-inline: auto;
+  max-width: 46rem;
 }
 
 /*
