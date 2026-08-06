@@ -39,20 +39,6 @@ Operator traffic stops at the controller boundary. End-user traffic reaches the
 edges directly and continues when the controller is unavailable. The controller
 changes desired state and converges hosts; it is not in the serving path.
 
-```text
-CLI / authenticated API
-          |
-          v
-application.ControlPlane       workflow, audit, TLS, transitions, rollback
-       /             \
-      v               v
-domain models      infrastructure adapters
-invariants         SQLite | atomic files | process lock | Ansible subprocess
-                                          |
-                                          v
-                              declarative Ansible edge roles
-```
-
 - `domain` defines immutable CDN site and deployment state plus all values that
   may enter Nginx templates.
 - `application` implements use cases and is the sole coordinator of persistence
