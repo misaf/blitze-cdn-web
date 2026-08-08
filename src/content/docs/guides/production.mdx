@@ -51,18 +51,19 @@ Sizing guidance:
   endpoint for metadata changes and deploy when it changes — see
   [Renewal](/docs/guides/certificates#renewal).
 
-BlitzeCDN v1.1.0 has no `--limit` flag. Create an inventory containing only the
-canary hosts, verify its SSH fingerprints and group variables, and point
-`BLITZE_INVENTORY` at it for both plan and deploy:
+Name the canary hosts with [`--limit`](/docs/reference/cli#blitzecdn-deploy) on
+both plan and deploy. It accepts names or globs, resolves them against the
+inventory, and can only ever narrow the fleet, so a typo converges nothing
+rather than everything:
 
 ```bash
-BLITZE_INVENTORY=ansible/inventory/canary.yml blitzecdn plan
-BLITZE_INVENTORY=ansible/inventory/canary.yml blitzecdn deploy --yes
+blitzecdn plan --limit edge-01,edge-02
+blitzecdn deploy --limit edge-01,edge-02 --yes
 ```
 
-After external probes pass, remove the override, run a new plan against the
-complete inventory, and deploy. A canary success records convergence only for
-that inventory; it is not proof that the remaining edges changed.
+After external probes pass, run a new plan against the complete inventory and
+deploy without `--limit`. A canary success records convergence only for the
+edges it named; it is not proof that the remaining edges changed.
 
 ## Reverse proxies and the API
 

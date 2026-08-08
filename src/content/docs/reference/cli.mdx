@@ -4,7 +4,7 @@ title: CLI
 
 # CLI
 
-Verified against the Typer command tree in `src/blitzecdn/cli.py` at v1.1.0.
+Verified against the Typer command tree in `src/blitzecdn/cli.py`.
 
 ## Safety and automation
 
@@ -14,6 +14,10 @@ Verified against the Typer command tree in `src/blitzecdn/cli.py` at v1.1.0.
 | `plan` | Ansible check mode; should not converge | Rerun after any state change | Review the resulting record before deploy. |
 | `domain add/remove`, `record add/proxy/remove`, `edge add/remove` | Controller state only | No | Review the resulting desired state. |
 | `dns export` | None | Yes | Feed to the system that publishes DNS. |
+| `drift` | Ansible check mode; converges nothing | Yes | Exits `6` when an edge has moved. Schedule it. |
+| `origin check` | Connects to each origin; sends no request data | Yes | Exits `3` when an origin fails. Run before `deploy`. |
+| `cert list` | None | Yes | Exits `4` when a certificate has already expired. |
+| `cert renew` | Contacts the CA; serves HTTP-01 from the edges | Yes | Renews only what is due. Deploy afterwards to install. |
 | `deploy` | Previews, then converges every configured edge | No | Interactive by default; use `--yes` only after separate checks in automation. |
 | `rollback` | Converges a snapshot, then changes canonical state | No | Preview with `--check`; select a known successful snapshot. |
 
@@ -29,6 +33,7 @@ logs remain separate; do not parse human output for automation.
 | `3` | Configuration |
 | `4` | Conflict |
 | `5` | Deployment Failed |
+| `6` | Drift Detected |
 
 ## Global options
 
@@ -55,7 +60,96 @@ Validate, preview, and apply current desired state to every configured edge.
 | Flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `--yes` | `boolean` | `false` | — | Required confirmation for non-interactive execution. |
+| `--limit` | `text` | `false` | — | Restrict this run to these edges: names or globs, comma separated. |
 | `--json` | `boolean` | `false` | — | — |
+
+With `--limit`, `deploy` is a canary: the named edges converge and every other
+edge keeps serving what it already has. The limit is resolved against the
+inventory, so it can only narrow the fleet — a name the inventory does not
+declare as an edge is refused rather than passed to Ansible. Rerun without
+`--limit` to finish the rollout.
+
+<Callout type="warning">
+  A canary leaves the fleet in two states. The control plane records the limit
+  on the deployment and excludes limited runs from automatic rollback
+  selection, because rolling back to a snapshot only one edge received would
+  converge every other edge onto a state it never ran. Finish or revert the
+  rollout; do not leave it split.
+</Callout>
+
+## `blitzecdn drift`
+
+Report whether the edges still match the declared desired state. Runs Ansible in
+check mode and changes nothing.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--limit` | `text` | `false` | — | Restrict the check to these edges. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+Exits `6` when a reachable edge would change or an edge could not be reached,
+which is distinct from `5` so a scheduled check tells "the fleet moved" apart
+from "the check itself broke".
+
+A task the roles skip under check mode cannot be counted, so the report floors
+rather than exactly measures the difference: it tells you drift exists and
+undercounts rather than invents it. An unreachable edge is reported as
+unreachable, not as drift — nothing was learned about its configuration.
+
+## `blitzecdn origin check`
+
+Connect to every enabled site's origin the way the edge will: resolve it,
+connect on the configured port, and for an HTTPS origin complete a verified TLS
+handshake using the same SNI the edge sends.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+Catches what `validate` cannot see: an origin that does not resolve, is not
+listening, or presents a certificate that does not match the SNI. Run it before
+`deploy`; it is deliberately not part of `deploy`, because an origin being
+briefly unreachable is not a reason to refuse a deploy of unrelated sites.
+
+<Callout type="info">
+  The probe runs from the control plane, not from an edge. A pass is good
+  evidence rather than proof — the edges may route or resolve differently. A
+  failure is almost always real.
+</Callout>
+
+## `blitzecdn cert list`
+
+List managed certificates, soonest expiry first. Exits `4` if any listed
+certificate has already expired.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--expiring-in` | `int` | `false` | — | Show only certificates with at most this many days left. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+## `blitzecdn cert renew`
+
+Reissue ACME certificates that are close to expiry.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--expiring-in` | `int` | `false` | `30` | Renew certificates with at most this many days left. |
+| `--force` | `boolean` | `false` | — | Renew every ACME certificate regardless of age. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+Safe to schedule: a certificate that is not yet due is left alone, and one site
+failing does not stop the others. Renewal reuses the address the certificate was
+registered with.
+
+An uploaded certificate is never renewed — BlitzeCDN did not issue it and cannot
+reissue it. One close to expiry is reported instead, so you can ask whoever
+supplied it for a replacement.
+
+<Callout type="warning">
+  Renewal installs into the control plane's certificate store only. Run
+  `blitzecdn deploy` afterwards to place the new certificates on the edges;
+  until you do, the edges keep serving the old ones.
+</Callout>
 
 ## `blitzecdn doctor`
 
@@ -157,26 +251,6 @@ Manage DNS zones delegated to BlitzeCDN. See
 | Flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
-
-### `blitzecdn domain import`
-
-Converts sites created before v1.1.0 into the proxied records that reproduce
-them. See [Domains and records](/docs/reference/domains).
-
-| Argument or flag | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `names` | `str...` | `true` | — | Every zone to import. List them all at once. |
-| `--force` | `boolean` | `false` | — | Drop hostnames whose zone you did not list. |
-| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
-
-Reports three lists: `imported`, `skipped` (sites needing a human, such as a
-hostname origin), and `dropped` (hostnames that will stop being served).
-
-<Callout type="error">
-  Pass every zone in one command. The first import rewrites the derived table
-  and destroys the sites a second run would have read. The command refuses and
-  writes nothing when a hostname belongs to a zone you did not list.
-</Callout>
 
 ### `blitzecdn domain remove`
 

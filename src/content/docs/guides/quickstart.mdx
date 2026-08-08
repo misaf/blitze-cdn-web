@@ -77,56 +77,25 @@ automatically. Replace the documentation addresses with your real edge and trust
 At least one `--ssh-source` is required so the firewall cannot accidentally
 lock out every administrator.
 
-### Verify the SSH trust chain
-
-Fetch each host key into a temporary file, inspect its fingerprint, and compare
-that fingerprint with one obtained through a trusted channel:
-
-```bash
-EDGE_HOST=edge-01.example.net
-EDGE_KEYS=$(mktemp)
-ssh-keyscan -H "$EDGE_HOST" > "$EDGE_KEYS"
-ssh-keygen -lf "$EDGE_KEYS"
-```
-
-<Callout type="error">
-  `ssh-keyscan` discovers a key; it does not authenticate it. Only append the
-  scanned keys to `known_hosts` after their fingerprints match values obtained
-  through a trusted channel. Never disable host-key checking.
-</Callout>
-
-After every displayed fingerprint matches, install the keys and remove the
-temporary file:
-
-```bash
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-touch ~/.ssh/known_hosts
-chmod 600 ~/.ssh/known_hosts
-ssh-keygen -F "$EDGE_HOST" -f ~/.ssh/known_hosts
-ssh-keygen -R "$EDGE_HOST" -f ~/.ssh/known_hosts
-cat "$EDGE_KEYS" >> ~/.ssh/known_hosts
-rm "$EDGE_KEYS"
-```
-
-`ssh-keygen -F` shows existing entries. The `-R` step prevents duplicates, but
-it also removes old keys: run it only after confirming that a legitimate host
-key rotation occurred or that the existing entry is obsolete. Repeat this
-process for each inventory connection target.
-
 ### Install your login key on the edge
 
-The previous step verified the _host's_ identity to you. This step proves _your_
-identity to the host, and they are different keys: `known_hosts` holds the
-edge's host key, `authorized_keys` holds your public key. BlitzeCDN accepts no
-other way in — the controller connects with `PreferredAuthentications=publickey`
-and `PasswordAuthentication=no`, and the first deploy makes the edge itself
-reject everything but keys.
+BlitzeCDN accepts no way in but a key — the controller connects with
+`PreferredAuthentications=publickey` and `PasswordAuthentication=no`, and the
+first deploy makes the edge itself reject everything but keys.
 
 Create a key if you do not already have one, and install the **public** half on
 the edge under the account you passed to `--user`:
 
+<Callout type="error">
+  The controller keeps `host_key_checking = True` and BlitzeCDN never disables
+  it. Before you connect, verify each edge's host-key fingerprint through a
+  trusted channel and add it to `known_hosts`. See [SSH host
+  keys](/docs/guides/security). A connection that prompts you to accept an
+  unknown key is a connection you cannot yet trust.
+</Callout>
+
 ```bash
+EDGE_HOST=edge-01.example.net
 ssh-keygen -t ed25519 -C "blitzecdn-operator"
 ssh-copy-id -i ~/.ssh/id_ed25519.pub deploy@"$EDGE_HOST"
 ```

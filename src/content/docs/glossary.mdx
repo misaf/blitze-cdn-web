@@ -45,6 +45,19 @@ a plan.
 The immutable copy of desired state attached to a deployment. Rollback converges
 a previously successful snapshot.
 
+## Drift
+
+The difference between the state the control plane declares and the state an
+edge is actually in. Measured by a check-mode convergence that reports what it
+would change without changing it. Something editing an edge outside BlitzeCDN is
+the usual cause.
+
+## Canary
+
+A deployment narrowed to some edges rather than the whole fleet, so a change can
+be proven on one edge before the rest receive it. It leaves the fleet in two
+states until you finish or revert the rollout.
+
 ## Canonical state
 
 The desired state used for the next normal deployment. A successful applied

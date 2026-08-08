@@ -24,6 +24,10 @@ Precedence: environment variable, then the matching key in
 - Treat path changes as migrations: stop mutations, copy state with ownership
   intact, update configuration, then run `doctor` and `validate`.
 - Rotate API secrets with the [overlap procedure](/docs/guides/api-key-rotation).
+- `BLITZE_ORIGIN_CHECK_TIMEOUT_SECONDS` is the per-origin budget for
+  [`blitzecdn origin check`](/docs/reference/cli#blitzecdn-origin-check). Keep it
+  short: an origin that needs longer than this to accept a TCP connection is one
+  the edges will struggle with too.
 
 ## Settings
 
@@ -41,6 +45,7 @@ Precedence: environment variable, then the matching key in
 | `BLITZE_DEPLOYMENT_TIMEOUT_SECONDS` | `[blitzecdn].deployment_timeout_seconds` | `900` | ≥ 30, ≤ 7200 |
 | `BLITZE_GENERATED_VARS` | `[blitzecdn].generated_vars_path` | `<state_dir>/desired-state.yml` | — |
 | `BLITZE_INVENTORY` | `[blitzecdn].inventory_path` | `<project_dir>/ansible/inventory/hosts.yml` | — |
+| `BLITZE_ORIGIN_CHECK_TIMEOUT_SECONDS` | `[blitzecdn].origin_check_timeout_seconds` | `5` | ≥ 1, ≤ 60 |
 | `BLITZE_PLAYBOOK` | `[blitzecdn].playbook_path` | `<project_dir>/ansible/playbooks/edge.yml` | — |
 | `BLITZE_STATE_DIR` | `[blitzecdn].state_dir` | `<project_dir>/.state` | — |
 

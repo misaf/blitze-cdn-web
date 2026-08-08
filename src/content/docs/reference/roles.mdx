@@ -106,9 +106,30 @@ one URL share a cache entry, and clients receive bodies they cannot decode.
   seconds before enabling it.
 </Callout>
 
+`blitzecdn_nginx_access_log_enabled` writes one line per request in the
+`blitzecdn` format, carrying `$upstream_cache_status`, `$request_time`, and
+`$upstream_response_time`. Cache hit ratio is the number a CDN is measured by,
+and the per-response `X-Cache-Status` header reports it only to the client that
+made the request. Turn this off only if you collect the same fields another way.
+
+`blitzecdn_nginx_status_enabled` serves Nginx `stub_status` on
+`blitzecdn_nginx_status_address:blitzecdn_nginx_status_port`. Scrape it from an
+agent on the edge itself, or over an SSH tunnel.
+
+<Callout type="warning">
+  `stub_status` has no authentication. Access is controlled twice and
+  independently: the listen address binds loopback, and
+  `blitzecdn_nginx_status_allow` refuses other sources. If you widen the listen
+  address, narrow `blitzecdn_nginx_status_allow` in the same change — either one
+  alone exposes the edge's request and connection counts to anyone who can reach
+  the port.
+</Callout>
+
 | Variable | Type | Required | Default | Choices |
 | --- | --- | --- | --- | --- |
 | `blitzecdn_desired_state_version` | `int` | `true` | — | — |
+| `blitzecdn_nginx_access_log_enabled` | `bool` | `true` | `true` | — |
+| `blitzecdn_nginx_access_log_path` | `path` | `true` | `/var/log/nginx/blitzecdn-access.log` | — |
 | `blitzecdn_nginx_acme_root` | `path` | `true` | `/var/lib/blitzecdn/acme` | — |
 | `blitzecdn_nginx_cache_inactive` | `str` | `true` | `60m` | — |
 | `blitzecdn_nginx_cache_max_size` | `str` | `true` | `10g` | — |
@@ -120,6 +141,7 @@ one URL share a cache entry, and clients receive bodies they cannot decode.
 | `blitzecdn_nginx_default_site_file` | `path` | `true` | `/etc/nginx/sites-available/blitzecdn-default.conf` | — |
 | `blitzecdn_nginx_hsts_enabled` | `bool` | `true` | `false` | — |
 | `blitzecdn_nginx_hsts_max_age` | `int` | `true` | `31536000` | — |
+| `blitzecdn_nginx_log_format_name` | `str` | `true` | `blitzecdn` | — |
 | `blitzecdn_nginx_managed_sites_file` | `path` | `true` | `/etc/nginx/blitzecdn-managed-sites` | — |
 | `blitzecdn_nginx_normalize_accept_encoding` | `bool` | `true` | `true` | — |
 | `blitzecdn_nginx_proxy_connect_timeout` | `str` | `true` | `5s` | — |
@@ -130,6 +152,12 @@ one URL share a cache entry, and clients receive bodies they cannot decode.
 | `blitzecdn_nginx_sites` | `list` | `true` | — | — |
 | `blitzecdn_nginx_ssl_ciphers` | `str` | `true` | Mozilla intermediate TLS 1.2 suites | — |
 | `blitzecdn_nginx_ssl_stapling` | `bool` | `true` | `true` | — |
+| `blitzecdn_nginx_status_address` | `str` | `true` | `127.0.0.1` | — |
+| `blitzecdn_nginx_status_allow` | `list` | `true` | `127.0.0.1`, `::1` | — |
+| `blitzecdn_nginx_status_enabled` | `bool` | `true` | `true` | — |
+| `blitzecdn_nginx_status_file` | `path` | `true` | `/etc/nginx/conf.d/blitzecdn-status.conf` | — |
+| `blitzecdn_nginx_status_path` | `str` | `true` | `/stub_status` | — |
+| `blitzecdn_nginx_status_port` | `int` | `true` | `8090` | — |
 | `blitzecdn_nginx_supported_state_versions` | `list` | `true` | `1` | — |
 
 ### `blitzecdn_nginx_sites` element keys

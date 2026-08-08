@@ -94,9 +94,33 @@ curl --fail-with-body -X POST \
 
 ## Renewal
 
-Call the certificate request endpoint periodically for ACME-managed sites, then
-deploy when certificate metadata changes. Certbot reuses its controller-side
-account and renewal state beneath `.state/letsencrypt`.
+Run `blitzecdn cert renew` on a schedule. It reissues only ACME certificates
+with 30 days or fewer remaining, reuses the address each certificate was
+registered under, and continues past a site that fails — so a transient DNS or
+reachability problem delays one certificate rather than the whole run.
+
+```bash
+blitzecdn cert list --expiring-in 30 --json
+blitzecdn cert renew
+blitzecdn deploy --yes
+```
+
+Check what you hold at any time with `blitzecdn cert list`, which sorts by
+soonest expiry and exits `4` if anything has already expired. `blitzecdn doctor`
+reports the same window without contacting any edge.
+
+<Callout type="warning">
+  Renewal writes to the controller's certificate store only. The edges keep
+  serving the previous certificates until you deploy. Treat `cert renew` and
+  `deploy` as one procedure.
+</Callout>
+
+An uploaded certificate is never renewed — BlitzeCDN did not issue it and cannot
+reissue it. One close to expiry appears in the `skipped` list instead, so you
+can ask whoever supplied it for a replacement before it lapses.
+
+Certbot reuses its controller-side account and renewal state beneath
+`.state/letsencrypt`.
 
 Back up both that directory and `.state/certificates`. Losing the state does not
 revoke deployed certificates, but it forces account and certificate recovery.

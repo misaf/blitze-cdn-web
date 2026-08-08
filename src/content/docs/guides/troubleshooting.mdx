@@ -106,6 +106,30 @@ or raw inventory to an incident report.
   record only settles when Ansible finishes. If the controller was restarted
   mid-run, startup marks the record `abandoned`; rerun plan before retrying.
 
+## Origins
+
+- **`502` after a successful deploy:** run `blitzecdn origin check`. `resolved`
+  false is DNS; `reachable` false is routing, a firewall, or the wrong port;
+  `tls_verified` false means the origin's certificate does not match the SNI the
+  edge sends — set `origin_sni` to the name the origin actually presents, or fix
+  the origin.
+- **Origin check passes but edges still fail:** the probe runs from the control
+  plane, which may resolve or route differently than an edge. Compare from an
+  edge itself before concluding the origin is healthy.
+
+## Drift
+
+- **`drift` exits `6`:** an edge no longer matches desired state, or could not be
+  reached. Inspect the per-host counts, then `blitzecdn deploy` to converge.
+  Something changing an edge outside BlitzeCDN is the usual cause.
+- **`drift` reports an unreachable edge:** that is not drift. Nothing was learned
+  about its configuration — treat it as an SSH or host availability problem and
+  see [Inventory and SSH](#inventory-and-ssh).
+- **A canary left the fleet split:** `blitzecdn status` shows `host_limit` on the
+  limited deployment. Rerun `blitzecdn deploy` without `--limit` to finish, or
+  roll back to a full deployment. Limited runs are excluded from automatic
+  rollback selection.
+
 ## Storage
 
 - **Disk exhaustion:** stop new work, preserve the database, free space outside
@@ -118,6 +142,14 @@ or raw inventory to an incident report.
   installed on the controller, and all edges are reachable over SSH.
 - **Certificate upload failure:** provide an unencrypted PEM private key and a PEM
   chain whose leaf SANs cover every configured site hostname.
+- **Certificate expired or expiring:** run `blitzecdn cert list` to see what you
+  hold and how long each has left. `blitzecdn cert renew` reissues ACME
+  certificates; deploy afterwards or the edges keep serving the old ones. An
+  uploaded certificate appears under `skipped` — BlitzeCDN cannot reissue it.
+- **Renewal reported `failed` for one site:** the run continues past a failure by
+  design. Confirm that hostname still resolves to the edges and that port 80
+  reaches them, then rerun `blitzecdn cert renew`; the sites that already
+  renewed are skipped as no longer due.
 
 ## Verify recovery
 
