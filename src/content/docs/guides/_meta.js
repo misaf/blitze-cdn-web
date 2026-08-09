@@ -1,7 +1,10 @@
 export default {
+  'how-it-works': 'How it works',
   quickstart: 'Quick start',
+  'go-live': 'Take a real site live',
   sites: 'Sites & deployment',
   deployment: 'Deploying',
+  dns: 'DNS hand-off',
   certificates: 'Certificates',
   manage: 'Managing edge hosts',
   api: 'API usage',

@@ -24,24 +24,37 @@ Precedence: environment variable, then the matching key in
 - Treat path changes as migrations: stop mutations, copy state with ownership
   intact, update configuration, then run `doctor` and `validate`.
 - Rotate API secrets with the [overlap procedure](/docs/guides/api-key-rotation).
+- `BLITZE_ORIGIN_CHECK_TIMEOUT_SECONDS` is the per-origin budget for
+  [`blitzecdn origin check`](/docs/reference/cli#blitzecdn-origin-check). Keep it
+  short: an origin that needs longer than this to accept a TCP connection is one
+  the edges will struggle with too.
+- `BLITZE_ACME_CA_DOMAIN` is the CA identity a CAA record must name for
+  [`cert preflight`](/docs/reference/cli#blitzecdn-cert-preflight) to consider
+  issuance permitted. Change it only when `BLITZE_CERTBOT` is pointed at another
+  ACME server — a CAA check against the wrong CA is worse than none, because it
+  passes while the real CA is refused.
 
 ## Settings
 
 | Environment variable | TOML key | Default | Constraints |
 | --- | --- | --- | --- |
+| `BLITZE_ACME_CA_DOMAIN` | `[blitzecdn].acme_ca_domain` | `letsencrypt.org` | A CA identity, such as `letsencrypt.org` |
 | `BLITZE_ACME_CHALLENGE_PLAYBOOK` | `[blitzecdn].acme_challenge_playbook_path` | `<project_dir>/ansible/playbooks/acme-challenge.yml` | — |
 | `BLITZE_ACME_DEFAULT_EMAIL` | `[blitzecdn].acme_default_email` | — | — |
 | `BLITZE_ANSIBLE_DIR` | `[blitzecdn].ansible_dir` | `<project_dir>/ansible` | — |
 | `BLITZE_ANSIBLE_PLAYBOOK` | `[blitzecdn].ansible_playbook` | `ansible-playbook` | — |
 | `BLITZE_CERTBOT` | `[blitzecdn].certbot` | `certbot` | — |
 | `BLITZE_CERTIFICATE_DIR` | `[blitzecdn].certificate_dir` | `<state_dir>/certificates` | — |
+| `BLITZE_CERTIFICATE_RECONCILE_INTERVAL_SECONDS` | `[blitzecdn].certificate_reconcile_interval_seconds` | `600` | `0` disables; maximum `86400` |
 | `BLITZE_DATABASE_PATH` | `[blitzecdn].database_path` | `<state_dir>/control-plane.db` | — |
 | `BLITZE_DEPLOYMENT_LOCK` | `[blitzecdn].deployment_lock_path` | `<state_dir>/deployment.lock` | — |
 | `BLITZE_DEPLOYMENT_OUTPUT_LIMIT_BYTES` | `[blitzecdn].output_limit_bytes` | `1048576` | ≥ 4096, ≤ 10485760 |
 | `BLITZE_DEPLOYMENT_TIMEOUT_SECONDS` | `[blitzecdn].deployment_timeout_seconds` | `900` | ≥ 30, ≤ 7200 |
 | `BLITZE_GENERATED_VARS` | `[blitzecdn].generated_vars_path` | `<state_dir>/desired-state.yml` | — |
 | `BLITZE_INVENTORY` | `[blitzecdn].inventory_path` | `<project_dir>/ansible/inventory/hosts.yml` | — |
+| `BLITZE_ORIGIN_CHECK_TIMEOUT_SECONDS` | `[blitzecdn].origin_check_timeout_seconds` | `5` | ≥ 1, ≤ 60 |
 | `BLITZE_PLAYBOOK` | `[blitzecdn].playbook_path` | `<project_dir>/ansible/playbooks/edge.yml` | — |
+| `BLITZE_PREFLIGHT_DNS_TIMEOUT_SECONDS` | `[blitzecdn].preflight_dns_timeout_seconds` | `5` | ≥ 1, ≤ 60 |
 | `BLITZE_STATE_DIR` | `[blitzecdn].state_dir` | `<project_dir>/.state` | — |
 
 ## Secrets

@@ -47,12 +47,13 @@ blitzecdn edge list
 
 ## Deploy to the new edge only
 
-BlitzeCDN v1.1.0 has no `--limit` flag, so prove the new host in isolation by
-pointing `BLITZE_INVENTORY` at an inventory containing only it:
+Prove the new host in isolation with [`--limit`](/docs/reference/cli#blitzecdn-deploy),
+which resolves names and globs against the inventory and can only ever narrow
+the fleet:
 
 ```bash
-BLITZE_INVENTORY=ansible/inventory/canary.yml blitzecdn plan
-BLITZE_INVENTORY=ansible/inventory/canary.yml blitzecdn deploy --yes
+blitzecdn plan --limit edge-01
+blitzecdn deploy --limit edge-01 --yes
 ```
 
 Probe every proxied hostname externally through the new edge. Only then run a

@@ -12,12 +12,12 @@ belongs in the repository's CONTRIBUTING.md.
 
 <Callout type="warning">
   This is a first-deployment lab, not a production runbook. It deliberately
-  starts with HTTP only. Complete the [production
-  checklist](/docs/guides/production), [security
-  hardening](/docs/guides/security), [backup and restore](/docs/guides/backup),
-  [certificate setup](/docs/guides/certificates), and [API key
-  rotation](/docs/guides/api-key-rotation) before serving production traffic.
+  starts with HTTP only and uses a documentation hostname. Work through the
+  [production checklist](/docs/guides/production) before serving real traffic.
 </Callout>
+
+For the order these steps follow and why, see
+[How it works](/docs/guides/how-it-works).
 
 ## Before you begin
 
@@ -62,7 +62,7 @@ creates `.venv`, installs the compatible edge automation, and initializes local
 configuration. For repeatable production deployments, select a tested version
 matching the edge collection pinned in `ansible/requirements.yml`.
 
-### Initialise local configuration
+### Register your first edge
 
 ```bash
 .venv/bin/blitzecdn edge add edge-01 \
@@ -71,62 +71,35 @@ matching the edge collection pinned in `ansible/requirements.yml`.
   --ssh-source 198.51.100.0/24
 ```
 
-The installer has already created private local configuration and an empty
-inventory without overwriting existing files. The CLI reads `.env`
-automatically. Replace the documentation addresses with your real edge and trusted management network.
-At least one `--ssh-source` is required so the firewall cannot accidentally
-lock out every administrator.
+This records the edge in the inventory and the management network allowed to
+reach its SSH port. Replace the documentation addresses with your real edge and
+trusted network. At least one `--ssh-source` is required so the firewall cannot
+accidentally lock out every administrator.
 
-### Verify the SSH trust chain
-
-Fetch each host key into a temporary file, inspect its fingerprint, and compare
-that fingerprint with one obtained through a trusted channel:
-
-```bash
-EDGE_HOST=edge-01.example.net
-EDGE_KEYS=$(mktemp)
-ssh-keyscan -H "$EDGE_HOST" > "$EDGE_KEYS"
-ssh-keygen -lf "$EDGE_KEYS"
-```
-
-<Callout type="error">
-  `ssh-keyscan` discovers a key; it does not authenticate it. Only append the
-  scanned keys to `known_hosts` after their fingerprints match values obtained
-  through a trusted channel. Never disable host-key checking.
-</Callout>
-
-After every displayed fingerprint matches, install the keys and remove the
-temporary file:
-
-```bash
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-touch ~/.ssh/known_hosts
-chmod 600 ~/.ssh/known_hosts
-ssh-keygen -F "$EDGE_HOST" -f ~/.ssh/known_hosts
-ssh-keygen -R "$EDGE_HOST" -f ~/.ssh/known_hosts
-cat "$EDGE_KEYS" >> ~/.ssh/known_hosts
-rm "$EDGE_KEYS"
-```
-
-`ssh-keygen -F` shows existing entries. The `-R` step prevents duplicates, but
-it also removes old keys: run it only after confirming that a legitimate host
-key rotation occurred or that the existing entry is obsolete. Repeat this
-process for each inventory connection target.
+Nothing on the edge changes yet — it changes when you deploy, at the end of this
+tutorial. The installer has already created private local configuration and an
+empty inventory without overwriting existing files, and the CLI reads `.env`
+automatically.
 
 ### Install your login key on the edge
 
-The previous step verified the _host's_ identity to you. This step proves _your_
-identity to the host, and they are different keys: `known_hosts` holds the
-edge's host key, `authorized_keys` holds your public key. BlitzeCDN accepts no
-other way in — the controller connects with `PreferredAuthentications=publickey`
-and `PasswordAuthentication=no`, and the first deploy makes the edge itself
-reject everything but keys.
+BlitzeCDN accepts no way in but a key — the controller connects with
+`PreferredAuthentications=publickey` and `PasswordAuthentication=no`, and the
+first deploy makes the edge itself reject everything but keys.
 
 Create a key if you do not already have one, and install the **public** half on
 the edge under the account you passed to `--user`:
 
+<Callout type="error">
+  The controller keeps `host_key_checking = True` and BlitzeCDN never disables
+  it. Before you connect, verify each edge's host-key fingerprint through a
+  trusted channel and add it to `known_hosts`. See [SSH host
+  keys](/docs/guides/security). A connection that prompts you to accept an
+  unknown key is a connection you cannot yet trust.
+</Callout>
+
 ```bash
+EDGE_HOST=edge-01.example.net
 ssh-keygen -t ed25519 -C "blitzecdn-operator"
 ssh-copy-id -i ~/.ssh/id_ed25519.pub deploy@"$EDGE_HOST"
 ```
@@ -271,7 +244,9 @@ for timeout and partial-state guidance.
 
 ## What's next
 
-- [Sites & deployment](/docs/guides/sites) — model your first real site.
-- [Certificates](/docs/guides/certificates) — serve it over HTTPS.
+- [Take a real site live](/docs/guides/go-live) — the continuous path from this
+  lab to a hostname you own, served over HTTPS. Start here.
+- [Sites & deployment](/docs/guides/sites) — what a site is, and how snapshots
+  and rollback work.
 - [Deployment checklist](/docs/guides/deployment) — what to check before and
   after a production deploy.

@@ -4,7 +4,7 @@ title: CLI
 
 # CLI
 
-Verified against the Typer command tree in `src/blitzecdn/cli.py` at v1.1.0.
+Verified against the Typer command tree in `src/blitzecdn/cli.py`.
 
 ## Safety and automation
 
@@ -14,6 +14,11 @@ Verified against the Typer command tree in `src/blitzecdn/cli.py` at v1.1.0.
 | `plan` | Ansible check mode; should not converge | Rerun after any state change | Review the resulting record before deploy. |
 | `domain add/remove`, `record add/proxy/remove`, `edge add/remove` | Controller state only | No | Review the resulting desired state. |
 | `dns export` | None | Yes | Feed to the system that publishes DNS. |
+| `drift` | Ansible check mode; converges nothing | Yes | Exits `6` when an edge has moved. Schedule it. |
+| `origin check` | Connects to each origin; sends no request data | Yes | Exits `3` when an origin fails. Run before `deploy`. |
+| `cert list` | None | Yes | Exits `4` when a certificate has already expired. |
+| `cert preflight` | Resolves the hostname, queries CAA, connects to the origin | Yes | Exits `3` when something blocks issuance. Run before requesting a certificate. |
+| `cert renew` | Contacts the CA; serves HTTP-01 from the edges | Yes | Renews only what is due; use `--deploy` to install in the same run. |
 | `deploy` | Previews, then converges every configured edge | No | Interactive by default; use `--yes` only after separate checks in automation. |
 | `rollback` | Converges a snapshot, then changes canonical state | No | Preview with `--check`; select a known successful snapshot. |
 
@@ -29,6 +34,7 @@ logs remain separate; do not parse human output for automation.
 | `3` | Configuration |
 | `4` | Conflict |
 | `5` | Deployment Failed |
+| `6` | Drift Detected |
 
 ## Global options
 
@@ -55,7 +61,239 @@ Validate, preview, and apply current desired state to every configured edge.
 | Flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `--yes` | `boolean` | `false` | — | Required confirmation for non-interactive execution. |
+| `--limit` | `text` | `false` | — | Restrict this run to these edges: names or globs, comma separated. |
+| `--request-certificates` | `boolean` | `false` | — | After deploying HTTP, issue certificates for ready proxied sites and deploy again to install them. |
 | `--json` | `boolean` | `false` | — | — |
+
+`--request-certificates` is the one-command onboarding path after public DNS is
+published. It checks every proxied site still in `disabled` mode, contacts the
+CA only for sites whose preflight passes, and reports DNS-unready sites as
+skipped. If anything was issued, it performs the second deployment required to
+install the certificates. It cannot be combined with `--limit`: every edge must
+serve the HTTP-01 challenge before issuance.
+
+With `--limit`, `deploy` is a canary: the named edges converge and every other
+edge keeps serving what it already has. The limit is resolved against the
+inventory, so it can only narrow the fleet — a name the inventory does not
+declare as an edge is refused rather than passed to Ansible. Rerun without
+`--limit` to finish the rollout.
+
+<Callout type="warning">
+  A canary leaves the fleet in two states. The control plane records the limit
+  on the deployment and excludes limited runs from automatic rollback
+  selection, because rolling back to a snapshot only one edge received would
+  converge every other edge onto a state it never ran. Finish or revert the
+  rollout; do not leave it split.
+</Callout>
+
+## `blitzecdn drift`
+
+Report whether the edges still match the declared desired state. Runs Ansible in
+check mode and changes nothing.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--limit` | `text` | `false` | — | Restrict the check to these edges. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+Exits `6` when a reachable edge would change or an edge could not be reached,
+which is distinct from `5` so a scheduled check tells "the fleet moved" apart
+from "the check itself broke".
+
+A task the roles skip under check mode cannot be counted, so the report floors
+rather than exactly measures the difference: it tells you drift exists and
+undercounts rather than invents it. An unreachable edge is reported as
+unreachable, not as drift — nothing was learned about its configuration.
+
+## `blitzecdn origin check`
+
+Connect to every enabled site's origin the way the edge will: resolve it,
+connect on the configured port, and for an HTTPS origin complete a verified TLS
+handshake using the same SNI the edge sends.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+Catches what `validate` cannot see: an origin that does not resolve, is not
+listening, or presents a certificate that does not match the SNI. Run it before
+`deploy`; it is deliberately not part of `deploy`, because an origin being
+briefly unreachable is not a reason to refuse a deploy of unrelated sites.
+
+<Callout type="info">
+  The probe runs from the control plane, not from an edge. A pass is good
+  evidence rather than proof — the edges may route or resolve differently. A
+  failure is almost always real.
+</Callout>
+
+## `blitzecdn cache purge`
+
+Remove cached responses from the edges.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--url` | `str` | `false` | — | Absolute URL to purge; repeat to add more. |
+| `--all` | `boolean` | `false` | — | Empty the cache instead of removing named URLs. |
+| `--yes` | `boolean` | `false` | — | Required confirmation for `--all`. |
+| `--limit` | `str` | `false` | — | Restrict the purge to these edges. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+```bash
+blitzecdn cache purge --url https://cdn.example.com/assets/app.js
+blitzecdn cache purge --all --yes
+```
+
+One URL is several cache entries. nginx keys them by request method and by
+normalized content encoding, so `/app.js` exists separately for `GET` and
+`HEAD`, and again for identity, gzip, and Brotli. All of them are removed
+together — leaving one behind would keep serving the stale object to whichever
+clients happen to match it.
+
+The query string is part of the key, so `/a` and `/a?v=2` are different entries
+and purging one does not touch the other.
+
+Purging changes no configuration and writes no desired state, so no deploy is
+needed afterwards, and it does not wait for one already running.
+
+Exits `5` if any edge in scope did not purge. That case matters more than it
+looks: the object is gone from some edges and still served by others, so which
+response a client gets depends on which edge answers.
+
+<Callout type="warning">
+  A purge cannot report whether the entry was there. nginx open source has no
+  purge directive, so BlitzeCDN deletes the file the response was stored in, and
+  "removed it" and "there was nothing to remove" are the same observation. Read
+  a successful purge as *this object is no longer served from cache*, not as
+  proof it once was.
+</Callout>
+
+Purging a hostname no enabled site serves is an error rather than a no-op — a
+purge that silently matches nothing looks exactly like one that worked, and you
+would not find out until the stale object was still being served.
+
+## `blitzecdn stats`
+
+Report cache effectiveness across the edges.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--limit` | `str` | `false` | — | Restrict collection to these edges. |
+| `--by-site` | `boolean` | `false` | — | Break the numbers down by virtual host. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+Reads the access log and nginx's own counters on each edge. It changes nothing,
+so it is safe to run at any time, including during a deploy.
+
+The hit ratio counts only requests that consulted the cache. Redirects, errors
+nginx served itself, and sites with caching disabled are excluded rather than
+scored as misses — otherwise a redirect-heavy site would look like a broken
+cache. `REVALIDATED` counts as a hit: the edge served the copy it already had
+and the origin sent no body.
+
+A site with no cacheable traffic reports no hit ratio at all rather than zero,
+so an idle site is distinguishable from a failing one.
+
+<Callout type="info">
+  Fleet and per-site ratios are weighted by request volume, not averaged across
+  edges — otherwise an edge serving a hundred requests would move the number as
+  much as one serving a million. The `connections` counters come from
+  `stub_status` and are cumulative since nginx started, so a rate needs two
+  readings.
+</Callout>
+
+## `blitzecdn cert list`
+
+List managed certificates, soonest expiry first. Exits `4` if any listed
+certificate has already expired.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--expiring-in` | `int` | `false` | — | Show only certificates with at most this many days left. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+## `blitzecdn cert preflight`
+
+Check whether a certificate can be issued for a site right now. Exits `3` if
+anything blocks issuance.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+Issuance uses HTTP-01, so it depends on facts the control plane does not own:
+public DNS has to answer with one of your edge addresses, the virtual host has to
+be deployed so an edge can serve the challenge path, and CAA must permit the CA.
+This reports all three before a rate-limited request is spent, along with two
+advisories — an unreachable origin and a TTL high enough to slow a cutover.
+
+Blocking checks and advisories are different answers. A blocking check describes
+a condition under which the CA cannot validate at all; an advisory is something a
+certificate can legitimately be issued in spite of. Only blocking checks affect
+the exit code.
+
+| Check | Severity | Blocks issuance when |
+| --- | --- | --- |
+| `dns` | Blocking | The hostname does not resolve, or resolves to an address no edge in the inventory answers on. |
+| `caa` | Blocking | A CAA record on the name or an ancestor permits other issuers but not yours. A lookup that fails is an advisory instead. |
+| `deployed` | Blocking | The virtual host is not in the last successful deployment, so no edge serves its challenge path. |
+| `origin` | Advisory | Never. Reported because issuing against a dead origin produces a valid certificate over a `502`. |
+| `ttl` | Advisory | Never. Reported when the record TTL exceeds one hour, which can outlast a cutover. |
+
+This contacts no CA and changes nothing, so it is safe to run repeatedly while a
+customer is still moving their DNS.
+
+## `blitzecdn cert renew`
+
+Reissue ACME certificates that are close to expiry.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--expiring-in` | `int` | `false` | `30` | Renew certificates with at most this many days left. |
+| `--force` | `boolean` | `false` | — | Renew every ACME certificate regardless of age. |
+| `--site` | `str` | `false` | — | Renew only this site; repeat to add more. |
+| `--deploy` | `boolean` | `false` | — | Deploy once after successful renewals so edges receive them. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+Every renewal runs the same checks as
+[`cert preflight`](#blitzecdn-cert-preflight), so a hostname whose DNS has moved
+off the edges fails with the reason named instead of consuming a CA request.
+There is no override on this path: an unattended timer must not be able to force
+past a failed check.
+
+Safe to schedule: a certificate that is not yet due is left alone, and one site
+failing does not stop the others. Renewal reuses the address the certificate was
+registered with.
+
+`--site` narrows the run, which is how you retry a single failure without
+sending every other subscription back to a rate-limited CA. A name with no
+managed certificate behind it is an error rather than an empty success — a typo
+that reported "nothing to renew" is how an expiry gets missed.
+
+An uploaded certificate is never renewed — BlitzeCDN did not issue it and cannot
+reissue it. One close to expiry is reported instead, so you can ask whoever
+supplied it for a replacement.
+
+## `blitzecdn cert reconcile`
+
+Issue first certificates for proxied sites whose public DNS and HTTP-01 route
+are ready, then deploy once to install everything issued in the run.
+
+```bash
+blitzecdn cert reconcile --json
+```
+
+Sites that already have certificates are ignored. A blocked preflight is
+reported under `skipped` and never contacts the CA. Eligibility is checked again
+while holding the cross-process deployment lock, so concurrent operators cannot
+issue the same first certificate twice. No deployment runs when nothing was
+issued. The command exits `5` when issuance or the installation deployment
+fails.
+
+<Callout type="warning">
+  Renewal installs into the control plane's certificate store only. Run
+  `blitzecdn deploy` afterwards to place the new certificates on the edges;
+  until you do, the edges keep serving the old ones.
+</Callout>
 
 ## `blitzecdn doctor`
 
@@ -107,10 +345,19 @@ blitzecdn edge remove edge-01
 
 ### `blitzecdn edge remove`
 
+Tears the host down and then removes it from the inventory, in that order: once
+the entry is gone the host is unaddressable, and it would keep serving its last
+converged virtual hosts — and holding their private keys — indefinitely.
+
+A teardown that fails or cannot reach the host keeps the inventory entry so it
+can be retried.
+
 | Argument or flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `name` | `str` | `true` | — | Edge name to stop managing. |
 | `--yes` | `boolean` | `false` | — | Skip interactive confirmation. |
+| `--decommission` / `--no-decommission` | `boolean` | `false` | `--decommission` | Strip BlitzeCDN configuration and TLS keys from the host first. |
+| `--force` | `boolean` | `false` | — | Remove the entry even if the teardown failed. For a host that no longer exists; the files stay where they are. |
 
 ## `blitzecdn plan`
 
@@ -157,26 +404,6 @@ Manage DNS zones delegated to BlitzeCDN. See
 | Flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
-
-### `blitzecdn domain import`
-
-Converts sites created before v1.1.0 into the proxied records that reproduce
-them. See [Domains and records](/docs/reference/domains).
-
-| Argument or flag | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `names` | `str...` | `true` | — | Every zone to import. List them all at once. |
-| `--force` | `boolean` | `false` | — | Drop hostnames whose zone you did not list. |
-| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
-
-Reports three lists: `imported`, `skipped` (sites needing a human, such as a
-hostname origin), and `dropped` (hostnames that will stop being served).
-
-<Callout type="error">
-  Pass every zone in one command. The first import rewrites the derived table
-  and destroys the sites a second run would have read. The command refuses and
-  writes nothing when a hostname belongs to a zone you did not list.
-</Callout>
 
 ### `blitzecdn domain remove`
 
@@ -260,6 +487,17 @@ records and cannot be created or edited directly — change the record instead.
 
 | Flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+### `blitzecdn site show`
+
+Show the fully resolved policy for one site — the same document the edges are
+handed. Because a site is derived, this is where the defaults its record never
+mentioned become visible.
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `name` | `str` | `true` | — | Site name, e.g. `cdn-example-com`. |
 | `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
 
 ## `blitzecdn status`

@@ -4,7 +4,7 @@ title: HTTP API
 
 # HTTP API
 
-Verified against the OpenAPI schema of `BlitzeCDN control plane` v1.1.0.
+Verified against the OpenAPI schema of `BlitzeCDN control plane`.
 
 Every route below except `GET /health` requires the `X-API-Key` header.
 Ten failed authentications from one client address within a minute return
@@ -21,7 +21,7 @@ record; poll `GET /v1/deployments/{id}` for the outcome.
   and audit events before deciding what to do next.
 - `202` means queued, not converged. Poll the returned deployment ID until it is
   terminal and inspect retained output on any non-success status.
-- The API has no client-supplied idempotency key in v1.1.0.
+- The API has no client-supplied idempotency key.
 
 Common error bodies use FastAPI validation details for `422`. Authentication,
 conflict, and missing-resource responses contain a short `detail` string:
@@ -115,6 +115,47 @@ Deployment
 | `200` | Successful Response | `Deployment` |
 | `422` | Validation Error | `HTTPValidationError` |
 
+## `POST /v1/drift`
+
+Queue a check-mode run and read the answer from
+`GET /v1/deployments/{id}/drift`. Converges nothing.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Request body** (required): `application/json` → `DriftRequest`
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `202` | Successful Response | `Deployment` |
+| `422` | Validation Error | `HTTPValidationError` |
+
+## `GET /v1/deployments/{deployment_id}/drift`
+
+Read any completed check-mode deployment as a drift report. Returns `409` for a
+deployment that applied changes — its output describes what it did, not what had
+drifted.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `deployment_id` | `path` | `true` | `string` | — |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `DriftReport` |
+| `409` | Not a check-mode deployment | `object` |
+| `422` | Validation Error | `HTTPValidationError` |
+
 ## `POST /v1/rollbacks`
 
 Queue a rollback; poll GET /v1/deployments/\{id\} for the outcome.
@@ -150,6 +191,26 @@ there is no `POST`, `PATCH`, or `DELETE`. Change the record instead.
 | Status | Description | Body |
 | --- | --- | --- |
 | `200` | Successful Response | `CdnSite[]` |
+| `422` | Validation Error | `HTTPValidationError` |
+
+## `GET /v1/sites/{name}`
+
+The fully resolved policy for one site — the same document the edges are handed,
+including the defaults its record never mentioned.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `name` | `path` | `true` | `string` | Site name, e.g. `cdn-example-com`. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `CdnSite` |
+| `404` | No site by that name | `object` |
 | `422` | Validation Error | `HTTPValidationError` |
 
 ## `GET /v1/domains`
@@ -262,6 +323,133 @@ they must resolve to an edge, and edge addressing belongs to that system.
 | --- | --- | --- |
 | `200` | Successful Response | `object[]` |
 
+## `GET /v1/certificates`
+
+Managed certificates against the clock, soonest expiry first.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `expiring_in` | `query` | `false` | `integer \| null` | Return only certificates with at most this many days left. `0`–`3650`. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `CertificateStatus[]` |
+| `422` | Validation Error | `HTTPValidationError` |
+
+## `POST /v1/cache/purge`
+
+Remove cached responses from the edges. Answers inline rather than queueing: a
+purge is usually made under time pressure and the caller needs to know whether
+every edge actually dropped the object.
+
+Send either `entries` or `purge_all`, never both — emptying the cache and
+removing named entries are different operations, and combining them hides which
+one ran. Sending neither is a `409` rather than a successful purge of nothing.
+
+Every variant of a URL is removed: nginx keys entries by request method and by
+normalized content encoding, so one URL is several entries.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Request body** (required): `application/json` → `PurgeRequest`
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Purged on every edge in scope | `PurgeResult` |
+| `404` | No enabled site serves a requested hostname | `object` |
+| `409` | Nothing to purge, contradictory request, or a partial purge | `object` |
+| `422` | Validation Error | `HTTPValidationError` |
+
+A partial purge is a `409`, not a `200`. Some edges dropped the object and
+others did not, so which response a client gets depends on which edge answers —
+that must not read as success.
+
+## `POST /v1/cache/stats`
+
+Collect cache effectiveness from the edges. A `POST` despite reading only
+counters: it runs a playbook across the fleet, which is neither cacheable nor
+safe to retry blindly the way `GET` promises.
+
+Edges that reported nothing appear in `edges` with an `error` rather than being
+omitted, so a fleet-wide number is never quietly computed from a subset.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Request body** (required): `application/json` → `StatsRequest`
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `CacheStatsReport` |
+| `422` | Validation Error | `HTTPValidationError` |
+| `503` | No edge reported statistics | `object` |
+
+## `POST /v1/certificates/renew`
+
+Reissue ACME certificates close to expiry. Answers inline rather than queueing:
+renewal is bounded by certbot's own timeout per site and changes no edge
+configuration. Returns `renewed`, `skipped`, and `failed` name lists.
+
+Uploaded certificates are never renewed — they appear under `skipped`. Renewed
+certificates reach the edges on the next deploy.
+
+The optional `sites` field narrows the run, for retrying one failure without
+sending every other subscription back to a rate-limited CA. A name with no
+managed certificate behind it answers `404` rather than an empty success, so an
+automated caller cannot read a typo as "nothing was due". An empty list is a
+`422`: it would otherwise mean "renew nothing" while reading as a filter.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Request body** (required): `application/json` → `RenewRequest`
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `object` |
+| `404` | No managed certificate for a requested site | `object` |
+| `422` | Validation Error | `HTTPValidationError` |
+
+## `GET /v1/origins/check`
+
+Connect to every enabled site's origin the way the edge will: resolve, connect,
+and for an HTTPS origin complete a verified TLS handshake with the same SNI. The
+probe runs from the control plane, not from an edge, and is bounded by
+`BLITZE_ORIGIN_CHECK_TIMEOUT_SECONDS` per origin.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `OriginCheck[]` |
+
 ## `GET /v1/sites/{name}/certificate`
 
 Certificate
@@ -298,6 +486,31 @@ Request Certificate
 | Status | Description | Body |
 | --- | --- | --- |
 | `200` | Successful Response | `CertificateInfo` |
+| `422` | Validation Error | `HTTPValidationError` |
+
+## `GET /v1/sites/{name}/certificate/preflight`
+
+Certificate Preflight
+
+Reports whether HTTP-01 could validate this site right now: that public DNS
+answers with an edge address, that the virtual host is deployed, and that CAA
+permits the CA, plus advisories on the origin and the record TTL. Contacts no CA
+and changes nothing. The check names and severities are listed under
+[`blitzecdn cert preflight`](/docs/reference/cli#blitzecdn-cert-preflight).
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `name` | `path` | `true` | `string` | — |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `PreflightReport` |
+| `404` | No such site | `HTTPValidationError` |
 | `422` | Validation Error | `HTTPValidationError` |
 
 ## `POST /v1/sites/{name}/certificate/upload`
@@ -388,11 +601,36 @@ _None._
 
 _None._
 
+### `CertificateStatus`
+
+A stored certificate seen against the clock. Derived on request rather than
+stored, so `days_remaining` is always current.
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `days_remaining` | `integer` | `true` | — |
+| `domains` | `string[]` | `true` | — |
+| `expired` | `boolean` | `true` | — |
+| `fingerprint_sha256` | `string` | `true` | — |
+| `not_after` | `string` | `true` | — |
+| `renewable` | `boolean` | `true` | — |
+| `site` | `string` | `true` | — |
+| `source` | `CertificateSource` | `true` | — |
+
+`renewable` is `true` only for an ACME certificate. An uploaded one must be
+replaced by whoever supplied it.
+
 ### `DeployRequest`
 
 | Field | Type | Required | Default |
 | --- | --- | --- | --- |
 | `check` | `boolean` | `false` | `false` |
+| `host_limit` | `string \| null` | `false` | — |
+
+`host_limit` narrows the run to some edges — a canary. Names or globs, comma
+separated, matching `^[A-Za-z0-9_.*-]+(?:,[A-Za-z0-9_.*-]+)*$` and at most 512
+characters. Anything else is a `422`. The value is resolved against the
+inventory, so it can only narrow the fleet.
 
 ### `Deployment`
 
@@ -414,15 +652,80 @@ _None._
 
 _None._
 
+### `DriftReport`
+
+Whether the fleet still matches the state the control plane declares.
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `checked_at` | `string` | `true` | — |
+| `deployment_id` | `string` | `true` | — |
+| `host_limit` | `string \| null` | `false` | — |
+| `hosts` | `HostDrift[]` | `false` | `[]` |
+
+A task the roles skip under check mode cannot be counted, so the report floors
+rather than exactly measures the difference. An unreachable host is reported as
+unreachable, not as drift.
+
+### `DriftRequest`
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `host_limit` | `string \| null` | `false` | — |
+
+Same constraints as `DeployRequest.host_limit`.
+
+### `HostDrift`
+
+What one edge would change if the current desired state were applied.
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `changed` | `integer` | `false` | `0` |
+| `failed` | `integer` | `false` | `0` |
+| `host` | `string` | `true` | — |
+| `ok` | `integer` | `false` | `0` |
+| `unreachable` | `integer` | `false` | `0` |
+
 ### `HTTPValidationError`
 
 | Field | Type | Required | Default |
 | --- | --- | --- | --- |
 | `detail` | `ValidationError[]` | `false` | — |
 
+### `OriginCheck`
+
+The result of connecting to one site's origin the way the edge will.
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `detail` | `string \| null` | `false` | — |
+| `origin` | `string` | `true` | — |
+| `reachable` | `boolean` | `false` | `false` |
+| `resolved` | `boolean` | `false` | `false` |
+| `scheme` | `OriginScheme` | `true` | — |
+| `site` | `string` | `true` | — |
+| `sni` | `string \| null` | `false` | — |
+| `tls_verified` | `boolean \| null` | `false` | — |
+
+Three separate answers because the fixes differ. `resolved` false means DNS;
+`reachable` false means routing, a firewall, or the wrong port; `tls_verified`
+false means the origin's certificate does not match the SNI the edge sends. It
+is `null` for an HTTP origin, where the question does not arise.
+
 ### `OriginScheme`
 
 _None._
+
+### `RenewRequest`
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `force` | `boolean` | `false` | `false` |
+| `within_days` | `integer` | `false` | `30` |
+
+`within_days` accepts `0`–`3650`. `force` renews every ACME certificate
+regardless of age.
 
 ### `RollbackRequest`
 

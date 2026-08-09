@@ -22,10 +22,15 @@ release targets Debian 12+ and Ubuntu 24.04+ edges and commits to them.
 ### Can BlitzeCDN provision my servers or manage DNS?
 
 No. It does not provision virtual machines, manage DNS, issue wildcard
-certificates, distribute cache invalidations, or provide active/active job
-execution. Each of those needs an explicit provider or distributed-state design,
-and the release would rather refuse them than half-implement them. See
+certificates, or provide active/active job execution. Each of those needs an
+explicit provider or distributed-state design, and the release would rather
+refuse them than half-implement them. See
 [deliberate limits](/docs/architecture#deliberate-limits).
+
+Cache invalidation _is_ supported, but synchronously: `blitzecdn cache purge`
+reaches every edge it can and reports which ones purged. An edge that was
+unreachable at the time is not retried later, so the purge is reported
+incomplete rather than silently queued.
 
 ### Why is there only one controller node?
 

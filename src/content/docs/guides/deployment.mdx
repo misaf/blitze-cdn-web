@@ -42,6 +42,17 @@ non-root deployment user has narrowly managed sudo access.
 Set trusted management CIDRs. An empty
 `blitzecdn_firewall_ssh_sources` list deliberately fails closed.
 
+### Check the origins
+
+Run `blitzecdn origin check`. It connects to every enabled site's origin the way
+the edge will and catches what `validate` cannot see — an origin that does not
+resolve, is not listening, or presents a certificate that does not match the SNI
+the edge sends. These surface as `502`s minutes after a deploy that reported
+success.
+
+The probe runs from the control plane, not from an edge, so a pass is good
+evidence rather than proof. A failure is almost always real.
+
 ### Validate, preview, and apply
 
 Run `blitzecdn doctor`, then `blitzecdn deploy`. Review the check-mode preview
@@ -102,5 +113,49 @@ convergence, not an undo of remote side effects outside BlitzeCDN.
 
 For a large fleet, roll out in stages rather than all at once — a bad config
 converged onto 25% of edges is recoverable; converged onto 100% is an incident.
-The bundled playbook uses `serial: 25%`. Control staging by inventory scope when
-you need a smaller canary than the playbook batch size.
+The bundled playbook uses `serial: 25%`, which still reaches a quarter of the
+fleet before anything stops.
+
+For a smaller [canary](/docs/glossary#canary), narrow the run with `--limit`:
+
+```bash
+blitzecdn deploy --limit edge-01
+# prove the change on that edge, then finish the rollout
+blitzecdn deploy
+```
+
+`--limit` accepts edge names or globs, comma separated. It is resolved against
+the inventory, so it can only narrow the fleet — a name the inventory does not
+declare as an edge is refused rather than passed to Ansible, and a typo fails
+loudly instead of converging nothing and reporting success.
+
+<Callout type="warning">
+  A canary leaves the fleet in two states. The control plane records the limit
+  on the deployment and excludes limited runs from automatic rollback selection,
+  because rolling back to a snapshot only one edge received would converge every
+  other edge onto a state it never ran. Finish the rollout or revert it; do not
+  leave it split.
+</Callout>
+
+`rollback` deliberately accepts no limit. A successful applied rollback rewrites
+canonical state, so a partial one would leave the control plane asserting a
+state most edges have never been given.
+
+## Detect drift
+
+A deploy answers "make it so". `blitzecdn drift` answers "is it still so":
+
+```bash
+blitzecdn drift --json
+```
+
+It runs a check-mode convergence and reports, per edge, how many tasks would
+change. Nothing on any edge is modified. It exits `6` when a reachable edge has
+moved or an edge could not be reached — distinct from `5`, so a scheduled check
+tells "the fleet moved" apart from "the check itself broke".
+
+Read the result with two caveats. A task the roles skip under check mode cannot
+be counted, so the report floors rather than exactly measures the difference: it
+reliably tells you [drift](/docs/glossary#drift) exists and undercounts rather
+than invents it. An unreachable edge is reported as unreachable, not as drift —
+nothing was learned about its configuration.
