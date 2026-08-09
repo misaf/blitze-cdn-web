@@ -23,7 +23,8 @@ export default withNextra({
   // the repository-root CLAUDE.md instead.
   agentRules: false,
   // Static export: the site is a build artifact, never a server with access to
-  // controller state. See SECURITY.md.
+  // controller state. It ships nothing to edge servers, never runs on the
+  // controller, and holds no credentials.
   output: 'export',
   images: { unoptimized: true },
   // Empty for `next dev` and for a custom domain; `/blitze-cdn-web` when CI
