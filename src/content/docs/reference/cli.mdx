@@ -322,8 +322,10 @@ Manage edge servers without editing Ansible inventory YAML directly.
 
 ```bash
 blitzecdn edge add edge-01 --host 192.0.2.10 \
+  --public-address 203.0.113.10 \
   --user deploy --ssh-source 198.51.100.0/24
 blitzecdn edge list
+blitzecdn edge update edge-01 --public-address 203.0.113.11
 blitzecdn edge remove edge-01
 ```
 
@@ -333,8 +335,20 @@ blitzecdn edge remove edge-01
 | --- | --- | --- | --- | --- |
 | `name` | `str` | `true` | — | Stable edge name. |
 | `--host` | `str` | `true` | — | SSH hostname or address. |
+| `--public-address` | `str` | `false` | `--host` | Public CDN IP or hostname; repeatable for NAT or multi-address edges. |
 | `--ssh-source` | `str` | `true` | — | Trusted management CIDR; repeatable and at least one is required. |
 | `--user` | `str` | `false` | `deploy` | Non-root SSH user. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+### `blitzecdn edge update`
+
+Replace the public address set used by DNS and certificate preflight without
+changing the edge's SSH route.
+
+| Argument or flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `name` | `str` | `true` | — | Existing stable edge name. |
+| `--public-address` | `str` | `true` | — | Replacement public CDN IP or hostname; repeatable. |
 | `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
 
 ### `blitzecdn edge list`

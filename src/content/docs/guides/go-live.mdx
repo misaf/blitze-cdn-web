@@ -217,8 +217,8 @@ snapshot instead — see [Rollback](/docs/guides/sites#rollback).
 ## Troubleshooting
 
 - **`cert preflight` says the hostname is not an edge address** — DNS has not
-  propagated, or it was published in a zone that is not authoritative for the
-  name.
+  propagated, it was published in a non-authoritative zone, or an edge behind
+  NAT needs an explicit `--public-address` distinct from its SSH `--host`.
 - **`cert preflight` says the site is not deployed** — you skipped or lost the
   deploy in step 2. Run `blitzecdn deploy`.
 - **`CAA` blocks issuance** — the zone permits other authorities but not yours.

@@ -27,11 +27,21 @@ controller converges rather than serves, see [Architecture](/docs/architecture).
 
 ```bash
 blitzecdn edge add edge-01 --host 192.0.2.10 \
+  --public-address 203.0.113.10 \
   --ssh-source 198.51.100.0/24 --user deploy
 ```
 
 `--ssh-source` is repeatable and at least one is required; an empty list
-deliberately fails closed. `--user` defaults to `deploy`.
+deliberately fails closed. `--public-address` is also repeatable and separates
+the public CDN address from the SSH route for NAT and split-DNS deployments. It
+defaults to `--host`. `--user` defaults to `deploy`.
+
+Correct the public address of an existing NAT or split-DNS edge without changing
+its SSH route:
+
+```bash
+blitzecdn edge update edge-01 --public-address 203.0.113.11
+```
 
 Verify the edge is present before converging it:
 
