@@ -23,8 +23,11 @@ const routes = [
   ['/docs/reference/cli', 'CLI'],
   ['/docs/reference/domains', 'Domains'],
   ['/docs/reference/roles', 'Ansible role variables'],
+  ['/docs/guides/how-it-works', 'How it works'],
   ['/docs/guides/quickstart', 'Quick start'],
+  ['/docs/guides/go-live', 'Take a real site live'],
   ['/docs/guides/deployment', 'Deploying'],
+  ['/docs/guides/dns', 'DNS hand-off'],
   ['/docs/guides/incidents', 'Incident response'],
 ]
 

@@ -5,9 +5,12 @@ description: What BlitzeCDN is, how its two halves divide responsibility, and wh
 
 # BlitzeCDN
 
-Use BlitzeCDN to manage Nginx CDN edge servers from one controller. Start with
-the [Quick start](/docs/guides/quickstart) to deploy a site, or use the links
-below to solve a specific operational task.
+Use BlitzeCDN to manage Nginx CDN edge servers from one controller.
+
+New here? Read [How it works](/docs/guides/how-it-works) for the five steps a
+hostname goes through, then follow the
+[Quick start](/docs/guides/quickstart). Everything else on this page is for
+solving one specific task.
 
 The product has a strict responsibility split:
 
@@ -19,9 +22,19 @@ The product has a strict responsibility split:
 <RouteCardGrid
   items={[
     {
+      title: 'Understand the sequence',
+      href: '/docs/guides/how-it-works',
+      note: 'Controller state, convergence, DNS, certificates — in order.',
+    },
+    {
       title: 'Start with a tutorial',
       href: '/docs/guides/quickstart',
       note: 'Deploy the example site from a fresh controller.',
+    },
+    {
+      title: 'Take a real site live',
+      href: '/docs/guides/go-live',
+      note: 'One path from the lab to your own hostname on HTTPS.',
     },
     {
       title: 'Operate safely',
@@ -59,19 +72,31 @@ and distributed to every edge.
 
 ## Every page
 
-### Guides — how to operate it
+### Start here — in this order
 
+- [How it works](/docs/guides/how-it-works) — the sequence every change follows,
+  and what BlitzeCDN deliberately leaves to you.
 - [Quick start](/docs/guides/quickstart) — stand up a controller and make the
   first deploy, end to end.
+- [Take a real site live](/docs/guides/go-live) — from that lab to a hostname you
+  own, served over HTTPS.
+
+### Operate it — one task at a time
+
 - [Sites & deployment](/docs/guides/sites) — what a site is, how desired state,
   snapshots, and rollback work.
 - [Deploying](/docs/guides/deployment) — the operator's deployment checklist.
+- [DNS hand-off](/docs/guides/dns) — publish the records that send visitors to an
+  edge.
 - [Certificates](/docs/guides/certificates) — ACME HTTP-01 issuance, uploads, and
   renewal.
 - [Managing edge hosts](/docs/guides/manage) — add and remove Nginx edges
   without cutting live traffic.
 - [API usage](/docs/guides/api) — authenticate operators and drive the control
   plane over HTTP.
+
+### Keep it safe and running
+
 - [Security](/docs/guides/security) — hardening the control plane and edges.
 - [API key rotation](/docs/guides/api-key-rotation) — replace operator secrets
   without locking out every client.

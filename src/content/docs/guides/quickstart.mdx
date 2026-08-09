@@ -12,12 +12,12 @@ belongs in the repository's CONTRIBUTING.md.
 
 <Callout type="warning">
   This is a first-deployment lab, not a production runbook. It deliberately
-  starts with HTTP only. Complete the [production
-  checklist](/docs/guides/production), [security
-  hardening](/docs/guides/security), [backup and restore](/docs/guides/backup),
-  [certificate setup](/docs/guides/certificates), and [API key
-  rotation](/docs/guides/api-key-rotation) before serving production traffic.
+  starts with HTTP only and uses a documentation hostname. Work through the
+  [production checklist](/docs/guides/production) before serving real traffic.
 </Callout>
+
+For the order these steps follow and why, see
+[How it works](/docs/guides/how-it-works).
 
 ## Before you begin
 
@@ -62,7 +62,7 @@ creates `.venv`, installs the compatible edge automation, and initializes local
 configuration. For repeatable production deployments, select a tested version
 matching the edge collection pinned in `ansible/requirements.yml`.
 
-### Initialise local configuration
+### Register your first edge
 
 ```bash
 .venv/bin/blitzecdn edge add edge-01 \
@@ -71,11 +71,15 @@ matching the edge collection pinned in `ansible/requirements.yml`.
   --ssh-source 198.51.100.0/24
 ```
 
-The installer has already created private local configuration and an empty
-inventory without overwriting existing files. The CLI reads `.env`
-automatically. Replace the documentation addresses with your real edge and trusted management network.
-At least one `--ssh-source` is required so the firewall cannot accidentally
-lock out every administrator.
+This records the edge in the inventory and the management network allowed to
+reach its SSH port. Replace the documentation addresses with your real edge and
+trusted network. At least one `--ssh-source` is required so the firewall cannot
+accidentally lock out every administrator.
+
+Nothing on the edge changes yet — it changes when you deploy, at the end of this
+tutorial. The installer has already created private local configuration and an
+empty inventory without overwriting existing files, and the CLI reads `.env`
+automatically.
 
 ### Install your login key on the edge
 
@@ -240,7 +244,9 @@ for timeout and partial-state guidance.
 
 ## What's next
 
-- [Sites & deployment](/docs/guides/sites) — model your first real site.
-- [Certificates](/docs/guides/certificates) — serve it over HTTPS.
+- [Take a real site live](/docs/guides/go-live) — the continuous path from this
+  lab to a hostname you own, served over HTTPS. Start here.
+- [Sites & deployment](/docs/guides/sites) — what a site is, and how snapshots
+  and rollback work.
 - [Deployment checklist](/docs/guides/deployment) — what to check before and
   after a production deploy.

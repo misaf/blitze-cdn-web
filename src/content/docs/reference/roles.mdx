@@ -4,7 +4,7 @@ title: Ansible roles
 
 # Ansible role variables
 
-Verified against **blitzecdn.edge v1.2.0** — each role's
+Verified against **blitzecdn.edge v1.4.0** — each role's
 `meta/argument_specs.yml` and `defaults/main.yml`. Roles validate these
 at the start of every run, so an unsupported value fails before the host
 is touched.
@@ -36,6 +36,63 @@ Configure baseline edge packages and timezone.
 | --- | --- | --- | --- | --- |
 | `blitzecdn_base_packages` | `list` | `true` | `ca-certificates`, `curl` | — |
 | `blitzecdn_base_timezone` | `str` | `true` | `UTC` | — |
+
+## `blitzecdn_cache`
+
+Remove cached responses from an edge. Run by `blitzecdn cache purge`, not by
+`edge.yml` — it is an operation, not part of convergence.
+
+nginx open source has no purge directive, so an entry is removed by deleting the
+file `proxy_cache_path` stored it in. The path is the MD5 of the same cache key
+nginx computes, which is why this role has to be told the cache settings
+`blitzecdn_nginx` used.
+
+| Variable | Type | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| `blitzecdn_cache_path` | `path` | `true` | `/var/cache/nginx/blitzecdn` | — |
+| `blitzecdn_cache_normalize_accept_encoding` | `bool` | `true` | `true` | — |
+| `blitzecdn_cache_levels` | `str` | `true` | `1:2` | `1:2` |
+| `blitzecdn_cache_purge_entries` | `list` | `true` | — | — |
+| `blitzecdn_cache_purge_all` | `bool` | `true` | `false` | — |
+| `blitzecdn_cache_purge_methods` | `list` | `true` | `GET`, `HEAD` | — |
+| `blitzecdn_cache_purge_encodings` | `list` | `true` | `""`, `gzip`, `br` | — |
+
+<Callout type="warning">
+  The first three **must** match the `blitzecdn_nginx` values of the same name.
+  Nothing at run time can tell a mismatch from an empty cache: a purge aimed at
+  the wrong directory reports success having deleted nothing. The control
+  plane's contract tests assert the two roles agree.
+</Callout>
+
+Deleting the file is enough — nginx keeps the key in its shared-memory zone,
+finds the file gone on the next request, and treats it as a `MISS`. No reload is
+performed. `blitzecdn_cache_purge_all` removes files only, never the level
+directories: nginx creates those at startup and removing them makes every
+subsequent store fail until a reload.
+
+## `blitzecdn_stats`
+
+Report cache and connection counters from an edge. Run by `blitzecdn stats`.
+Read-only — it changes nothing, so it is safe during a deploy.
+
+| Variable | Type | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| `blitzecdn_stats_access_log_path` | `path` | `true` | `/var/log/nginx/blitzecdn-access.log` | — |
+| `blitzecdn_stats_status_address` | `str` | `true` | `127.0.0.1` | — |
+| `blitzecdn_stats_status_port` | `int` | `true` | `8090` | — |
+| `blitzecdn_stats_status_path` | `str` | `true` | `/stub_status` | — |
+| `blitzecdn_stats_output_dir` | `path` | `true` | — | — |
+| `blitzecdn_stats_max_lines` | `int` | `true` | `200000` | — |
+
+`blitzecdn_stats_output_dir` is a directory on the **controller**, not the edge:
+each host writes its own JSON document there and the control plane aggregates
+them. The four nginx-facing variables must match `blitzecdn_nginx`; pointed at
+the wrong log the role reports a hit ratio of zero, which looks like a broken
+cache rather than a misconfigured reader.
+
+Counting happens on the edge. A busy edge logs gigabytes a day, and shipping
+that back to be counted would cost far more than the answer is worth;
+`blitzecdn_stats_max_lines` bounds how much of the tail is read.
 
 ## `blitzecdn_fail2ban`
 
@@ -217,3 +274,35 @@ The role does not manage the listening port; that belongs to
 | `blitzecdn_sshd_max_sessions` | `int` | `true` | `10` | — |
 | `blitzecdn_sshd_permit_root_login` | `str` | `true` | `no` | `no`, `prohibit-password`, `forced-commands-only` |
 | `blitzecdn_sshd_service` | `str` | `true` | `ssh` | — |
+
+## `blitzecdn_teardown`
+
+Remove BlitzeCDN configuration and TLS material from an edge. Run by
+`blitzecdn edge remove`, before the host leaves the inventory — afterwards no
+playbook can address it, and anything left behind stays until someone logs in.
+
+Deletes the managed virtual hosts, the catch-all default site, the cache and
+status configuration, the managed-site registry, the cache contents, the ACME
+webroot, and `/etc/blitzecdn` including private keys. Leaves Nginx installed
+and running, and does not touch SSH or firewall policy: reverting those as part
+of a teardown can strand an operator on a host that is merely being unmanaged,
+or leave one open rather than closed.
+
+| Variable | Type | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| `blitzecdn_teardown_access_log_path` | `path` | `true` | `/var/log/nginx/blitzecdn-access.log` | — |
+| `blitzecdn_teardown_acme_root` | `path` | `true` | `/var/lib/blitzecdn/acme` | — |
+| `blitzecdn_teardown_cache_path` | `path` | `true` | `/var/cache/nginx/blitzecdn` | — |
+| `blitzecdn_teardown_managed_sites_file` | `path` | `true` | `/etc/nginx/blitzecdn-managed-sites` | — |
+| `blitzecdn_teardown_marker` | `str` | `true` | `# Managed by BlitzeCDN. Local edits are overwritten.` | — |
+| `blitzecdn_teardown_remove_logs` | `bool` | `false` | `false` | — |
+| `blitzecdn_teardown_state_path` | `path` | `true` | `/etc/blitzecdn` | — |
+
+Every path must equal the value `blitzecdn_nginx` converged with on the same
+host. Pointed elsewhere the role removes nothing, reports success, and the real
+files survive on a host the control plane is about to forget.
+
+Managed configurations are found by their marker comment rather than by reading
+the managed-site registry, so a file written by a run that failed validation —
+which never reached the registry — is still removed. Logs survive by default:
+a decommissioned host is often decommissioned because something went wrong.

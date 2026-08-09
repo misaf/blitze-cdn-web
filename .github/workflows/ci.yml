@@ -24,7 +24,7 @@ jobs:
       - name: Install site dependencies
         run: npm ci
       - name: Dependency audit
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=moderate
       - name: Build site
         run: npm run build
       - name: Check formatting and lint

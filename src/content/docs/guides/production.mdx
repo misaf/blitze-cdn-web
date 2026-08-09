@@ -27,6 +27,20 @@ execution and no distributed job queue. Plan around that:
   a second host, and use the same `.env` (or a reconciled copy). See
   [Backup & recovery](/docs/guides/backup).
 
+Install the bundled service so the API, deployment worker, and first-certificate
+reconciler have a supervised production lifetime:
+
+```bash
+sudo cp packaging/systemd/blitzecdn-api.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now blitzecdn-api.service
+```
+
+The unit binds the API to loopback, loads optional secrets from
+`/etc/blitzecdn/blitzecdn.env`, and puts `/opt/blitzecdn/.venv/bin` on `PATH` so
+Ansible and Certbot hooks use the installed project environment. Put an
+authenticated TLS reverse proxy in front of it before allowing remote clients.
+
 ## Sizing the controller
 
 The controller runs one local `ansible-playbook` process per deployment, with
@@ -47,9 +61,9 @@ Sizing guidance:
   bad config on 25% of edges is an incident you can fix; on 100% it is an outage.
 - **Rerun plan after anything ambiguous.** A timeout is not proof that no remote
   changes occurred. Always `plan` before retrying after a partial or unknown run.
-- **Renew certificates on a schedule, not on demand.** Poll the certificate
-  endpoint for metadata changes and deploy when it changes — see
-  [Renewal](/docs/guides/certificates#renewal).
+- **Renew certificates on a schedule, not on demand.** Use the bundled renewal
+  timer, whose `cert renew --deploy` run installs renewed material before it
+  reports success — see [Renewal](/docs/guides/certificates#renewal).
 
 Name the canary hosts with [`--limit`](/docs/reference/cli#blitzecdn-deploy) on
 both plan and deploy. It accepts names or globs, resolves them against the
@@ -76,9 +90,10 @@ at the proxy, and monitor `429`s.
 
 - ACME HTTP-01 requires each requested hostname to resolve to the edge addresses
   with port 80 public. Changing DNS is outside the tool's scope; coordinate it
-  before requesting certificates.
+  before requesting certificates. See [DNS hand-off](/docs/guides/dns).
 - There is no DNS management and no wildcard issuance in this release. Both are
-  explicit non-goals; plan your certificate layout accordingly.
+  explicit non-goals. Budget one certificate per hostname; see
+  [certificate scope](/docs/guides/certificates#scope-one-certificate-per-hostname).
 
 ## Version discipline
 

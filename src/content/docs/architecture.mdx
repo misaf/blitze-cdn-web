@@ -155,8 +155,18 @@ workflow in `ControlPlane`, then expose it independently through CLI/API.
 This release supports one controller node, Debian/Ubuntu edges, Nginx, UFW,
 existing/uploaded certificates, and centrally coordinated HTTP-01 issuance. It
 does not provision virtual machines, manage DNS, issue wildcard certificates,
-distribute cache invalidations, or provide active/active job execution. Those
-require explicit provider and distributed-state designs.
+or provide active/active job execution. Those require explicit provider and
+distributed-state designs.
+
+Cache invalidation is **synchronous**, not distributed. `blitzecdn cache purge`
+fans out over the same Ansible run every other fleet-wide operation uses, waits
+for each edge, and reports which ones purged. That covers the case operators
+actually have — drop a bad object now, across a fleet you can reach — without a
+job queue. What it does not do is survive an unreachable edge: there is no
+pending-invalidation log, so an edge that was down when you purged still has the
+object when it returns, and the purge is reported incomplete rather than
+retried. Queued, eventually-consistent purge is the part that needs the
+distributed-state design, and it is still not here.
 
 ## Dependency decisions
 

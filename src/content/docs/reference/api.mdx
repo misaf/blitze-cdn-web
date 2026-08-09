@@ -193,6 +193,26 @@ there is no `POST`, `PATCH`, or `DELETE`. Change the record instead.
 | `200` | Successful Response | `CdnSite[]` |
 | `422` | Validation Error | `HTTPValidationError` |
 
+## `GET /v1/sites/{name}`
+
+The fully resolved policy for one site — the same document the edges are handed,
+including the defaults its record never mentioned.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `name` | `path` | `true` | `string` | Site name, e.g. `cdn-example-com`. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `CdnSite` |
+| `404` | No site by that name | `object` |
+| `422` | Validation Error | `HTTPValidationError` |
+
 ## `GET /v1/domains`
 
 List Domains
@@ -321,6 +341,65 @@ Managed certificates against the clock, soonest expiry first.
 | `200` | Successful Response | `CertificateStatus[]` |
 | `422` | Validation Error | `HTTPValidationError` |
 
+## `POST /v1/cache/purge`
+
+Remove cached responses from the edges. Answers inline rather than queueing: a
+purge is usually made under time pressure and the caller needs to know whether
+every edge actually dropped the object.
+
+Send either `entries` or `purge_all`, never both — emptying the cache and
+removing named entries are different operations, and combining them hides which
+one ran. Sending neither is a `409` rather than a successful purge of nothing.
+
+Every variant of a URL is removed: nginx keys entries by request method and by
+normalized content encoding, so one URL is several entries.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Request body** (required): `application/json` → `PurgeRequest`
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Purged on every edge in scope | `PurgeResult` |
+| `404` | No enabled site serves a requested hostname | `object` |
+| `409` | Nothing to purge, contradictory request, or a partial purge | `object` |
+| `422` | Validation Error | `HTTPValidationError` |
+
+A partial purge is a `409`, not a `200`. Some edges dropped the object and
+others did not, so which response a client gets depends on which edge answers —
+that must not read as success.
+
+## `POST /v1/cache/stats`
+
+Collect cache effectiveness from the edges. A `POST` despite reading only
+counters: it runs a playbook across the fleet, which is neither cacheable nor
+safe to retry blindly the way `GET` promises.
+
+Edges that reported nothing appear in `edges` with an `error` rather than being
+omitted, so a fleet-wide number is never quietly computed from a subset.
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Request body** (required): `application/json` → `StatsRequest`
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `CacheStatsReport` |
+| `422` | Validation Error | `HTTPValidationError` |
+| `503` | No edge reported statistics | `object` |
+
 ## `POST /v1/certificates/renew`
 
 Reissue ACME certificates close to expiry. Answers inline rather than queueing:
@@ -329,6 +408,12 @@ configuration. Returns `renewed`, `skipped`, and `failed` name lists.
 
 Uploaded certificates are never renewed — they appear under `skipped`. Renewed
 certificates reach the edges on the next deploy.
+
+The optional `sites` field narrows the run, for retrying one failure without
+sending every other subscription back to a rate-limited CA. A name with no
+managed certificate behind it answers `404` rather than an empty success, so an
+automated caller cannot read a typo as "nothing was due". An empty list is a
+`422`: it would otherwise mean "renew nothing" while reading as a filter.
 
 **Parameters**
 
@@ -343,6 +428,7 @@ certificates reach the edges on the next deploy.
 | Status | Description | Body |
 | --- | --- | --- |
 | `200` | Successful Response | `object` |
+| `404` | No managed certificate for a requested site | `object` |
 | `422` | Validation Error | `HTTPValidationError` |
 
 ## `GET /v1/origins/check`
@@ -400,6 +486,31 @@ Request Certificate
 | Status | Description | Body |
 | --- | --- | --- |
 | `200` | Successful Response | `CertificateInfo` |
+| `422` | Validation Error | `HTTPValidationError` |
+
+## `GET /v1/sites/{name}/certificate/preflight`
+
+Certificate Preflight
+
+Reports whether HTTP-01 could validate this site right now: that public DNS
+answers with an edge address, that the virtual host is deployed, and that CAA
+permits the CA, plus advisories on the origin and the record TTL. Contacts no CA
+and changes nothing. The check names and severities are listed under
+[`blitzecdn cert preflight`](/docs/reference/cli#blitzecdn-cert-preflight).
+
+**Parameters**
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `name` | `path` | `true` | `string` | — |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `PreflightReport` |
+| `404` | No such site | `HTTPValidationError` |
 | `422` | Validation Error | `HTTPValidationError` |
 
 ## `POST /v1/sites/{name}/certificate/upload`

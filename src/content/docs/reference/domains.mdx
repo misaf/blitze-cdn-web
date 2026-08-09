@@ -39,6 +39,10 @@ blitzecdn record add example.com db  --value 198.51.100.22
 Each record points at its own address, so `api` and `img` are proxied through
 the edge to different origins while `db` bypasses the CDN entirely.
 
+These records are what the edges serve, not what resolvers answer with. For
+publishing the public DNS a proxied hostname needs, see
+[DNS hand-off](/docs/guides/dns).
+
 Use `@` for the zone apex and `*` for a wildcard:
 
 ```bash
