@@ -238,6 +238,38 @@ agent on the edge itself, or over an SSH tunnel.
 | `origin_sni` | `str` | `false` | — | — |
 | `server_names` | `list` | `true` | — | — |
 
+## `blitzecdn_resolver`
+
+Point the host at resolvers that answer public names truthfully.
+
+Off unless `blitzecdn_resolver_enabled` is set. Turn it on where the host
+resolver cannot be trusted for public names — a split-horizon view, an internal
+forwarder, or a transparent proxy that claims every hostname. Such a resolver
+looks healthy for browsing and package installs while making every check that
+compares a resolved address against an expected one fail for the wrong reason.
+Nginx resolves origin *hostnames* through the same resolver, so this is not
+only a certificate concern.
+
+Writes `/etc/systemd/resolved.conf.d/blitzecdn.conf` rather than editing netplan
+or NetworkManager. Those files are installer- or cloud-init-owned, differ per
+image and renderer, and also carry addresses and routes — a bad edit there costs
+the host, not just its resolution. The role refuses an empty address list,
+refuses hostnames, refuses a host that does not resolve through
+systemd-resolved, and then proves the result by querying a random name under
+the reserved `.invalid` domain. Nothing may answer one, so anything that does is
+inventing addresses. `blitzecdn_teardown` removes the drop-in again.
+
+| Variable | Type | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| `blitzecdn_resolver_addresses` | `list` | `true` | — | — |
+| `blitzecdn_resolver_domains` | `list` | `true` | `~.` | — |
+| `blitzecdn_resolver_enabled` | `bool` | `true` | `false` | — |
+| `blitzecdn_resolver_fallback_addresses` | `list` | `true` | — | — |
+
+`blitzecdn_resolver_domains` defaults to `~.`, which claims every domain and so
+makes these servers the default for the host. Narrow it to specific zones to
+leave the rest of resolution on whatever the link supplies.
+
 ## `blitzecdn_sshd`
 
 Enforce public-key-only SSH authentication.
@@ -296,6 +328,7 @@ or leave one open rather than closed.
 | `blitzecdn_teardown_managed_sites_file` | `path` | `true` | `/etc/nginx/blitzecdn-managed-sites` | — |
 | `blitzecdn_teardown_marker` | `str` | `true` | `# Managed by BlitzeCDN. Local edits are overwritten.` | — |
 | `blitzecdn_teardown_remove_logs` | `bool` | `false` | `false` | — |
+| `blitzecdn_teardown_resolver_file` | `path` | `true` | `/etc/systemd/resolved.conf.d/blitzecdn.conf` | — |
 | `blitzecdn_teardown_state_path` | `path` | `true` | `/etc/blitzecdn` | — |
 
 Every path must equal the value `blitzecdn_nginx` converged with on the same

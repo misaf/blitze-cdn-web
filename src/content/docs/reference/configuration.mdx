@@ -54,8 +54,19 @@ Precedence: environment variable, then the matching key in
 | `BLITZE_INVENTORY` | `[blitzecdn].inventory_path` | `<project_dir>/ansible/inventory/hosts.yml` | — |
 | `BLITZE_ORIGIN_CHECK_TIMEOUT_SECONDS` | `[blitzecdn].origin_check_timeout_seconds` | `5` | ≥ 1, ≤ 60 |
 | `BLITZE_PLAYBOOK` | `[blitzecdn].playbook_path` | `<project_dir>/ansible/playbooks/edge.yml` | — |
+| `BLITZE_PREFLIGHT_DNS_SERVERS` | `[blitzecdn].preflight_dns_servers` | host resolver | Comma-separated IP addresses; hostnames are rejected |
 | `BLITZE_PREFLIGHT_DNS_TIMEOUT_SECONDS` | `[blitzecdn].preflight_dns_timeout_seconds` | `5` | ≥ 1, ≤ 60 |
 | `BLITZE_STATE_DIR` | `[blitzecdn].state_dir` | `<project_dir>/.state` | — |
+
+Certificate preflight predicts what the CA will see, and the CA resolves from
+the public internet. `BLITZE_PREFLIGHT_DNS_SERVERS` sends its lookups to those
+resolvers instead of the controller's own, which matters wherever the host
+resolves differently from the public view — a split-horizon zone, an internal
+forwarder, or a transparent proxy that claims every hostname. Left unset,
+lookups go through the host resolver as before, including `/etc/hosts`.
+Addresses only: a hostname here would have to be resolved by the resolver being
+bypassed. `blitzecdn doctor` reports which resolver is in use and whether it
+answers reserved names it cannot know.
 
 ## Secrets
 
