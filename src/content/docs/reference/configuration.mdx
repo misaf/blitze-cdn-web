@@ -88,6 +88,37 @@ what converges.
 Set them in `.env`, which `init` and `setup` scaffold with both names commented
 out. See [country rules](/docs/reference/domains) for the rest of the setup.
 
+## Edge settings
+
+Role variables for the edge fleet live in
+`ansible/inventory/group_vars/blitzecdn_edges/`, a directory of two files:
+
+| File | Tracked | Purpose |
+| --- | --- | --- |
+| `defaults.yml` | yes | Shipped defaults. Replaced wholesale on upgrade. |
+| `local.yml` | no | Your overrides. Loaded after `defaults.yml` and wins. |
+
+Ansible reads every file in a `group_vars/<group>/` directory in alphabetical
+order, so `local.yml` sorts last. Keys you leave out fall through to the
+defaults — put only what your site changes in it.
+
+<Callout type="warning">
+  Do not edit `defaults.yml`. It is tracked, and `./install.sh update` refuses
+  to run when a tracked file has local changes, so an edit there blocks
+  upgrading:
+
+  ```console
+  error: tracked files in /opt/blitzecdn have local changes
+  ```
+
+  `blitzecdn setup` creates `local.yml` if it is missing, on an existing
+  install as well as a fresh one.
+</Callout>
+
+Control-plane settings and secrets belong in `.env` instead — the tables above.
+The split is the one in the architecture: `.env` configures the control plane,
+`local.yml` configures what Ansible does to the edges.
+
 ## Other variables read at startup
 
 | Environment variable |

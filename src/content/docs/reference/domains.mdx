@@ -157,8 +157,9 @@ BLITZE_MAXMIND_LICENSE_KEY=your-key
 ```
 
 Set `blitzecdn_nginx_geoip_enabled: true` in
-`ansible/inventory/group_vars/blitzecdn_edges.yml` — the shipped file already
-reads both values from the environment — and deploy. The role installs
+`ansible/inventory/group_vars/blitzecdn_edges/local.yml` — not `defaults.yml`,
+which is tracked and would block the next update — and deploy. The shipped
+defaults already read both credentials from the environment. The role installs
 `geoipupdate(8)`, fetches the database, and schedules twice-weekly refreshes.
 See [`blitzecdn_nginx_geoip_enabled`](/docs/reference/roles) for the full
 variable set.
