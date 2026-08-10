@@ -471,6 +471,51 @@ Turns the CDN on or off for one record.
   origin.
 </Callout>
 
+### `blitzecdn record firewall`
+
+Filters requests to one hostname at the edge. The host packet filter cannot do
+this — it sees an address and a port, and every hostname on an edge shares
+both.
+
+| Argument or flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `domain` | `str` | `true` | — | Zone the record belongs to. |
+| `name` | `str` | `true` | — | Record name. |
+| `--allow-source` | `str` | `false` | — | CIDR exempted from `--deny-source`. Repeatable. |
+| `--deny-source` | `str` | `false` | — | CIDR answered with `403`. Repeatable. |
+| `--allow-country` | `str` | `false` | — | ISO 3166-1 alpha-2; every other country gets `403`. Repeatable. |
+| `--deny-country` | `str` | `false` | — | ISO 3166-1 alpha-2 answered with `403`. Repeatable. |
+| `--deny-method` | `str` | `false` | — | HTTP method answered with `405`. Repeatable. |
+| `--deny-path` | `str` | `false` | — | URI prefix answered with `403`. Repeatable. |
+| `--clear` | `boolean` | `false` | — | Remove every rule. Cannot be combined with a rule flag. |
+| `--type` | `A` \| `AAAA` | `false` | `A` | Record type. |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+Each flag replaces its own list and keeps the lists you do not name. Give at
+least one rule flag or `--clear`.
+
+The posture is open: rules subtract from a hostname that otherwise serves
+everyone, and `--allow-source` is an exemption from `--deny-source` rather than
+a whitelist. To close a hostname, deny everything and list the exceptions:
+
+```bash
+blitzecdn record firewall example.com www \
+  --deny-source 0.0.0.0/0 --deny-source ::/0 \
+  --allow-source 203.0.113.0/24
+```
+
+Country rules need
+[`blitzecdn_nginx_geoip_enabled`](/docs/reference/roles) and a MaxMind database
+on the edge; a deploy fails rather than serving traffic the rules were meant to
+block. See [the firewall reference](/docs/reference/domains) for how the rules
+compose.
+
+<Callout type="info">
+  Rules never apply to `/.well-known/acme-challenge/`, so a hostname cannot
+  filter out its own certificate authority and fail renewal weeks later. Nothing
+  changes on the edge until the next `blitzecdn deploy`.
+</Callout>
+
 ### `blitzecdn record remove`
 
 | Argument or flag | Type | Required | Default | Description |

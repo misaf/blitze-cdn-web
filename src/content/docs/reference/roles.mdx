@@ -4,7 +4,7 @@ title: Ansible roles
 
 # Ansible role variables
 
-Verified against **blitzecdn.edge v1.4.0** — each role's
+Verified against **blitzecdn.edge v1.7.0** — each role's
 `meta/argument_specs.yml` and `defaults/main.yml`. Roles validate these
 at the start of every run, so an unsupported value fails before the host
 is touched.
@@ -182,6 +182,21 @@ agent on the edge itself, or over an SSH tunnel.
   the port.
 </Callout>
 
+`blitzecdn_nginx_geoip_enabled` installs the GeoIP2 module and defines
+`$blitzecdn_country`, which is what the per-site `allowed_countries` and
+`denied_countries` rules test. It is off by default because the country
+database is a licensed MaxMind download this collection has no credentials for.
+The role checks for the file at `blitzecdn_nginx_geoip_database` and does not
+fetch or refresh it — install and schedule `geoipupdate(8)` yourself.
+
+<Callout type="warning">
+  A site that carries country rules fails the deploy when
+  `blitzecdn_nginx_geoip_enabled` is `false`, before the edge is changed. This
+  is deliberate: the alternative is an edge that reports a converged site while
+  serving every country the rules were meant to block. Enable the variable and
+  install the database, or remove the rules.
+</Callout>
+
 | Variable | Type | Required | Default | Choices |
 | --- | --- | --- | --- | --- |
 | `blitzecdn_desired_state_version` | `int` | `true` | — | — |
@@ -196,6 +211,11 @@ agent on the edge itself, or over an SSH tunnel.
 | `blitzecdn_nginx_certificate_path_pattern` | `str` | `true` | `^/(?!.*(?:^\|/)\.\.(?:/\|$))etc/(?:blitzecdn/tls\|ssl\|letsencrypt)/[^;{}]+$` | — |
 | `blitzecdn_nginx_default_server` | `bool` | `true` | `true` | — |
 | `blitzecdn_nginx_default_site_file` | `path` | `true` | `/etc/nginx/sites-available/blitzecdn-default.conf` | — |
+| `blitzecdn_nginx_geoip_database` | `path` | `true` | `/usr/share/GeoIP/GeoLite2-Country.mmdb` | — |
+| `blitzecdn_nginx_geoip_enabled` | `bool` | `true` | `false` | — |
+| `blitzecdn_nginx_geoip_file` | `path` | `true` | `/etc/nginx/conf.d/blitzecdn-geoip.conf` | — |
+| `blitzecdn_nginx_geoip_package` | `str` | `true` | `libnginx-mod-http-geoip2` | — |
+| `blitzecdn_nginx_geoip_reload` | `str` | `true` | `5m` | — |
 | `blitzecdn_nginx_hsts_enabled` | `bool` | `true` | `false` | — |
 | `blitzecdn_nginx_hsts_max_age` | `int` | `true` | `31536000` | — |
 | `blitzecdn_nginx_log_format_name` | `str` | `true` | `blitzecdn` | — |
@@ -215,7 +235,7 @@ agent on the edge itself, or over an SSH tunnel.
 | `blitzecdn_nginx_status_file` | `path` | `true` | `/etc/nginx/conf.d/blitzecdn-status.conf` | — |
 | `blitzecdn_nginx_status_path` | `str` | `true` | `/stub_status` | — |
 | `blitzecdn_nginx_status_port` | `int` | `true` | `8090` | — |
-| `blitzecdn_nginx_supported_state_versions` | `list` | `true` | `1` | — |
+| `blitzecdn_nginx_supported_state_versions` | `list` | `true` | `1`, `2` | — |
 
 ### `blitzecdn_nginx_sites` element keys
 
@@ -230,6 +250,7 @@ agent on the edge itself, or over an SSH tunnel.
 | `certificate_path` | `path` | `false` | — | — |
 | `certificate_source_path` | `path` | `false` | — | — |
 | `enabled` | `bool` | `false` | `true` | — |
+| `firewall` | `dict` | `false` | — | — |
 | `name` | `str` | `true` | — | — |
 | `origin_host` | `str` | `true` | — | — |
 | `origin_port` | `int` | `false` | — | — |
@@ -237,6 +258,20 @@ agent on the edge itself, or over an SSH tunnel.
 | `origin_scheme` | `str` | `false` | `https` | `http`, `https` |
 | `origin_sni` | `str` | `false` | — | — |
 | `server_names` | `list` | `true` | — | — |
+
+#### `firewall` suboptions
+
+Per-hostname request filtering, absent on a site that does not filter. See
+[the firewall reference](/docs/reference/domains) for how the rules compose.
+
+| Key | Type | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| `allow_sources` | `list` | `false` | `[]` | — |
+| `allowed_countries` | `list` | `false` | `[]` | — |
+| `denied_countries` | `list` | `false` | `[]` | — |
+| `denied_methods` | `list` | `false` | `[]` | — |
+| `denied_paths` | `list` | `false` | `[]` | — |
+| `deny_sources` | `list` | `false` | `[]` | — |
 
 ## `blitzecdn_resolver`
 

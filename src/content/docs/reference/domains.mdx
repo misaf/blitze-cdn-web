@@ -97,6 +97,59 @@ cache or TLS setting.
 | `cache_valid_success` | `str` | `10m` | Cache lifetime for 200, 301, 302. |
 | `cache_valid_not_found` | `str` | `1m` | Cache lifetime for 404. |
 | `certificate_mode` | `disabled` \| `existing` \| `uploaded` \| `requested` | `disabled` | See [certificates](/docs/guides/certificates). |
+| `firewall` | `object` | `{}` | Per-hostname request filtering. See below. |
+
+## Firewall
+
+`firewall` filters requests to one hostname at the edge. The host packet filter
+cannot do this: it sees an address and a port, and every hostname on an edge
+shares both. Filtering per hostname happens in the virtual host, after the
+request is parsed.
+
+The posture is open. An empty `firewall` serves everyone, and each list below
+subtracts from that.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `allow_sources` | `list[str]` | `[]` | CIDR networks exempted from `deny_sources`. |
+| `deny_sources` | `list[str]` | `[]` | CIDR networks answered with `403`. |
+| `allowed_countries` | `list[str]` | `[]` | ISO 3166-1 alpha-2 codes; every other country gets `403`. |
+| `denied_countries` | `list[str]` | `[]` | ISO 3166-1 alpha-2 codes answered with `403`. |
+| `denied_methods` | `list[str]` | `[]` | HTTP methods answered with `405`. |
+| `denied_paths` | `list[str]` | `[]` | URI prefixes answered with `403`. |
+
+`allow_sources` is not a whitelist. Nginx takes the first matching access rule
+and the allows are written before the denies, so an allow entry only exempts an
+address from the denies under it. To close a hostname, deny everything and list
+the exceptions:
+
+```bash
+blitzecdn record firewall example.com www \
+  --deny-source 0.0.0.0/0 --deny-source ::/0 \
+  --allow-source 203.0.113.0/24
+```
+
+Each CLI option replaces its own list and keeps the lists you do not name. The
+equivalent `PATCH` on the [HTTP API](/docs/reference/api) replaces the whole
+`firewall` object instead, so send every list you want to keep.
+
+A network must have its host bits clear: `203.0.113.5/24` is rejected, because
+it reads as one address and matches 256.
+
+Country rules require the GeoIP2 module and a MaxMind country database on the
+edge — see [`blitzecdn_nginx_geoip_enabled`](/docs/reference/roles). A deploy
+fails rather than serving traffic the rules were meant to block.
+
+Country and method rules are evaluated by an earlier nginx phase than source
+rules, so they always win. `allow_sources` cannot exempt an address from a
+country block.
+
+<Callout type="info">
+  These rules never apply to `/.well-known/acme-challenge/`. A hostname that
+  filtered out its certificate authority would keep serving until the
+  certificate expired, weeks later, with nothing linking the outage to the rule
+  that caused it.
+</Callout>
 
 ## Derived site names
 

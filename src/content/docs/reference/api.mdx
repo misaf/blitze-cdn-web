@@ -567,6 +567,7 @@ Validated, provider-independent desired state for one CDN virtual host.
 | `certificate_mode` | `CertificateMode` | `false` | `disabled` |
 | `certificate_path` | `string \\| null` | `false` | — |
 | `enabled` | `boolean` | `false` | `true` |
+| `firewall` | `SiteFirewall` | `false` | `{}` |
 | `name` | `string` | `true` | — |
 | `origin_host` | `string` | `true` | — |
 | `origin_port` | `integer \\| null` | `false` | — |
@@ -752,6 +753,7 @@ regardless of age.
 | `certificate_path` | `string \| null` | `false` | — |
 | `domain` | `string` | `true` | — |
 | `enabled` | `boolean` | `false` | `true` |
+| `firewall` | `SiteFirewall` | `false` | `{}` |
 | `name` | `string` | `true` | — |
 | `origin_port` | `integer \| null` | `false` | — |
 | `origin_request_host` | `string \| null` | `false` | — |
@@ -773,6 +775,7 @@ regardless of age.
 | `certificate_mode` | `CertificateMode \| null` | `false` | — |
 | `certificate_path` | `string \| null` | `false` | — |
 | `enabled` | `boolean \| null` | `false` | — |
+| `firewall` | `SiteFirewall \| null` | `false` | — |
 | `origin_port` | `integer \| null` | `false` | — |
 | `origin_request_host` | `string \| null` | `false` | — |
 | `origin_scheme` | `OriginScheme \| null` | `false` | — |
@@ -780,6 +783,30 @@ regardless of age.
 | `proxied` | `boolean \| null` | `false` | — |
 | `ttl` | `integer \| null` | `false` | — |
 | `value` | `string \| null` | `false` | — |
+
+### `SiteFirewall`
+
+Per-hostname request filtering applied at the edge. The posture is open: an
+empty object serves everyone, and each list subtracts from that.
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `allow_sources` | `string[]` | `false` | `[]` |
+| `allowed_countries` | `string[]` | `false` | `[]` |
+| `denied_countries` | `string[]` | `false` | `[]` |
+| `denied_methods` | `string[]` | `false` | `[]` |
+| `denied_paths` | `string[]` | `false` | `[]` |
+| `deny_sources` | `string[]` | `false` | `[]` |
+
+`PATCH` replaces the whole object, so send every list you want to keep. Send
+`{"firewall": {}}` to remove all rules. The `blitzecdn record firewall` CLI
+command merges instead, keeping the lists you do not name.
+
+Sources are IP addresses or CIDR networks with their host bits clear;
+`203.0.113.5/24` returns `422`. Countries are ISO 3166-1 alpha-2 and require
+GeoIP on the edge. See [the firewall
+reference](/docs/reference/domains) for how the rules compose and why
+`/.well-known/acme-challenge/` is never filtered.
 
 ### `RecordType`
 
