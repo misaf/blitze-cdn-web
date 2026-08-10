@@ -52,6 +52,7 @@ Precedence: environment variable, then the matching key in
 | `BLITZE_DEPLOYMENT_TIMEOUT_SECONDS` | `[blitzecdn].deployment_timeout_seconds` | `900` | ≥ 30, ≤ 7200 |
 | `BLITZE_GENERATED_VARS` | `[blitzecdn].generated_vars_path` | `<state_dir>/desired-state.yml` | — |
 | `BLITZE_INVENTORY` | `[blitzecdn].inventory_path` | `<project_dir>/ansible/inventory/hosts.yml` | — |
+| `BLITZE_MAXMIND_ACCOUNT_ID` | `[blitzecdn].maxmind_account_id` | `""` | MaxMind account ID for the edge GeoLite2 download |
 | `BLITZE_ORIGIN_CHECK_TIMEOUT_SECONDS` | `[blitzecdn].origin_check_timeout_seconds` | `5` | ≥ 1, ≤ 60 |
 | `BLITZE_PLAYBOOK` | `[blitzecdn].playbook_path` | `<project_dir>/ansible/playbooks/edge.yml` | — |
 | `BLITZE_PREFLIGHT_DNS_SERVERS` | `[blitzecdn].preflight_dns_servers` | host resolver | Comma-separated IP addresses; hostnames are rejected |
@@ -76,6 +77,16 @@ Secrets are deliberately not valid TOML keys — they are environment-only.
 | --- | --- |
 | `BLITZE_API_KEYS` | Comma-separated `operator:secret`. Each secret needs ≥ 32 characters. Duplicate operators are rejected. |
 | `BLITZE_API_KEY` | Single unnamed key, registered as operator `default`. Also ≥ 32 characters. |
+| `BLITZE_MAXMIND_LICENSE_KEY` | MaxMind license key, for fetching GeoLite2 onto the edges. Authenticates to the account, so it is not a valid TOML key: a `blitzecdn.toml` carrying one is rejected. |
+
+Both MaxMind values are forwarded into the Ansible subprocess environment and
+read by `group_vars` with `lookup('env', ...)`, never passed as `--extra-vars`
+— argv is readable by every account on the controller. They are set on every
+run even when empty, so a stale export in the deploying shell cannot change
+what converges.
+
+Set them in `.env`, which `init` and `setup` scaffold with both names commented
+out. See [country rules](/docs/reference/domains) for the rest of the setup.
 
 ## Other variables read at startup
 

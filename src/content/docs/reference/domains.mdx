@@ -148,11 +148,12 @@ edge. Until both are in place a deploy **fails** rather than serving traffic
 the rules were meant to block.
 
 GeoLite2 is free, but downloads are authenticated. Create a MaxMind account,
-generate a license key, then on the controller:
+generate a license key, then add both to the control plane's `.env` — `init`
+and `setup` scaffold the names, commented out:
 
 ```bash
-export MAXMIND_ACCOUNT_ID=123456
-export MAXMIND_LICENSE_KEY=your-key
+BLITZE_MAXMIND_ACCOUNT_ID=123456
+BLITZE_MAXMIND_LICENSE_KEY=your-key
 ```
 
 Set `blitzecdn_nginx_geoip_enabled: true` in
