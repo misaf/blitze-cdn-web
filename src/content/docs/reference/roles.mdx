@@ -11,7 +11,8 @@ is touched.
 
 Reference roles by their fully qualified name, for example
 `blitzecdn.edge.blitzecdn_nginx`. Set variables in the control plane's
-`ansible/inventory/group_vars/blitzecdn_edges.yml`. Ansible only
+[`ansible/inventory/group_vars/blitzecdn_edges/local.yml`](/docs/reference/configuration#edge-settings)
+— not `defaults.yml`, which is tracked and replaced on upgrade. Ansible only
 auto-loads `group_vars` adjacent to the inventory file — a `group_vars/`
 directory anywhere else is silently ignored.
 
@@ -136,6 +137,40 @@ it created, confirms the restored tree still loads, and fails the play. The edge
 keeps serving its previous configuration, so a bad render costs you a failed run
 rather than an Nginx that refuses to start at the next reboot.
 
+The role records the sites it manages in
+`blitzecdn_nginx_managed_sites_file`. Any name in that registry the controller
+no longer emits is stale: the role unlinks it from `sites-enabled`, deletes its
+file from `sites-available`, and then removes its managed TLS directory under
+`/etc/blitzecdn/tls/`. Removal runs after the configurations that reference
+those certificates are gone, and only names shaped like a site name select a
+directory, so a hand-edited registry line cannot aim the deletion elsewhere.
+Certificates outside `/etc/blitzecdn/tls/` are never named for a site and are
+never removed.
+
+`blitzecdn_nginx_allow_empty_sites` governs the one case that empties an edge
+completely. When desired state carries no sites at all and the registry still
+lists some, the role fails the play before it changes the host — every managed
+site and its TLS material would go in that single run. Set it to `true` to
+approve that transition. It has no effect on any other deploy: removing some of
+an edge's sites, or converging a fresh edge that has no registry yet, proceeds
+either way, which is what lets a new edge be hardened before its first site
+exists.
+
+<Callout type="error">
+  An empty desired state usually means a new controller was pointed at an
+  existing edge before its state was imported, not that you meant to retire the
+  fleet. Deleting managed TLS material is irreversible — a `REQUESTED`
+  certificate must be issued again, and an `UPLOADED` one restored from
+  wherever you keep it. Confirm the controller lists the sites you expect with
+  [`blitzecdn site list`](/docs/reference/cli#blitzecdn-site-list) before
+  setting `blitzecdn_nginx_allow_empty_sites` to `true`, and set it back
+  afterwards.
+</Callout>
+
+The control plane emits this variable from
+[`BLITZE_ALLOW_EMPTY_SITES`](/docs/reference/configuration#settings); setting it
+in `group_vars` has no effect, because the desired-state value wins.
+
 `blitzecdn_nginx_default_server` installs a catch-all server block that answers
 requests for hostnames no site declares. It serves `/.well-known/acme-challenge/`
 so a new domain can pass HTTP-01 validation before its site exists, returns
@@ -227,6 +262,7 @@ so masking the exit status would only hide a database quietly ageing out.
 | `blitzecdn_nginx_access_log_enabled` | `bool` | `true` | `true` | — |
 | `blitzecdn_nginx_access_log_path` | `path` | `true` | `/var/log/nginx/blitzecdn-access.log` | — |
 | `blitzecdn_nginx_acme_root` | `path` | `true` | `/var/lib/blitzecdn/acme` | — |
+| `blitzecdn_nginx_allow_empty_sites` | `bool` | `true` | `false` | — |
 | `blitzecdn_nginx_cache_inactive` | `str` | `true` | `60m` | — |
 | `blitzecdn_nginx_cache_max_size` | `str` | `true` | `10g` | — |
 | `blitzecdn_nginx_cache_path` | `path` | `true` | `/var/cache/nginx/blitzecdn` | — |

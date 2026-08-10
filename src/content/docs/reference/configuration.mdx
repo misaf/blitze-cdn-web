@@ -41,6 +41,7 @@ Precedence: environment variable, then the matching key in
 | `BLITZE_ACME_CA_DOMAIN` | `[blitzecdn].acme_ca_domain` | `letsencrypt.org` | A CA identity, such as `letsencrypt.org` |
 | `BLITZE_ACME_CHALLENGE_PLAYBOOK` | `[blitzecdn].acme_challenge_playbook_path` | `<project_dir>/ansible/playbooks/acme-challenge.yml` | — |
 | `BLITZE_ACME_DEFAULT_EMAIL` | `[blitzecdn].acme_default_email` | — | — |
+| `BLITZE_ALLOW_EMPTY_SITES` | `[blitzecdn].allow_empty_sites` | `false` | Approves converging an empty desired state onto an edge that has managed sites |
 | `BLITZE_ANSIBLE_DIR` | `[blitzecdn].ansible_dir` | `<project_dir>/ansible` | — |
 | `BLITZE_ANSIBLE_PLAYBOOK` | `[blitzecdn].ansible_playbook` | `ansible-playbook` | — |
 | `BLITZE_CERTBOT` | `[blitzecdn].certbot` | `certbot` | — |
@@ -68,6 +69,18 @@ lookups go through the host resolver as before, including `/etc/hosts`.
 Addresses only: a hostname here would have to be resolved by the resolver being
 bypassed. `blitzecdn doctor` reports which resolver is in use and whether it
 answers reserved names it cannot know.
+
+`BLITZE_ALLOW_EMPTY_SITES` is forwarded to the edge as
+[`blitzecdn_nginx_allow_empty_sites`](/docs/reference/roles#blitzecdn_nginx),
+where it decides whether a deploy may remove the last managed site. Leave it
+`false`. A desired state that has become empty is far more often a controller
+pointed at an edge whose sites were never imported than a fleet you meant to
+empty, and the edge stops that deploy before it changes the host.
+
+Set it to `true` only for the run that retires an edge's sites deliberately,
+then set it back. Because it is an ordinary setting, a value left in
+`blitzecdn.toml` silently approves every later deploy — which is the case the
+edge check exists to catch.
 
 ## Secrets
 
