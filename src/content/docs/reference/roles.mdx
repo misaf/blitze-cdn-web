@@ -4,7 +4,7 @@ title: Ansible roles
 
 # Ansible role variables
 
-Verified against **blitzecdn.edge v1.7.1** — each role's
+Verified against **blitzecdn.edge v1.8.0** — each role's
 `meta/argument_specs.yml` and `defaults/main.yml`. Roles validate these
 at the start of every run, so an unsupported value fails before the host
 is touched.
@@ -184,10 +184,34 @@ agent on the edge itself, or over an SSH tunnel.
 
 `blitzecdn_nginx_geoip_enabled` installs the GeoIP2 module and defines
 `$blitzecdn_country`, which is what the per-site `allowed_countries` and
-`denied_countries` rules test. It is off by default because the country
-database is a licensed MaxMind download this collection has no credentials for.
-The role checks for the file at `blitzecdn_nginx_geoip_database` and does not
-fetch or refresh it — install and schedule `geoipupdate(8)` yourself.
+`denied_countries` rules test. It is off by default: it needs a MaxMind country
+database, and GeoLite2 — while free — is an authenticated download.
+
+Give the role `blitzecdn_nginx_geoip_account_id` and
+`blitzecdn_nginx_geoip_license_key` and it installs `geoipupdate(8)`, writes its
+configuration, fetches the database, and schedules refreshes. Leave them empty
+to manage the file yourself; the role then only checks that it is present.
+
+The fetch runs **only when the database is absent**. MaxMind publishes GeoLite2
+twice a week and rate-limits downloads, so re-fetching on every converge would
+spend quota on a file that has not changed. A systemd timer
+(`blitzecdn-geoipupdate.timer`) handles refreshes on the
+`blitzecdn_nginx_geoip_update_calendar` schedule, with
+`blitzecdn_nginx_geoip_update_splay` of random delay so a fleet does not hit
+MaxMind together. nginx picks up a replaced database through `auto_reload`
+without a reload.
+
+A failed refresh is deliberately left visible in `systemctl --failed`. It
+cannot take the edge down — nginx keeps serving the database already on disk —
+so masking the exit status would only hide a database quietly ageing out.
+
+<Callout type="error">
+  `blitzecdn_nginx_geoip_license_key` authenticates to your MaxMind account, not
+  to one database. Supply it from the controller's environment; do not commit it
+  to `group_vars`. The role writes it to a `0600` root-owned
+  `/etc/GeoIP.conf` and sets `no_log` on every task that handles it, and it is
+  never rendered into `/etc/nginx/conf.d`, which is world-readable.
+</Callout>
 
 <Callout type="warning">
   A site that carries country rules fails the deploy when
@@ -212,6 +236,15 @@ fetch or refresh it — install and schedule `geoipupdate(8)` yourself.
 | `blitzecdn_nginx_default_server` | `bool` | `true` | `true` | — |
 | `blitzecdn_nginx_default_site_file` | `path` | `true` | `/etc/nginx/sites-available/blitzecdn-default.conf` | — |
 | `blitzecdn_nginx_geoip_database` | `path` | `true` | `/usr/share/GeoIP/GeoLite2-Country.mmdb` | — |
+| `blitzecdn_nginx_geoip_account_id` | `str` | `true` | `""` | — |
+| `blitzecdn_nginx_geoip_config_file` | `path` | `true` | `/etc/GeoIP.conf` | — |
+| `blitzecdn_nginx_geoip_edition` | `str` | `true` | `GeoLite2-Country` | — |
+| `blitzecdn_nginx_geoip_license_key` | `str` | `true` | `""` | — |
+| `blitzecdn_nginx_geoip_update_calendar` | `str` | `true` | `Wed,Sat 03:00` | — |
+| `blitzecdn_nginx_geoip_update_enabled` | `bool` | `true` | `true` | — |
+| `blitzecdn_nginx_geoip_update_splay` | `str` | `true` | `3h` | — |
+| `blitzecdn_nginx_geoip_updater_binary` | `path` | `true` | `/usr/bin/geoipupdate` | — |
+| `blitzecdn_nginx_geoip_updater_package` | `str` | `true` | `geoipupdate` | — |
 | `blitzecdn_nginx_geoip_enabled` | `bool` | `true` | `false` | — |
 | `blitzecdn_nginx_geoip_file` | `path` | `true` | `/etc/nginx/conf.d/blitzecdn-geoip.conf` | — |
 | `blitzecdn_nginx_geoip_package` | `str` | `true` | `libnginx-mod-http-geoip2` | — |

@@ -141,9 +141,44 @@ just the two-letter shape. `UK` is rejected with a pointer to `GB` — the code
 would otherwise validate, deploy, render, and match nobody, leaving a rule that
 looks enforced and blocks nothing.
 
-Country rules require the GeoIP2 module and a MaxMind country database on the
-edge — see [`blitzecdn_nginx_geoip_enabled`](/docs/reference/roles). A deploy
-fails rather than serving traffic the rules were meant to block.
+### Enabling country rules
+
+Country rules need the GeoIP2 module and a MaxMind country database on the
+edge. Until both are in place a deploy **fails** rather than serving traffic
+the rules were meant to block.
+
+GeoLite2 is free, but downloads are authenticated. Create a MaxMind account,
+generate a license key, then on the controller:
+
+```bash
+export MAXMIND_ACCOUNT_ID=123456
+export MAXMIND_LICENSE_KEY=your-key
+```
+
+Set `blitzecdn_nginx_geoip_enabled: true` in
+`ansible/inventory/group_vars/blitzecdn_edges.yml` — the shipped file already
+reads both values from the environment — and deploy. The role installs
+`geoipupdate(8)`, fetches the database, and schedules twice-weekly refreshes.
+See [`blitzecdn_nginx_geoip_enabled`](/docs/reference/roles) for the full
+variable set.
+
+<Callout type="error">
+  The license key authenticates to your MaxMind account, not to one database.
+  Keep it in the environment or a secret manager; do not commit it. The role
+  writes it to a `0600` root-owned file and never renders it into an nginx
+  configuration.
+</Callout>
+
+Verify on the edge after deploying:
+
+```bash
+systemctl list-timers blitzecdn-geoipupdate.timer
+ls -l /usr/share/GeoIP/GeoLite2-Country.mmdb
+```
+
+GeoLite2 is IP-to-country inference, not identity. It is wrong for some
+addresses, and a VPN or proxy defeats it entirely. Treat a country rule as
+coarse traffic shaping, not as an access control you can rely on.
 
 Country and method rules are evaluated by an earlier nginx phase than source
 rules, so they always win. `allow_sources` cannot exempt an address from a

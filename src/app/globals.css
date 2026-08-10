@@ -715,6 +715,24 @@ main pre [style*='--shiki-light:#6A737D'] {
 }
 
 /*
+ * The same treatment for the keyword red `#D73A49`, which shell grammars use
+ * for builtins such as `export`. On the panel fill it measures 4.06:1, just
+ * under AA, and it went unnoticed until the first `export` appeared in a
+ * documented command — no earlier code block happened to contain one.
+ *
+ * Darkened on paper and lightened on ink to the same hue family, both above
+ * 5:1. Matched on the inline value for the reason given above: an inline
+ * custom property cannot be overridden by re-declaring it.
+ */
+main pre [style*='--shiki-light:#D73A49'] {
+  color: #b31d28;
+}
+
+.dark main pre [style*='--shiki-light:#D73A49'] {
+  color: #ff9492;
+}
+
+/*
  * Mermaid diagrams.
  *
  * `@theguild/remark-mermaid` initialises mermaid with its stock `default` and
