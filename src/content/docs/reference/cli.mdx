@@ -51,8 +51,8 @@ refusing `blitzecdn_desired_state_version` is a disagreement between them:
 
 ```console
 $ blitzecdn --version
-blitzecdn 1.6.0
-blitzecdn.edge 1.7.0 (pinned)
+blitzecdn 1.6.1
+blitzecdn.edge 1.7.1 (pinned)
 desired-state schema 2
 ```
 
@@ -521,7 +521,9 @@ blitzecdn record firewall example.com www \
   --allow-source 203.0.113.0/24
 ```
 
-Country rules need
+Countries must be assigned ISO 3166-1 alpha-2 codes: `--allow-country UK` is
+refused with a pointer to `GB`, because the unassigned code would deploy
+cleanly and then match nobody. Country rules also need
 [`blitzecdn_nginx_geoip_enabled`](/docs/reference/roles) and a MaxMind database
 on the edge; a deploy fails rather than serving traffic the rules were meant to
 block. See [the firewall reference](/docs/reference/domains) for how the rules

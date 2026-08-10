@@ -136,6 +136,11 @@ equivalent `PATCH` on the [HTTP API](/docs/reference/api) replaces the whole
 A network must have its host bits clear: `203.0.113.5/24` is rejected, because
 it reads as one address and matches 256.
 
+Countries are ISO 3166-1 alpha-2 and are checked against the assigned list, not
+just the two-letter shape. `UK` is rejected with a pointer to `GB` — the code
+would otherwise validate, deploy, render, and match nobody, leaving a rule that
+looks enforced and blocks nothing.
+
 Country rules require the GeoIP2 module and a MaxMind country database on the
 edge — see [`blitzecdn_nginx_geoip_enabled`](/docs/reference/roles). A deploy
 fails rather than serving traffic the rules were meant to block.
