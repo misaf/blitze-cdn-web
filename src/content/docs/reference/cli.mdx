@@ -42,8 +42,19 @@ logs remain separate; do not parse human output for automation.
 | --- | --- | --- | --- | --- |
 | `--verbose, -v` | `boolean` | `false` | — | Enable diagnostic logging. |
 | `--log-json, --no-log-json` | `boolean` | `false` | — | Write logs as JSON. |
+| `--version` | `boolean` | `false` | — | Show the control plane, edge collection, and schema versions. |
 | `--install-completion` | `boolean` | `false` | — | Install completion for the current shell. |
 | `--show-completion` | `boolean` | `false` | — | Show completion for the current shell, to copy it or customize the installation. |
+
+`--version` reports all three versions that have to agree, because a role
+refusing `blitzecdn_desired_state_version` is a disagreement between them:
+
+```console
+$ blitzecdn --version
+blitzecdn 1.6.0
+blitzecdn.edge 1.7.0 (pinned)
+desired-state schema 2
+```
 
 ## `blitzecdn audit`
 
@@ -415,6 +426,8 @@ Manage DNS zones delegated to BlitzeCDN. See
 
 ### `blitzecdn domain list`
 
+Lists the DNS zones delegated to BlitzeCDN.
+
 | Flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
@@ -446,6 +459,10 @@ Manage records in a zone.
 | `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
 
 ### `blitzecdn record list`
+
+Lists records with the CDN policy each one carries. Shows every zone unless you
+name one. Unproxied records keep their origin, cache, TLS, and firewall
+settings — they are retained, not cleared, so re-proxying does not lose them.
 
 | Argument or flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
@@ -518,6 +535,11 @@ compose.
 
 ### `blitzecdn record remove`
 
+Deletes one record and the edge site derived from it. At the next deploy the
+virtual host is withdrawn, along with any certificate BlitzeCDN manages for it.
+To take a hostname off the edge but keep its settings, use
+[`record proxy --off`](#blitzecdn-record-proxy) instead.
+
 | Argument or flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `domain` | `str` | `true` | — | Zone the record belongs to. |
@@ -543,6 +565,11 @@ Inspect the virtual hosts the edge serves. Sites are **derived** from proxied
 records and cannot be created or edited directly — change the record instead.
 
 ### `blitzecdn site list`
+
+Lists the virtual hosts the edges will serve. Only proxied records appear. This
+is desired state, not what the fleet is running — a site you have not deployed
+yet is already listed. Use [`drift`](#blitzecdn-drift) to compare against the
+edges.
 
 | Flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
