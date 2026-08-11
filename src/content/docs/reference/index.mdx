@@ -17,8 +17,8 @@ generated, so read them alongside the release you are running.
 - [Ansible roles](/docs/reference/roles) — every role variable, typed, with
   defaults.
 
-The control plane and the edge collection release separately and share a
-versioned desired-state contract. `EDGE_COLLECTION_VERSION` in the control plane
-records the collection it deploys, and the Nginx role refuses a desired-state
-version it was not written against — a mismatched pair fails before the first
-host is touched.
+The roles ship with the control plane in `ansible/roles/`, so one release
+covers both and they cannot drift. The versioned desired-state contract still
+applies to edges: the Nginx role refuses a desired-state version it was not
+written against, so an edge last converged by an older release fails before it
+is touched rather than serving a configuration nobody reviewed.

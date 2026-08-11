@@ -42,17 +42,18 @@ logs remain separate; do not parse human output for automation.
 | --- | --- | --- | --- | --- |
 | `--verbose, -v` | `boolean` | `false` | — | Enable diagnostic logging. |
 | `--log-json, --no-log-json` | `boolean` | `false` | — | Write logs as JSON. |
-| `--version` | `boolean` | `false` | — | Show the control plane, edge collection, and schema versions. |
+| `--version` | `boolean` | `false` | — | Show the control plane and desired-state schema versions. |
 | `--install-completion` | `boolean` | `false` | — | Install completion for the current shell. |
 | `--show-completion` | `boolean` | `false` | — | Show completion for the current shell, to copy it or customize the installation. |
 
-`--version` reports all three versions that have to agree, because a role
-refusing `blitzecdn_desired_state_version` is a disagreement between them:
+The Ansible roles ship with the control plane, so one version covers both.
+The desired-state schema is reported separately because an edge converged by an
+older release can refuse `blitzecdn_desired_state_version`, and that failure
+names this number:
 
 ```console
 $ blitzecdn --version
-blitzecdn 1.7.2
-blitzecdn.edge 1.8.0 (pinned)
+blitzecdn 1.7.3
 desired-state schema 2
 ```
 

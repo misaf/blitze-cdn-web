@@ -117,12 +117,7 @@ const repositories = [
   {
     name: 'blitze-cdn-cp',
     href: 'https://github.com/misaf/blitze-cdn-cp',
-    note: 'Control plane: CLI, HTTP API, domain models, deployment history.',
-  },
-  {
-    name: 'blitze-cdn-edge',
-    href: 'https://github.com/misaf/blitze-cdn-edge',
-    note: 'The Ansible roles that converge the edge hosts.',
+    note: 'Control plane: CLI, HTTP API, domain models, deployment history, and the Ansible roles that converge the edge hosts.',
   },
   {
     name: 'blitze-cdn',

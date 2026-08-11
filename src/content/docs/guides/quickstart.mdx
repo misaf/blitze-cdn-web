@@ -56,11 +56,30 @@ cd blitze-cdn-cp
 ./install.sh
 ```
 
+<Callout type="info">
+  To provision a whole server — control plane and edge on one host — in a single
+  command instead, see [Installing &
+  removing](/docs/guides/install#install-a-standalone-server). Read the script
+  before you run it: it runs as root and provisions the host.
+</Callout>
+
 This checks out the latest version from the repository's default branch. Verify
 the repository owner before production use. The installer verifies Python,
-creates `.venv`, installs the compatible edge automation, and initializes local
-configuration. For repeatable production deployments, select a tested version
-matching the edge collection pinned in `ansible/requirements.yml`.
+creates `.venv`, installs the Ansible collections the roles depend on, and
+initializes local configuration. For repeatable production deployments, check
+out a tested release tag instead of the default branch — the Ansible roles ship
+with the control plane, so a release pins its own edge automation.
+
+The installer also puts a `blitzecdn` command in `~/.local/bin`, so you can run
+the control plane from any directory. It pins this checkout as the project
+directory, which is what keeps your state, database, and certificates in one
+place no matter where you run it from. The commands below use
+`.venv/bin/blitzecdn` so they work before you add `~/.local/bin` to your `PATH`;
+once it is there, run `blitzecdn` instead.
+
+Set `BLITZECDN_WRAPPER_DIR` to install that command somewhere else, or
+`BLITZECDN_USER_WRAPPER=0` to skip it. Installing from a second checkout
+repoints the command at the newer one.
 
 ### Register your first edge
 

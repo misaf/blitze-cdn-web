@@ -37,7 +37,7 @@ const GENERAL_EMAIL = 'hello@blitzecdn.dev'
 
 const disclosureNotes = [
   'What an attacker could achieve, and what access they would need to start.',
-  'The versions involved — control plane and edge collection are pinned separately.',
+  'The versions involved — run `blitzecdn --version` and include both lines.',
   'Whether it crosses a documented trust boundary.',
   'A minimal reproduction if you have one. A clear description is fine if not.',
 ]
@@ -76,8 +76,8 @@ const routes = [
     subject: 'A bug on the edge',
     detail:
       'Ansible roles, host convergence, Nginx templates, firewall, hardening.',
-    destination: 'blitze-cdn-edge issues',
-    destinationHref: 'https://github.com/misaf/blitze-cdn-edge/issues',
+    destination: 'blitze-cdn-cp issues',
+    destinationHref: 'https://github.com/misaf/blitze-cdn-cp/issues',
   },
   {
     subject: 'Documentation that is wrong',

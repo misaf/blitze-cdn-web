@@ -1,0 +1,227 @@
+---
+title: Installing & removing
+description: Every way to install, update, and remove BlitzeCDN, and which one to choose.
+---
+
+# Installing & removing
+
+Use this guide to put BlitzeCDN on a machine, move it to a newer release, or take
+it off again. Which commands apply depends on one decision, so make that first.
+
+## Before you begin
+
+- The [controller](/docs/glossary#controller) needs **Python 3.12, 3.13, or
+  3.14**. Debian 12 ships Python 3.11 and cannot run the control plane, even
+  though it is a supported [edge](/docs/glossary#edge) platform. Use Debian 13,
+  Ubuntu 24.04+, or a host with a supported interpreter.
+- Provisioning a whole server needs root and Debian or Ubuntu. A controller-only
+  installation needs neither.
+- Certbot is required on the controller only if you plan to request ACME
+  certificates. The server installer installs it for you.
+
+## Choose an installation
+
+| | Standalone server | Controller-only checkout |
+| --- | --- | --- |
+| What it is | One host that is both control plane **and** its own edge | A machine that manages remote edges |
+| Root required | Yes | No |
+| Creates | Service accounts, a sudo rule, systemd services, loopback SSH trust, `/usr/local/bin/blitzecdn` | `.venv`, `.state`, and `~/.local/bin/blitzecdn` |
+| Install with | `bootstrap.sh` or `install.sh standalone` | `./install.sh` |
+| Remove with | `install.sh --uninstall` | Deleting the checkout |
+
+A standalone server is the fastest way to a working system and the right shape
+for a single-node deployment. A controller-only checkout changes nothing about
+the machine it runs on and is what you want when the edges live elsewhere.
+
+## Install a standalone server
+
+### In one command
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/misaf/blitze-cdn-cp/HEAD/bootstrap.sh)" bootstrap \
+  --admin-cidr 203.0.113.8/32 --email ops@example.com
+```
+
+Replace `203.0.113.8/32` with the network you administer SSH from, and
+`ops@example.com` with your ACME account address. Both are required — the
+installer cannot invent them. Add `--version vX.Y.Z` to pin a release,
+`--public-address` for a host behind NAT, and `--deploy` to converge the edge
+immediately instead of preparing only.
+
+<Callout type="error">
+  Read the script before you run it. It runs as root: it creates a service
+  account, writes a sudo rule, generates SSH keys, and enables public services.
+  Anyone able to tamper with that URL, or with the network path to it, controls
+  the server. For production, use the clone below so you can inspect and pin what
+  you install.
+</Callout>
+
+The command form matters. `bash -c "$(curl …)"` downloads the whole script before
+running any of it; `curl … | bash` starts executing as bytes arrive, so a dropped
+connection can run half a script. The literal word `bootstrap` after the closing
+quote is not decoration — it becomes `$0`, so the options that follow reach the
+script.
+
+The bootstrap installs a release tag rather than a moving branch, verifies that
+the tag's package version matches it, refuses a host whose Python is too old
+before installing anything, and refuses to run at all when `/opt/blitzecdn`
+already exists.
+
+### From a clone
+
+Do the same work in two steps, so you can read and pin what you install. This is
+the production route:
+
+```bash
+sudo git clone --branch v1.7.3 https://github.com/misaf/blitze-cdn-cp.git /opt/blitzecdn
+sudo /opt/blitzecdn/install.sh standalone \
+  --admin-cidr 203.0.113.8/32 --email ops@example.com
+```
+
+`/opt/blitzecdn` is not a preference. The installer refuses to provision from
+anywhere else, because the hardened systemd units use that path.
+
+Both routes leave the same host: a `blitzecdn` command on `PATH`, the API on
+loopback, an edge named `edge-local` in the inventory, and no edge configuration
+deployed until you ask for it.
+
+## Install a controller-only checkout
+
+```bash
+git clone --depth 1 https://github.com/misaf/blitze-cdn-cp.git
+cd blitze-cdn-cp
+./install.sh
+```
+
+This creates no accounts, no services, and no system files. It builds `.venv`,
+installs the Ansible collection dependencies, initializes local configuration,
+and puts a `blitzecdn` command in `~/.local/bin` pinned to this checkout so you
+can run it from any directory.
+
+Set `BLITZECDN_DEV=1` to install the test and lint tooling as well.
+`BLITZECDN_WRAPPER_DIR` puts the command somewhere else, and
+`BLITZECDN_USER_WRAPPER=0` skips it — run `.venv/bin/blitzecdn` instead. See the
+[quick start](/docs/guides/quickstart) for the full first-deployment walkthrough.
+
+## Update
+
+```bash
+sudo /opt/blitzecdn/install.sh update
+```
+
+Use `--check` to report the installed and available versions without changing
+anything, `--version vX.Y.Z` to move to a specific release, and `--yes` to skip
+the confirmation. The updater backs up persistent state and `/etc/blitzecdn`,
+refuses to run over local changes to tracked files, converges the controller
+against the new release, restarts the services, and runs `doctor`.
+
+<Callout type="warning">
+  An update never touches edges. After it finishes, review `blitzecdn plan` and
+  run `blitzecdn deploy` separately. See [version
+  discipline](/docs/guides/production#version-discipline) for release policy and
+  canary sequencing.
+</Callout>
+
+A controller-only checkout has no updater. Check out a newer tag and run
+`./install.sh` again.
+
+## Remove
+
+```bash
+sudo /opt/blitzecdn/install.sh --uninstall
+```
+
+Add `--yes` to skip the confirmation prompt. This removes `/opt/blitzecdn` and
+everything in it — source, `.venv`, and `.state` with the database, certificates,
+and collections — along with the services and unit files, `/etc/blitzecdn` and
+the API credentials it holds, the `blitzecdn` command, the sudo rule, the service
+accounts and their homes, the update backups, and the nginx sites, cache, and
+drop-ins this host converged as an edge. Run `install.sh --uninstall --help` for
+the exact list.
+
+Packages the installer added, such as Certbot and nginx, are left in place: the
+uninstaller cannot know whether you wanted them for something else. Nothing
+outside the listed paths changes, and running it twice is safe.
+
+<Callout type="warning">
+  This deletes the deployment history, the audit trail, and every managed
+  certificate on the host. Take a [backup](/docs/guides/backup) first if you may
+  want any of it again.
+</Callout>
+
+If an account cannot be removed — usually because a process is still running as
+it — the uninstaller reports which one and exits non-zero rather than claiming
+success:
+
+```console
+$ sudo /opt/blitzecdn/install.sh --uninstall --yes
+error: BlitzeCDN was not fully removed:
+  - deploy: the account still exists (still running: 5744 sleep)
+Stop whatever still uses the account — 'loginctl terminate-user ACCOUNT',
+or kill the processes listed — then run the uninstaller again.
+```
+
+The rest of the cleanup has already run, so stop the named processes and run it
+again to finish.
+
+### Remove a controller-only checkout
+
+Do not point `--uninstall` at a developer machine: it targets `/opt/blitzecdn`
+and the system accounts a server installation creates. Remove a checkout by hand
+instead — it holds its own `.venv` and `.state`, and the wrapper is the only file
+outside it:
+
+```bash
+rm -rf /path/to/blitze-cdn-cp
+rm -f ~/.local/bin/blitzecdn
+```
+
+## Rebuild from scratch
+
+```bash
+sudo /opt/blitzecdn/install.sh --fresh \
+  --admin-cidr 203.0.113.8/32 --email ops@example.com
+```
+
+Uninstalls completely, then re-clones the release that was running and installs
+it exactly as a new server is installed. Use it to discard accumulated state
+without hunting for what to delete. The standalone options pass through
+unchanged, and the same warning about losing history applies.
+
+## Verify
+
+After any install or update:
+
+```bash
+blitzecdn --version
+blitzecdn doctor --json
+systemctl status blitzecdn-api.service
+```
+
+`doctor` reports local readiness without contacting remote servers. On a
+standalone server the API answers on loopback only; reach it over an SSH tunnel:
+
+```bash
+ssh -L 8000:127.0.0.1:8000 OPERATOR@THIS_SERVER
+```
+
+After an uninstall, confirm nothing survived:
+
+```bash
+test -e /opt/blitzecdn && echo "still present" || echo "removed"
+getent passwd blitzecdn deploy
+systemctl list-units 'blitzecdn-*'
+```
+
+## Troubleshooting
+
+- An installer that stops at `requires Python 3.12, 3.13, or 3.14` means the
+  distribution's interpreter is too old. See [Before you
+  begin](#before-you-begin).
+- `refusing unexpected origin URL` means the checkout's `origin` is not the
+  upstream repository. `update` and `--fresh` fetch code and run it as root, so
+  they accept only that remote.
+- `clone or copy this release to /opt/blitzecdn` means `standalone` was run from
+  another directory. Move the checkout and run it again.
+- For symptoms after a deployment rather than an installation, see
+  [Troubleshooting](/docs/guides/troubleshooting).

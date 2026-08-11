@@ -4,13 +4,13 @@ title: Ansible roles
 
 # Ansible role variables
 
-Verified against **blitzecdn.edge v1.8.0** — each role's
-`meta/argument_specs.yml` and `defaults/main.yml`. Roles validate these
-at the start of every run, so an unsupported value fails before the host
-is touched.
+Generated from each role's `meta/argument_specs.yml` and `defaults/main.yml`
+in `ansible/roles/`. Roles validate these at the start of every run, so an
+unsupported value fails before the host is touched.
 
-Reference roles by their fully qualified name, for example
-`blitzecdn.edge.blitzecdn_nginx`. Set variables in the control plane's
+Reference roles by their directory name, for example `blitzecdn_nginx`. They
+ship with the control plane and are not a separately versioned collection. Set
+variables in the control plane's
 [`ansible/inventory/group_vars/blitzecdn_edges/local.yml`](/docs/reference/configuration#edge-settings)
 — not `defaults.yml`, which is tracked and replaced on upgrade. Ansible only
 auto-loads `group_vars` adjacent to the inventory file — a `group_vars/`
@@ -24,8 +24,9 @@ directory anywhere else is silently ignored.
   interrupt management or serving traffic. Plan with a canary inventory first.
 - Never set a required variable to an empty value unless its description
   explicitly permits it; the firewall source list intentionally fails closed.
-- A role rejecting `blitzecdn_desired_state_version` indicates an incompatible
-  controller/edge pair. Upgrade the control plane and edge collection together.
+- A role rejecting `blitzecdn_desired_state_version` means the edge was last
+  converged by a control plane too old for the state this one emits. Deploy
+  again from the current control plane to bring it forward.
 - Verify role changes with Nginx configuration tests and external traffic/TLS
   probes, not only an Ansible `changed=0` result.
 

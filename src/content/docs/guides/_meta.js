@@ -1,6 +1,7 @@
 export default {
   'how-it-works': 'How it works',
   quickstart: 'Quick start',
+  install: 'Installing & removing',
   'go-live': 'Take a real site live',
   sites: 'Sites & deployment',
   deployment: 'Deploying',
