@@ -22,13 +22,13 @@ it off again. Which commands apply depends on one decision, so make that first.
 
 ## Choose an installation
 
-| | Standalone server | Controller-only checkout |
-| --- | --- | --- |
-| What it is | One host that is both control plane **and** its own edge | A machine that manages remote edges |
-| Root required | Yes | No |
-| Creates | Service accounts, a sudo rule, systemd services, loopback SSH trust, `/usr/local/bin/blitzecdn` | `.venv`, `.state`, and `~/.local/bin/blitzecdn` |
-| Install with | `bootstrap.sh` or `install.sh standalone` | `./install.sh` |
-| Remove with | `install.sh --uninstall` | Deleting the checkout |
+|               | Standalone server                                                                               | Controller-only checkout                        |
+| ------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| What it is    | One host that is both control plane **and** its own edge                                        | A machine that manages remote edges             |
+| Root required | Yes                                                                                             | No                                              |
+| Creates       | Service accounts, a sudo rule, systemd services, loopback SSH trust, `/usr/local/bin/blitzecdn` | `.venv`, `.state`, and `~/.local/bin/blitzecdn` |
+| Install with  | `bootstrap.sh` or `install.sh standalone`                                                       | `./install.sh`                                  |
+| Remove with   | `install.sh --uninstall`                                                                        | Deleting the checkout                           |
 
 A standalone server is the fastest way to a working system and the right shape
 for a single-node deployment. A controller-only checkout changes nothing about
@@ -53,8 +53,8 @@ immediately instead of preparing only.
   Read the script before you run it. It runs as root: it creates a service
   account, writes a sudo rule, generates SSH keys, and enables public services.
   Anyone able to tamper with that URL, or with the network path to it, controls
-  the server. For production, use the clone below so you can inspect and pin what
-  you install.
+  the server. For production, use the clone below so you can inspect and pin
+  what you install.
 </Callout>
 
 The command form matters. `bash -c "$(curl …)"` downloads the whole script before
