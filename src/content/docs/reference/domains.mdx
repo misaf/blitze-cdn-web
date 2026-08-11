@@ -91,7 +91,7 @@ cache or TLS setting.
 | `origin_scheme` | `http` \| `https` | `https` | Scheme used to reach the origin. |
 | `origin_port` | `int` | — | Origin port. |
 | `origin_request_host` | `str` | — | `Host` header sent to the origin. |
-| `origin_sni` | `str` | — | TLS SNI sent to the origin. |
+| `origin_sni` | `str` | — | TLS SNI sent to the origin. Defaults to `origin_request_host`, then to `origin_host` — never to a `server_names` entry, which may be a wildcard. |
 | `enabled` | `bool` | `true` | Render the virtual host but leave it unlinked when `false`. |
 | `cache_enabled` | `bool` | `true` | Cache responses at the edge. |
 | `cache_valid_success` | `str` | `10m` | Cache lifetime for 200, 301, 302. |

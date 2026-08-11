@@ -47,6 +47,8 @@ Precedence: environment variable, then the matching key in
 | `BLITZE_CERTBOT` | `[blitzecdn].certbot` | `certbot` | — |
 | `BLITZE_CERTIFICATE_DIR` | `[blitzecdn].certificate_dir` | `<state_dir>/certificates` | — |
 | `BLITZE_CERTIFICATE_RECONCILE_INTERVAL_SECONDS` | `[blitzecdn].certificate_reconcile_interval_seconds` | `600` | `0` disables; maximum `86400` |
+| `BLITZE_CERTIFICATE_RENEWAL_BUDGET_SECONDS` | `[blitzecdn].certificate_renewal_budget_seconds` | `300` | ≥ 30, ≤ 7200. Wall clock for one `POST /v1/certificates/renew` sweep; sites not reached are reported as skipped and retried by the next run |
+| `BLITZE_CERTIFICATE_RENEWAL_WORKERS` | `[blitzecdn].certificate_renewal_workers` | `2` | ≥ 1, ≤ 16. Renewal sweeps in flight at once, on a pool of their own so a slow CA cannot stall other endpoints |
 | `BLITZE_DATABASE_PATH` | `[blitzecdn].database_path` | `<state_dir>/control-plane.db` | — |
 | `BLITZE_DEPLOYMENT_LOCK` | `[blitzecdn].deployment_lock_path` | `<state_dir>/deployment.lock` | — |
 | `BLITZE_DEPLOYMENT_OUTPUT_LIMIT_BYTES` | `[blitzecdn].output_limit_bytes` | `1048576` | ≥ 4096, ≤ 10485760 |

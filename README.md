@@ -6,12 +6,27 @@ controller, and holds no credentials.
 
 ## Setup
 
+Node 20.9+ is required; CI builds on Node 24.
+
 ```bash
 npm ci
-npm run dev        # http://localhost:3000
-npm run build      # static export to out/
-npm run check      # lint, formatting, build, and internal links
-npm run test:e2e   # browser and accessibility checks against out/
+npm run dev          # http://localhost:3000
+npm run build        # static export to out/
+npm run preview      # serve the built out/ on :4173
+npm run check        # lint, formatting, docs check, build, and internal links
+npm run test:e2e     # browser and accessibility checks against out/
+npm run format       # write Prettier formatting
+```
+
+`npm run check` is the pre-push gate: it runs `lint`, `format:check`,
+`check:docs`, `build`, and `check:links` in that order. The e2e suite runs
+separately because it needs a browser (`npx playwright install --with-deps
+chromium`). It starts its own server on `127.0.0.1:4173` against `out/`, so
+build first. To run a single spec or test:
+
+```bash
+npx playwright test tests/e2e/site.spec.js
+npx playwright test -g "some test name"
 ```
 
 Set `NEXT_PUBLIC_SITE_URL` to the deployed origin when building for production.
@@ -105,6 +120,18 @@ The pages under `src/content/docs/reference/` are ordinary MDX and are reviewed
 like the guides. When the control plane or edge collection changes, update the
 affected reference page in the same pull request and verify its examples against
 the released interface.
+
+## Search and deployment
+
+Search is Pagefind. The `postbuild` script indexes the build into `public/` and
+`scripts/copy-search-index.mjs` copies it into `out/`, because the static
+export has already happened by then. A build that skipped either step would
+ship a search box that silently returns nothing, so CI fails when
+`out/_pagefind/pagefind.js` is missing.
+
+Pull requests and every other branch stop at the build job. Only a push to
+`1.x` publishes the export to GitHub Pages. Release tags are `vX.Y.Z` and CI
+rejects a tag that does not equal the `version` in `package.json`.
 
 ## Nextra versioning
 

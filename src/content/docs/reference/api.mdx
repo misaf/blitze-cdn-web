@@ -32,6 +32,22 @@ conflict, and missing-resource responses contain a short `detail` string:
 
 Never log the request header when capturing an error response.
 
+The status code says whether retrying can help, so branch on it rather than on
+the `detail` text:
+
+| Status | Meaning | Retry? |
+| --- | --- | --- |
+| `400` | The request, or the controller's own configuration, is wrong | No — a person has to change something |
+| `404` | No such resource | No |
+| `409` | Conflicts with current state | Only if the state changes; a `Retry-After` header means it will |
+| `422` | The request did not validate | No |
+| `502` | Something the controller drives — Ansible, certbot, an edge — did not answer usefully | Yes, with backoff |
+| `503` | The controller cannot serve this right now | Yes, with backoff |
+
+`409` with `Retry-After` is the deployment lock: another deployment, rollback,
+upload, or issuance holds it, and it will be free again. Every other `409` needs
+the request or the state changed first.
+
 ## `GET /health`
 
 Health
@@ -368,12 +384,20 @@ normalized content encoding, so one URL is several entries.
 | --- | --- | --- |
 | `200` | Purged on every edge in scope | `PurgeResult` |
 | `404` | No enabled site serves a requested hostname | `object` |
-| `409` | Nothing to purge, contradictory request, or a partial purge | `object` |
+| `409` | Nothing to purge or a contradictory request | `object` |
+| `409` | Purged on some edges but not all | `PurgeResult` |
 | `422` | Validation Error | `HTTPValidationError` |
 
 A partial purge is a `409`, not a `200`. Some edges dropped the object and
 others did not, so which response a client gets depends on which edge answers —
 that must not read as success.
+
+The partial `409` carries a full `PurgeResult`, not an error object. Branch on
+`complete`, and retry the edges named in `failed_hosts`; `hosts` holds what each
+edge reported. A request refused before it reached the fleet — nothing to purge,
+or `entries` and `purge_all` together — is the other `409` and carries an
+`object` with `detail`, because no purge was attempted and there is no result to
+report.
 
 ## `POST /v1/cache/stats`
 
@@ -403,11 +427,19 @@ omitted, so a fleet-wide number is never quietly computed from a subset.
 ## `POST /v1/certificates/renew`
 
 Reissue ACME certificates close to expiry. Answers inline rather than queueing:
-renewal is bounded by certbot's own timeout per site and changes no edge
-configuration. Returns `renewed`, `skipped`, and `failed` name lists.
+renewal changes no edge configuration, so there is nothing to converge and
+nothing to poll. Returns `renewed`, `skipped`, and `failed` name lists.
 
 Uploaded certificates are never renewed — they appear under `skipped`. Renewed
 certificates reach the edges on the next deploy.
+
+A sweep is bounded by `BLITZE_CERTIFICATE_RENEWAL_BUDGET_SECONDS` and runs on a
+pool of its own, so a slow CA cannot hold a request worker indefinitely or stall
+unrelated endpoints. The budget is checked between sites and never during one,
+so a truncated sweep never abandons an issuance in flight. Sites it did not
+reach appear under `skipped` naming the budget, and are picked up by the next
+run — the same way a transient failure already is. Raise the budget, or narrow
+the run with `sites`, if a sweep is regularly truncated.
 
 The optional `sites` field narrows the run, for retrying one failure without
 sending every other subscription back to a rate-limited CA. A name with no
@@ -572,7 +604,7 @@ Validated, provider-independent desired state for one CDN virtual host.
 | `origin_host` | `string` | `true` | — |
 | `origin_port` | `integer \\| null` | `false` | — |
 | `origin_request_host` | `string \\| null` | `false` | — |
-| `origin_scheme` | `OriginScheme` | `false` | `https` |
+| `origin_scheme` | `HttpScheme` | `false` | `https` |
 | `origin_sni` | `string \\| null` | `false` | — |
 | `server_names` | `string[]` | `true` | — |
 
@@ -704,7 +736,7 @@ The result of connecting to one site's origin the way the edge will.
 | `origin` | `string` | `true` | — |
 | `reachable` | `boolean` | `false` | `false` |
 | `resolved` | `boolean` | `false` | `false` |
-| `scheme` | `OriginScheme` | `true` | — |
+| `scheme` | `HttpScheme` | `true` | — |
 | `site` | `string` | `true` | — |
 | `sni` | `string \| null` | `false` | — |
 | `tls_verified` | `boolean \| null` | `false` | — |
@@ -714,7 +746,7 @@ Three separate answers because the fixes differ. `resolved` false means DNS;
 false means the origin's certificate does not match the SNI the edge sends. It
 is `null` for an HTTP origin, where the question does not arise.
 
-### `OriginScheme`
+### `HttpScheme`
 
 _None._
 
@@ -757,7 +789,7 @@ regardless of age.
 | `name` | `string` | `true` | — |
 | `origin_port` | `integer \| null` | `false` | — |
 | `origin_request_host` | `string \| null` | `false` | — |
-| `origin_scheme` | `OriginScheme` | `false` | `https` |
+| `origin_scheme` | `HttpScheme` | `false` | `https` |
 | `origin_sni` | `string \| null` | `false` | — |
 | `proxied` | `boolean` | `false` | `false` |
 | `ttl` | `integer` | `false` | `300` |
@@ -778,7 +810,7 @@ regardless of age.
 | `firewall` | `SiteFirewall \| null` | `false` | — |
 | `origin_port` | `integer \| null` | `false` | — |
 | `origin_request_host` | `string \| null` | `false` | — |
-| `origin_scheme` | `OriginScheme \| null` | `false` | — |
+| `origin_scheme` | `HttpScheme \| null` | `false` | — |
 | `origin_sni` | `string \| null` | `false` | — |
 | `proxied` | `boolean \| null` | `false` | — |
 | `ttl` | `integer \| null` | `false` | — |
