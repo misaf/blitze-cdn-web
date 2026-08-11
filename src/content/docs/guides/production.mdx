@@ -105,6 +105,24 @@ in step:
 - Keep the control-plane and edge collection versions aligned, and update the
   maintained reference pages when either public interface changes.
 
+### Updating the controller
+
+The bundled updater moves a standalone installation to an exact release tag. It
+backs up persistent state and `/etc/blitzecdn`, refuses to run over local
+changes to tracked files, restarts the services, and runs `doctor`:
+
+```bash
+sudo /opt/blitzecdn/install.sh update
+```
+
+Use `--version vX.Y.Z` to install a specific release, `--check` to report the
+installed and available versions, and `--yes` to skip the confirmation prompt.
+An update alone never touches edges: after it finishes, review `blitzecdn plan`
+and run `blitzecdn deploy` separately to converge the edge fleet.
+
+Converge a canary edge first when you are changing control-plane or collection
+behavior, then deploy to the rest once the subset looks healthy.
+
 ## Verify production readiness
 
 - Restore the latest backup and compare site and deployment records.
