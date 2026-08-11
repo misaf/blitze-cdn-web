@@ -10,10 +10,11 @@ it off again. Which commands apply depends on one decision, so make that first.
 
 ## Before you begin
 
-- The [controller](/docs/glossary#controller) needs **Python 3.12, 3.13, or
-  3.14**. Debian 12 ships Python 3.11 and cannot run the control plane, even
-  though it is a supported [edge](/docs/glossary#edge) platform. Use Debian 13,
-  Ubuntu 24.04+, or a host with a supported interpreter.
+- The [controller](/docs/glossary#controller) needs **Python 3.12 or newer**,
+  which means **Debian 13+ or Ubuntu 24.04+**. Debian 12 ships Python 3.11 and
+  cannot run the control plane, even though it remains a supported
+  [edge](/docs/glossary#edge) platform. A standalone installation makes one host
+  both, so it takes the higher floor.
 - Provisioning a whole server needs root and Debian or Ubuntu. A controller-only
   installation needs neither.
 - Certbot is required on the controller only if you plan to request ACME
@@ -215,9 +216,9 @@ systemctl list-units 'blitzecdn-*'
 
 ## Troubleshooting
 
-- An installer that stops at `requires Python 3.12, 3.13, or 3.14` means the
-  distribution's interpreter is too old. See [Before you
-  begin](#before-you-begin).
+- An installer that stops at `requires Python 3.12 or newer` means the
+  distribution's interpreter is too old — Debian 12 is the usual case. See
+  [Before you begin](#before-you-begin).
 - `refusing unexpected origin URL` means the checkout's `origin` is not the
   upstream repository. `update` and `--fresh` fetch code and run it as root, so
   they accept only that remote.
