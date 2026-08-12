@@ -27,16 +27,10 @@ execution and no distributed job queue. Plan around that:
   a second host, and use the same `.env` (or a reconciled copy). See
   [Backup & recovery](/docs/guides/backup).
 
-Install the bundled service so the API, deployment worker, and first-certificate
-reconciler have a supervised production lifetime:
-
-```bash
-sudo cp packaging/systemd/blitzecdn-api.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now blitzecdn-api.service
-```
-
-The unit binds the API to loopback, loads optional secrets from
+The standalone installer installs and enables the bundled service so the API,
+deployment worker, and first-certificate reconciler have a supervised
+production lifetime. Do not copy the unit by hand: its paths and service
+account are created by the standalone workflow. The unit binds the API to loopback, loads secrets from
 `/etc/blitzecdn/blitzecdn.env`, and puts `/opt/blitzecdn/.venv/bin` on `PATH` so
 Ansible and Certbot hooks use the installed project environment. Put an
 authenticated TLS reverse proxy in front of it before allowing remote clients.

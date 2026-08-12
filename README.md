@@ -4,6 +4,13 @@ A Nextra site: landing page at `/`, documentation under `/docs`. Builds to a
 static export in `out/`. It ships nothing to edge servers, never runs on a
 controller, and holds no credentials.
 
+Documentation has two deliberate entry points:
+
+- **Operate BlitzeCDN:** `/docs/operate` is the complete copy-paste lifecycle
+  runbook. It links outward to focused procedures.
+- **Understand BlitzeCDN:** `/docs/architecture` starts the conceptual path;
+  focused guides and technical reference provide progressively deeper detail.
+
 ## Setup
 
 Node 20.9+ is required; CI builds on Node 24.

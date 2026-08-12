@@ -8,6 +8,10 @@ description: Exact behavior of the CLI, HTTP API, configuration, and Ansible rol
 These pages describe exact public interfaces. They are maintained MDX, not
 generated, so read them alongside the release you are running.
 
+Use [Operate BlitzeCDN](/docs/operate) when you need an ordered workflow. Use
+this section when you need the exact meaning of a command, field, setting, or
+role variable.
+
 - [CLI](/docs/reference/cli) — every command, flag, and exit code.
 - [Domains and records](/docs/reference/domains) — zones, A records, and the
   per-record CDN proxy toggle.
@@ -16,6 +20,17 @@ generated, so read them alongside the release you are running.
   its TOML equivalent.
 - [Ansible roles](/docs/reference/roles) — every role variable, typed, with
   defaults.
+
+## Find a subsystem
+
+| Subsystem | Focused guide | Deep reference |
+| --- | --- | --- |
+| Control plane and edges | [How it works](/docs/guides/how-it-works), [Managing edges](/docs/guides/manage) | [Architecture](/docs/architecture), [Ansible roles](/docs/reference/roles) |
+| Installation, upgrade, removal | [Installing & removing](/docs/guides/install) | [Configuration](/docs/reference/configuration) |
+| Domains and DNS | [DNS hand-off](/docs/guides/dns) | [Domains and records](/docs/reference/domains) |
+| Certificates and TLS | [Certificates](/docs/guides/certificates) | [CLI](/docs/reference/cli), [HTTP API](/docs/reference/api) |
+| Deployment, cache, monitoring | [Deploying](/docs/guides/deployment), [Production](/docs/guides/production) | [CLI](/docs/reference/cli), [HTTP API](/docs/reference/api) |
+| Security and recovery | [Security](/docs/guides/security), [Backup](/docs/guides/backup), [Troubleshooting](/docs/guides/troubleshooting) | [Configuration](/docs/reference/configuration), [Ansible roles](/docs/reference/roles) |
 
 The roles ship with the control plane in `ansible/roles/`, so one release
 covers both and they cannot drift. The versioned desired-state contract still

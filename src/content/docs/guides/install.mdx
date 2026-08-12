@@ -7,6 +7,8 @@ description: Every way to install, update, and remove BlitzeCDN, and which one t
 
 Use this guide to put BlitzeCDN on a machine, move it to a newer release, or take
 it off again. Which commands apply depends on one decision, so make that first.
+For the condensed end-to-end sequence, return to
+[Operate BlitzeCDN](/docs/operate).
 
 ## Before you begin
 
@@ -74,7 +76,7 @@ Do the same work in two steps, so you can read and pin what you install. This is
 the production route:
 
 ```bash
-sudo git clone --branch v1.7.3 https://github.com/misaf/blitze-cdn-cp.git /opt/blitzecdn
+sudo git clone --branch v1.7.5 --depth 1 https://github.com/misaf/blitze-cdn-cp.git /opt/blitzecdn
 sudo /opt/blitzecdn/install.sh standalone \
   --admin-cidr 203.0.113.8/32 --email ops@example.com
 ```

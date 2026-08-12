@@ -195,17 +195,20 @@ blitzecdn cert renew --site cdn-example-com
 
 ### Scheduling it
 
-The control plane ships systemd units for this in `packaging/systemd/`, along
-with an hourly drift check. Neither is enabled by default — when they should run
-is a decision about your fleet:
+The standalone installer installs and enables the renewal and drift timers as
+part of the control-plane convergence. Do not copy the unit files manually;
+their service account, paths, and writable directories are provisioned by the
+same installation workflow. Verify the installed schedule:
 
 ```bash
-sudo cp packaging/systemd/blitzecdn-*.service /etc/systemd/system/
-sudo cp packaging/systemd/blitzecdn-*.timer /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now blitzecdn-cert-renew.timer
 systemctl list-timers 'blitzecdn-*'
+systemctl status blitzecdn-cert-renew.timer blitzecdn-drift.timer
 ```
+
+A controller-only checkout creates no system services. If it must run
+unattended, build equivalent supervision around its actual checkout path and
+user; the packaged units deliberately target the standalone `/opt/blitzecdn`
+layout.
 
 The renewal timer fires twice daily with an hour of jitter. The frequency is not
 urgency — against a 30-day window it means roughly sixty attempts before

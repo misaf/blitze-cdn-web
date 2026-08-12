@@ -3,14 +3,10 @@ title: Overview
 description: What BlitzeCDN is, how its two halves divide responsibility, and where to go next.
 ---
 
-# BlitzeCDN
+# BlitzeCDN documentation
 
-Use BlitzeCDN to manage Nginx CDN edge servers from one controller.
-
-New here? Read [How it works](/docs/guides/how-it-works) for the five steps a
-hostname goes through, then follow the
-[Quick start](/docs/guides/quickstart). Everything else on this page is for
-solving one specific task.
+Use BlitzeCDN to manage Nginx CDN edge servers from one controller. Choose the
+path that matches what you need now.
 
 The product has a strict responsibility split:
 
@@ -22,14 +18,14 @@ The product has a strict responsibility split:
 <RouteCardGrid
   items={[
     {
-      title: 'Understand the sequence',
-      href: '/docs/guides/how-it-works',
-      note: 'Controller state, convergence, DNS, certificates — in order.',
+      title: 'Operate BlitzeCDN',
+      href: '/docs/operate',
+      note: 'One copy-paste runbook for install, verify, maintenance, upgrade, rebuild, recovery, and removal.',
     },
     {
-      title: 'Start with a tutorial',
-      href: '/docs/guides/quickstart',
-      note: 'Deploy the example site from a fresh controller.',
+      title: 'Understand BlitzeCDN',
+      href: '/docs/architecture',
+      note: 'Architecture, controller and edge boundaries, state, trust, and execution flow.',
     },
     {
       title: 'Take a real site live',
@@ -40,11 +36,6 @@ The product has a strict responsibility split:
       title: 'Operate safely',
       href: '/docs/guides/deployment',
       note: 'Plan, deploy, verify, and recover production changes.',
-    },
-    {
-      title: 'Understand the design',
-      href: '/docs/architecture',
-      note: 'Follow state, trust, and execution across both halves.',
     },
     {
       title: 'Look up exact behavior',
@@ -70,7 +61,21 @@ centrally coordinated ACME HTTP-01 issuance, managed certificate uploads, and
 existing TLS certificate paths. Certificates are issued once by the controller
 and distributed to every edge.
 
-## Every page
+## Choose a documentation mode
+
+### Operate BlitzeCDN
+
+Start with the [operator runbook](/docs/operate). It keeps the whole lifecycle
+on one page and links to a focused guide at each decision point. Use the
+[Quick start](/docs/guides/quickstart) only when you want a learning tutorial
+with a disposable example deployment.
+
+### Understand BlitzeCDN
+
+Start with [Architecture](/docs/architecture), then use the focused guides for
+subsystem behavior and the technical reference for exact interfaces.
+
+## Documentation map
 
 ### Start here — in this order
 

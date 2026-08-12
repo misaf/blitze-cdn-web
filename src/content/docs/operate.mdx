@@ -1,0 +1,249 @@
+---
+title: Operate BlitzeCDN
+description: Copy-paste runbook for installing, configuring, verifying, upgrading, recovering, and removing BlitzeCDN.
+---
+
+# Operate BlitzeCDN
+
+This is the shortest safe path through the complete BlitzeCDN lifecycle. It is
+written for a standalone server: one host runs the controller and is also an
+edge. Follow the linked guide when you need a controller with separate edges.
+
+<Callout type="info">
+  **Normal upgrade preserves state. Fresh rebuild and uninstall destroy it.** Do
+  not substitute one workflow for another.
+</Callout>
+
+## 1. Check the new server
+
+Use a genuinely new **Debian 13+ or Ubuntu 24.04+** server with Python 3.12 or
+newer. You also need root, outbound HTTPS and DNS, a stable public address, and
+an administration CIDR that must retain SSH access. Port 80 is required for
+ACME HTTP-01; ports 80 and 443 serve traffic.
+
+```bash
+. /etc/os-release
+printf 'OS: %s\n' "$PRETTY_NAME"
+python3 --version
+ip -brief address
+```
+
+Separate edges may use Debian 12+ or Ubuntu 24.04+. Review all host, SSH, DNS,
+and firewall requirements in [Installing & removing](/docs/guides/install) and
+[Managing edge hosts](/docs/guides/manage) before provisioning them.
+
+## 2. Install the first server
+
+Pin and inspect a release instead of installing a moving branch. Replace the
+release, CIDR, public address, and email below. The current repository release
+is `v1.7.5`.
+
+```bash
+sudo git clone --branch v1.7.5 --depth 1 \
+  https://github.com/misaf/blitze-cdn-cp.git /opt/blitzecdn
+sudo /opt/blitzecdn/install.sh standalone \
+  --admin-cidr 203.0.113.8/32 \
+  --public-address 203.0.113.10 \
+  --email ops@example.com
+```
+
+The installer creates accounts, SSH trust, a sudo rule, systemd units, API
+credentials, inventory, and `/usr/local/bin/blitzecdn`. It prepares but does
+not deploy the edge unless you explicitly add `--deploy`. For the audited
+one-command bootstrap or a controller-only checkout, use the
+[installation guide](/docs/guides/install#choose-an-installation).
+
+## 3. Configure desired state
+
+First confirm local readiness. Then create the domain and record you intend to
+serve. Replace the example names and origin with real values.
+
+```bash
+blitzecdn doctor
+blitzecdn domain add example.com
+blitzecdn record add example.com cdn \
+  --origin https://origin.example.net \
+  --proxied
+blitzecdn validate
+blitzecdn origin check
+blitzecdn plan
+```
+
+Review the complete plan before applying it:
+
+```bash
+blitzecdn deploy --yes
+```
+
+Use [`blitzecdn config`](/docs/reference/cli#blitzecdn-config) for fleet-wide,
+non-secret role settings. Put controller settings in `blitzecdn.toml` or
+`BLITZE_*` environment variables and secrets in
+`/etc/blitzecdn/blitzecdn.env`; see [Configuration](/docs/reference/configuration).
+Do not edit tracked role defaults.
+
+## 4. Verify installation and serving
+
+```bash
+blitzecdn --version
+blitzecdn doctor --json
+blitzecdn status --limit 5
+systemctl --no-pager --full status blitzecdn-api.service
+curl --fail --silent --show-error http://127.0.0.1:8000/health
+curl --fail --silent --show-error \
+  --resolve cdn.example.com:80:203.0.113.10 \
+  http://cdn.example.com/
+```
+
+The final probe tests the edge before public DNS changes. Next, follow
+[Take a real site live](/docs/guides/go-live) for DNS, ACME preflight,
+certificate issuance, HTTPS deployment, and external verification.
+
+## 5. Routine operation
+
+```bash
+# Validate and preview before every fleet change.
+blitzecdn validate
+blitzecdn plan
+
+# Inspect recent work and audit activity.
+blitzecdn status --limit 10
+blitzecdn audit --limit 20
+
+# Check origins and detect edge drift.
+blitzecdn origin check
+blitzecdn drift
+
+# Inspect certificates; renew due ACME certificates and deploy them.
+blitzecdn cert list
+blitzecdn cert renew --deploy
+
+# Purge one exact cache URL after changing its origin object.
+blitzecdn cache purge --url https://cdn.example.com/assets/app.css
+
+# Collect cache statistics from the fleet.
+blitzecdn stats
+```
+
+For staged changes, deploy a named canary first, probe it, then deploy without
+`--limit`: see [Deploying](/docs/guides/deployment#rate-and-scope). Exact flags
+and exit codes are in the [CLI reference](/docs/reference/cli).
+
+## 6. Back up and restore
+
+The standalone defaults live below `/opt/blitzecdn/.state`; API credentials are
+in `/etc/blitzecdn`. Wait for deployment and certificate work to finish, then
+use SQLite's online backup rather than copying a live database file.
+
+```bash
+sudo install -d -m 0700 /secure/backup/blitzecdn
+sudo -u blitzecdn sqlite3 /opt/blitzecdn/.state/control-plane.db \
+  ".backup '/secure/backup/blitzecdn/control-plane.db'"
+for path in /opt/blitzecdn/.state/certificates \
+  /opt/blitzecdn/.state/letsencrypt /etc/blitzecdn; do
+  sudo test ! -e "$path" || sudo cp -a "$path" /secure/backup/blitzecdn/
+done
+```
+
+The backup contains API secrets and certificate private keys. Encrypt it,
+restrict it, and test restoration on an isolated host with no route to
+production edges. For the full file set, permissions, integrity check, and
+reconnection sequence, use [Backup & recovery](/docs/guides/backup).
+
+## 7. Upgrade without rebuilding
+
+This is the normal, state-preserving path:
+
+```bash
+sudo /opt/blitzecdn/install.sh update --check
+sudo /opt/blitzecdn/install.sh update
+blitzecdn doctor --json
+blitzecdn plan
+```
+
+The updater backs up persistent controller state and `/etc/blitzecdn`, updates
+the controller, restarts its services, and runs `doctor`. It **does not change
+edges**. Review the plan, canary the new role behavior, then deploy the fleet.
+Pin a release with `update --version vX.Y.Z`. See
+[Updating the controller](/docs/guides/production#updating-the-controller).
+
+## 8. Fresh rebuild from scratch
+
+<Callout type="error">
+  `--fresh` removes the database, desired state, deployment history, audit
+  records, API credentials, managed certificates, services, accounts, and
+  installer-owned edge configuration on this host. Back up first. This is not an
+  upgrade or repair command.
+</Callout>
+
+The command reinstalls the same release as the current upstream checkout. Pass
+the standalone settings again:
+
+```bash
+sudo /opt/blitzecdn/install.sh --fresh \
+  --admin-cidr 203.0.113.8/32 \
+  --public-address 203.0.113.10 \
+  --email ops@example.com
+```
+
+Restore only through the tested [recovery procedure](/docs/guides/backup#recover-offline),
+then validate and plan before reconnecting production edges.
+
+## 9. Uninstall completely
+
+<Callout type="error">
+  This permanently removes every BlitzeCDN-owned artifact listed above,
+  including controller history and private certificate material. It also removes
+  managed Nginx sites, cache, and drop-ins from this standalone edge. It leaves
+  installed OS packages and unrelated files in place.
+</Callout>
+
+```bash
+sudo /opt/blitzecdn/install.sh --uninstall
+```
+
+The command asks for confirmation; `--yes` suppresses it. Verify removal:
+
+```bash
+test -e /opt/blitzecdn && echo 'still present' || echo 'removed'
+getent passwd blitzecdn deploy
+systemctl list-unit-files 'blitzecdn-*'
+```
+
+Read [Remove](/docs/guides/install#remove) first for the exact deletion scope,
+partial-removal recovery, and the different controller-only procedure.
+
+## 10. Troubleshoot and recover
+
+Preserve evidence before retrying. Never delete a live deployment lock or
+disable SSH host-key verification.
+
+```bash
+blitzecdn --verbose doctor
+blitzecdn --verbose validate
+blitzecdn status --limit 5
+blitzecdn audit --limit 20
+journalctl -u blitzecdn-api.service --since '30 minutes ago' --no-pager
+```
+
+- Install/update failure: [installer troubleshooting](/docs/guides/install#troubleshooting)
+- SSH, deployment, origin, storage, or certificate failure:
+  [Troubleshooting](/docs/guides/troubleshooting)
+- Unknown or partial serving state: [Incident response](/docs/guides/incidents)
+- Incorrect successful deployment: [Rollback](/docs/guides/deployment#rollback)
+- Lost controller: [Backup & recovery](/docs/guides/backup#recover-offline)
+
+## Detailed documentation map
+
+- **System design:** [Architecture](/docs/architecture), including controller,
+  edge, trust, state, and execution boundaries.
+- **Installation and infrastructure:** [Installing & removing](/docs/guides/install),
+  [Managing edge hosts](/docs/guides/manage), and
+  [Ansible role reference](/docs/reference/roles).
+- **Traffic lifecycle:** [Domains and records](/docs/reference/domains),
+  [DNS](/docs/guides/dns), [Certificates](/docs/guides/certificates), and
+  [Deploying](/docs/guides/deployment).
+- **Operations:** [Cache and stats CLI](/docs/reference/cli),
+  [Production](/docs/guides/production), [Security](/docs/guides/security), and
+  [Backup & recovery](/docs/guides/backup).
+- **Interfaces:** [CLI](/docs/reference/cli), [HTTP API](/docs/reference/api),
+  and [Configuration](/docs/reference/configuration).
