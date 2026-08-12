@@ -59,6 +59,7 @@ its variables are installer inputs rather than fleet settings for
 | `blitzecdn_controlplane_sudoers_file`                  | `/etc/sudoers.d/blitzecdn-deploy`                     | Explicit edge privilege rule                                       |
 | `blitzecdn_controlplane_packages`                      | `certbot`, `git`, `openssh-server`, `openssl`, `sudo` | Host packages installed after bootstrap                            |
 | `blitzecdn_controlplane_acme_email`                    | `""`                                                  | Required only when creating the first environment file             |
+| `blitzecdn_controlplane_preflight_dns_servers`         | `1.1.1.1,1.0.0.1`                                     | Public resolvers used by certificate preflight on standalone hosts |
 | `blitzecdn_controlplane_certificate_reconcile_seconds` | `600`                                                 | First-certificate reconciliation interval written on first install |
 | `blitzecdn_controlplane_units`                         | Five packaged API/renewal/drift units                 | Unit files to install                                              |
 | `blitzecdn_controlplane_services`                      | API plus renewal/drift timers                         | Units to enable and start                                          |
