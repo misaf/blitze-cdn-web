@@ -26,7 +26,7 @@ ports, durations, and absolute certificate paths.
   You do not create sites. A site is **derived** from a proxied DNS record:
   proxy a record and its site appears, unproxy it and the site is gone. The
   fields below are set on the record. See [Domains and
-  records](/docs/understand/reference/records).
+  records](/docs/reference/records).
 </Callout>
 
 The core fields:
@@ -44,8 +44,8 @@ The core fields:
 | `certificate_path` / `certificate_key_path`     | Paths for `existing` certificates.                                                |
 | `firewall`                                      | Per-hostname request filtering at the edge.                                       |
 
-See [HTTP API](/docs/understand/reference/http-api) for the full model, or
-[Ansible roles](/docs/understand/reference/ansible) for how they map onto the edge role.
+See [HTTP API](/docs/reference/http-api) for the full model, or
+[Ansible roles](/docs/reference/ansible) for how they map onto the edge role.
 
 ## Desired state vs. what runs
 

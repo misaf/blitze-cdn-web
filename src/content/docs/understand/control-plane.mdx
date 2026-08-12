@@ -50,7 +50,7 @@ operation it claims to describe.
 
 The CLI waits for deployments and rollbacks to finish. It is intended for a
 human terminal or bounded automation and communicates failure with documented
-[exit codes](/docs/understand/reference/cli#exit-codes).
+[exit codes](/docs/reference/cli#exit-codes).
 
 The API queues long deployments and rollbacks, commits the queued row first,
 and returns `202 Accepted`. A worker thread performs the convergence and the
@@ -80,5 +80,5 @@ A standalone installation runs `blitzecdn-api.service` as the unprivileged
 restarts on failure. First-certificate reconciliation lives in this API process;
 certificate renewal and drift are separate systemd timers.
 
-For exact settings and paths, use [Configuration](/docs/understand/reference/configuration)
+For exact settings and paths, use [Configuration](/docs/reference/configuration)
 and [Storage and state](/docs/understand/storage-state).

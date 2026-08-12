@@ -675,7 +675,7 @@ body:has([data-docs-section='reference']) main td code {
  * ---------------------------------------------------------------------------
  * The reference table of contents is a command index.
  *
- * `/docs/understand/reference/cli` has thirty entries, and because every one of them is
+ * `/docs/reference/cli` has thirty entries, and because every one of them is
  * set in mono and starts with the same word, depth was carried by indentation
  * alone — a flat grey column in which `blitzecdn record` and `blitzecdn record
  * proxy` look like peers. The MDX already nests them correctly (commands are

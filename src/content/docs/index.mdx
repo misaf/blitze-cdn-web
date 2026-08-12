@@ -19,7 +19,12 @@ implementation history.
     {
       title: 'I need to understand BlitzeCDN',
       href: '/docs/understand',
-      note: 'Follow architecture, control-plane, domain, edge, DNS/TLS, deployment, cache, security, and storage boundaries into exact reference.',
+      note: 'Follow architecture, control-plane, domain, edge, DNS/TLS, deployment, cache, security, and storage boundaries.',
+    },
+    {
+      title: 'I need to look something up',
+      href: '/docs/reference',
+      note: 'Find the exact command, flag, route, model, environment variable, or role variable without reading the surrounding explanation.',
     },
   ]}
 />
@@ -74,11 +79,11 @@ whose boundary you are investigating:
 
 Use reference pages to look up facts after you understand the workflow:
 
-- [CLI](/docs/understand/reference/cli) — commands, flags, confirmation, and exit codes.
-- [HTTP API](/docs/understand/reference/http-api) — authentication, routes, schemas, and status codes.
-- [Configuration](/docs/understand/reference/configuration) — every controller environment variable and TOML key.
-- [Domains, records, and sites](/docs/understand/reference/records) — exact data fields and validation.
-- [Ansible roles and variables](/docs/understand/reference/ansible) — defaults, effects, and defensive checks.
+- [CLI](/docs/reference/cli) — commands, flags, confirmation, and exit codes.
+- [HTTP API](/docs/reference/http-api) — authentication, routes, schemas, and status codes.
+- [Configuration](/docs/reference/configuration) — every controller environment variable and TOML key.
+- [Domains, records, and sites](/docs/reference/records) — exact data fields and validation.
+- [Ansible roles and variables](/docs/reference/ansible) — defaults, effects, and defensive checks.
 
 The implementation is the source of truth. Interface changes must update the
 matching reference and any canonical operating procedure in the same change.

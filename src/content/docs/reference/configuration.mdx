@@ -26,11 +26,11 @@ Precedence: environment variable, then the matching key in
   intact, update configuration, then run `doctor` and `validate`.
 - Rotate API secrets with the [overlap procedure](/docs/operate/api-key-rotation).
 - `BLITZE_ORIGIN_CHECK_TIMEOUT_SECONDS` is the per-origin budget for
-  [`blitzecdn origin check`](/docs/understand/reference/cli#blitzecdn-origin-check). Keep it
+  [`blitzecdn origin check`](/docs/reference/cli#blitzecdn-origin-check). Keep it
   short: an origin that needs longer than this to accept a TCP connection is one
   the edges will struggle with too.
 - `BLITZE_ACME_CA_DOMAIN` is the CA identity a CAA record must name for
-  [`cert preflight`](/docs/understand/reference/cli#blitzecdn-cert-preflight) to consider
+  [`cert preflight`](/docs/reference/cli#blitzecdn-cert-preflight) to consider
   issuance permitted. Change it only when `BLITZE_CERTBOT` is pointed at another
   ACME server — a CAA check against the wrong CA is worse than none, because it
   passes while the real CA is refused.
@@ -78,7 +78,7 @@ bypassed. `blitzecdn doctor` reports which resolver is in use and whether it
 answers reserved names it cannot know.
 
 `BLITZE_ALLOW_EMPTY_SITES` is forwarded to the edge as
-[`blitzecdn_nginx_allow_empty_sites`](/docs/understand/reference/ansible#blitzecdn_nginx),
+[`blitzecdn_nginx_allow_empty_sites`](/docs/reference/ansible#blitzecdn_nginx),
 where it decides whether a deploy may remove the last managed site. Leave it
 `false`. A desired state that has become empty is far more often a controller
 pointed at an edge whose sites were never imported than a fleet you meant to
@@ -106,12 +106,12 @@ run even when empty, so a stale export in the deploying shell cannot change
 what converges.
 
 Set them in `.env`, which `init` and `setup` scaffold with both names commented
-out. See [country rules](/docs/understand/reference/records) for the rest of the setup.
+out. See [country rules](/docs/reference/records) for the rest of the setup.
 
 ## Edge settings
 
 Role variables for the edge fleet live in the control-plane database and are
-managed with [`blitzecdn config`](/docs/understand/reference/cli#blitzecdn-config). The
+managed with [`blitzecdn config`](/docs/reference/cli#blitzecdn-config). The
 inventory plugin publishes them to every edge at the start of every run:
 
 ```bash

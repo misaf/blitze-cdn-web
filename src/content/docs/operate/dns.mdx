@@ -13,7 +13,7 @@ your customer.
 ## Before you begin
 
 - Add the zone and its records first. See
-  [Domains and DNS records](/docs/understand/reference/records).
+  [Domains and DNS records](/docs/reference/records).
 - Have the public addresses of every edge that should answer for the hostname.
   `blitzecdn edge list` reports what the inventory holds.
 - Know where the zone is hosted and who can change it. On a customer domain that
@@ -31,7 +31,7 @@ your customer.
 blitzecdn dns export --json
 ```
 
-A [proxied](/docs/understand/reference/records#what-proxied-controls) record exports no
+A [proxied](/docs/reference/records#what-proxied-controls) record exports no
 `value`:
 
 ```json
@@ -82,7 +82,7 @@ look like an unexplained issuance failure.
 Lower the TTL on the existing record well before the cutover — at least the old
 TTL's worth of time ahead, so the long-cached copies expire first — then move the
 address and raise it again once traffic has settled.
-[`cert preflight`](/docs/understand/reference/cli#blitzecdn-cert-preflight) reports a TTL
+[`cert preflight`](/docs/reference/cli#blitzecdn-cert-preflight) reports a TTL
 above one hour as an advisory for this reason.
 
 ## Confirm CAA permits your CA

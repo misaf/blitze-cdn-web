@@ -10,7 +10,7 @@ Verified against the OpenAPI schema of `BlitzeCDN control plane`.
 Every route below except `GET /health` requires the `X-API-Key` header.
 Ten failed authentications from one client address within a minute return
 `429`. Deployment and rollback routes return `202 Accepted` with a queued
-record; poll `GET /v1/deployments/{id}` for the outcome.
+record; poll `GET /v1/deployments/{deployment_id}` for the outcome.
 
 ## Request and retry rules
 
@@ -49,6 +49,206 @@ the `detail` text:
 upload, or issuance holds it, and it will be free again. Every other `409` needs
 the request or the state changed first.
 
+## Worked examples
+
+Five requests covering the shapes the rest of the page describes in the
+abstract. Every payload below is validated against the models the control plane
+actually serves, so they can be copied and adapted rather than guessed at.
+
+Responses are trimmed to the fields worth seeing; the model sections list the
+rest.
+
+### Publish a hostname
+
+A record is the unit of configuration. Adding it with `proxied` set is what
+derives an edge site — there is no separate site to create. On a proxied record
+`value` is the origin the edge fetches from, not the address DNS should answer
+with; see [Domains and records](/docs/reference/records).
+
+{/* schema: DnsRecord */}
+
+```bash
+curl -sS -X POST https://controller.example.com/v1/domains/example.com/records \
+  -H "X-API-Key: $BLITZE_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "domain": "example.com",
+    "name": "www",
+    "value": "198.51.100.20",
+    "proxied": true,
+    "origin_scheme": "https",
+    "origin_request_host": "origin.internal.example.com",
+    "cache_valid_success": "10m"
+  }'
+```
+
+{/* schema: DnsRecord */}
+
+```json
+{
+  "domain": "example.com",
+  "name": "www",
+  "type": "A",
+  "value": "198.51.100.20",
+  "ttl": 300,
+  "proxied": true,
+  "origin_scheme": "https",
+  "origin_request_host": "origin.internal.example.com",
+  "origin_port": null,
+  "enabled": true,
+  "certificate_mode": "disabled",
+  "cache_enabled": true,
+  "cache_valid_success": "10m",
+  "cache_valid_not_found": "1m"
+}
+```
+
+Nothing has reached an edge yet. The record is desired state until a deployment
+converges it.
+
+### Converge the fleet
+
+[`POST /v1/deployments`](#post-v1deployments) returns `202` immediately; the
+body is the queued record, not the outcome.
+
+{/* schema: DeployRequest */}
+
+```bash
+curl -sS -X POST https://controller.example.com/v1/deployments \
+  -H "X-API-Key: $BLITZE_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{ "check": false }'
+```
+
+{/* schema: Deployment */}
+
+```json
+{
+  "id": "7c1e4b90a2df46538ba0c7e15d93f8a2",
+  "status": "queued",
+  "operator": "ops",
+  "check_mode": false,
+  "host_limit": null,
+  "rollback_of": null,
+  "created_at": "2026-03-04T09:12:44.318271Z",
+  "started_at": null,
+  "finished_at": null,
+  "result": null
+}
+```
+
+### Poll it to a terminal state
+
+Poll [`GET /v1/deployments/{deployment_id}`](#get-v1deploymentsdeployment_id)
+until `status` leaves `queued` and `running`. `result.hosts` is the per-edge
+breakdown, and `changed` on a non-check run counts tasks that acted.
+
+```bash
+curl -sS https://controller.example.com/v1/deployments/7c1e4b90a2df46538ba0c7e15d93f8a2 \
+  -H "X-API-Key: $BLITZE_API_KEY"
+```
+
+{/* schema: Deployment */}
+
+```json
+{
+  "id": "7c1e4b90a2df46538ba0c7e15d93f8a2",
+  "status": "succeeded",
+  "operator": "ops",
+  "check_mode": false,
+  "created_at": "2026-03-04T09:12:44.318271Z",
+  "started_at": "2026-03-04T09:12:44.902118Z",
+  "finished_at": "2026-03-04T09:14:07.551903Z",
+  "result": {
+    "id": "7c1e4b90a2df46538ba0c7e15d93f8a2",
+    "playbook": "edge.yml",
+    "status": "succeeded",
+    "return_code": 0,
+    "started_at": "2026-03-04T09:12:44.902118Z",
+    "finished_at": "2026-03-04T09:14:07.551903Z",
+    "hosts": [
+      {
+        "host": "edge-fra-1",
+        "ok": 42,
+        "changed": 3,
+        "failed": 0,
+        "unreachable": 0,
+        "changes": [
+          {
+            "task": "nginx : write site configuration",
+            "outcome": "changed"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+A `succeeded` deployment with `changed: 0` on every host means the fleet already
+matched. That is the same signal [`POST /v1/drift`](#post-v1drift) produces,
+without converging anything.
+
+### Purge one path
+
+Purges are partial by design: each entry names a host and a URI.
+
+{/* schema: PurgeRequest */}
+
+```bash
+curl -sS -X POST https://controller.example.com/v1/cache/purge \
+  -H "X-API-Key: $BLITZE_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "entries": [
+      { "host": "www.example.com", "uri": "/assets/app.css", "scheme": "https" }
+    ]
+  }'
+```
+
+{/* schema: PurgeResult */}
+
+```json
+{
+  "purged_at": "2026-03-04T09:20:11.004512Z",
+  "entries": [
+    { "host": "www.example.com", "uri": "/assets/app.css", "scheme": "https" }
+  ],
+  "purge_all": false,
+  "complete": true,
+  "failed_hosts": []
+}
+```
+
+`complete` is the field to branch on. A partial purge returns `409` carrying
+this same body with `complete` false and the unreachable edges in
+`failed_hosts` — not an error object.
+
+### Read certificate state
+
+```bash
+curl -sS https://controller.example.com/v1/sites/www.example.com/certificate \
+  -H "X-API-Key: $BLITZE_API_KEY"
+```
+
+{/* schema: CertificateStatus */}
+
+```json
+{
+  "site": "www.example.com",
+  "source": "acme",
+  "domains": ["www.example.com"],
+  "not_after": "2026-06-02T09:14:00Z",
+  "days_remaining": 90,
+  "expired": false,
+  "renewable": true,
+  "fingerprint_sha256": "9f2c4e1a7b0d3856c9e4f01b2d7a58c36e91048fbd25a7c3019e6b4d8a52f7c1"
+}
+```
+
+`renewable` is a property of the certificate's source, not of how soon it
+expires: an uploaded certificate is never renewable by the controller.
+
 ## `GET /health`
 
 Health
@@ -74,8 +274,8 @@ Audit Events
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `200`  | Successful Response | `AuditEvent[]`        |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `200`  | Successful Response | [`AuditEvent[]`](#auditevent)        |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `GET /v1/workflows`
 
@@ -112,12 +312,12 @@ Deployments
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `200`  | Successful Response | `Deployment[]`        |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `200`  | Successful Response | [`Deployment[]`](#deployment)        |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `POST /v1/deployments`
 
-Queue a convergence; poll GET /v1/deployments/\{id\} for the outcome.
+Queue a convergence; poll `GET /v1/deployments/{deployment_id}` for the outcome.
 
 **Parameters**
 
@@ -125,14 +325,14 @@ Queue a convergence; poll GET /v1/deployments/\{id\} for the outcome.
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
-**Request body** (required): `application/json` → `DeployRequest`
+**Request body** (required): `application/json` → [`DeployRequest`](#deployrequest)
 
 **Responses**
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `202`  | Successful Response | `Deployment`          |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `202`  | Successful Response | [`Deployment`](#deployment)          |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `GET /v1/deployments/{deployment_id}`
 
@@ -149,13 +349,13 @@ Deployment
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `200`  | Successful Response | `Deployment`          |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `200`  | Successful Response | [`Deployment`](#deployment)          |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `POST /v1/drift`
 
 Queue a check-mode run and read the answer from
-`GET /v1/deployments/{id}/drift`. Converges nothing.
+`GET /v1/deployments/{deployment_id}/drift`. Converges nothing.
 
 **Parameters**
 
@@ -163,14 +363,14 @@ Queue a check-mode run and read the answer from
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
-**Request body** (required): `application/json` → `DriftRequest`
+**Request body** (required): `application/json` → [`DriftRequest`](#driftrequest)
 
 **Responses**
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `202`  | Successful Response | `Deployment`          |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `202`  | Successful Response | [`Deployment`](#deployment)          |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `GET /v1/deployments/{deployment_id}/drift`
 
@@ -189,13 +389,13 @@ drifted.
 
 | Status | Description                 | Body                  |
 | ------ | --------------------------- | --------------------- |
-| `200`  | Successful Response         | `DriftReport`         |
+| `200`  | Successful Response         | [`DriftReport`](#driftreport)         |
 | `409`  | Not a check-mode deployment | `object`              |
-| `422`  | Validation Error            | `HTTPValidationError` |
+| `422`  | Validation Error            | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `POST /v1/rollbacks`
 
-Queue a rollback; poll GET /v1/deployments/\{id\} for the outcome.
+Queue a rollback; poll `GET /v1/deployments/{deployment_id}` for the outcome.
 
 **Parameters**
 
@@ -203,14 +403,14 @@ Queue a rollback; poll GET /v1/deployments/\{id\} for the outcome.
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
-**Request body** (required): `application/json` → `RollbackRequest`
+**Request body** (required): `application/json` → [`RollbackRequest`](#rollbackrequest)
 
 **Responses**
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `202`  | Successful Response | `Deployment`          |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `202`  | Successful Response | [`Deployment`](#deployment)          |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `GET /v1/sites`
 
@@ -227,8 +427,8 @@ there is no `POST`, `PATCH`, or `DELETE`. Change the record instead.
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `200`  | Successful Response | `CdnSite[]`           |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `200`  | Successful Response | [`CdnSite[]`](#cdnsite)           |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `GET /v1/sites/{name}`
 
@@ -246,9 +446,9 @@ including the defaults its record never mentioned.
 
 | Status | Description          | Body                  |
 | ------ | -------------------- | --------------------- |
-| `200`  | Successful Response  | `CdnSite`             |
+| `200`  | Successful Response  | [`CdnSite`](#cdnsite)             |
 | `404`  | No site by that name | `object`              |
-| `422`  | Validation Error     | `HTTPValidationError` |
+| `422`  | Validation Error     | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `GET /v1/domains`
 
@@ -264,21 +464,21 @@ List Domains
 
 | Status | Description         | Body       |
 | ------ | ------------------- | ---------- |
-| `200`  | Successful Response | `Domain[]` |
+| `200`  | Successful Response | [`Domain[]`](#domain) |
 
 ## `POST /v1/domains`
 
 Create Domain
 
-**Request body** (required): `application/json` → `Domain`
+**Request body** (required): `application/json` → [`Domain`](#domain)
 
 **Responses**
 
 | Status | Description           | Body                  |
 | ------ | --------------------- | --------------------- |
-| `201`  | Successful Response   | `Domain`              |
+| `201`  | Successful Response   | [`Domain`](#domain)              |
 | `409`  | Domain already exists | —                     |
-| `422`  | Validation Error      | `HTTPValidationError` |
+| `422`  | Validation Error      | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `DELETE /v1/domains/{domain}`
 
@@ -299,23 +499,23 @@ List Records
 
 | Status | Description           | Body          |
 | ------ | --------------------- | ------------- |
-| `200`  | Successful Response   | `DnsRecord[]` |
+| `200`  | Successful Response   | [`DnsRecord[]`](#dnsrecord) |
 | `404`  | Domain does not exist | —             |
 
 ## `POST /v1/domains/{domain}/records`
 
 Create Record. The body's `domain` must match the path segment.
 
-**Request body** (required): `application/json` → `DnsRecord`
+**Request body** (required): `application/json` → [`DnsRecord`](#dnsrecord)
 
 **Responses**
 
 | Status | Description                                      | Body                  |
 | ------ | ------------------------------------------------ | --------------------- |
-| `201`  | Successful Response                              | `DnsRecord`           |
+| `201`  | Successful Response                              | [`DnsRecord`](#dnsrecord)           |
 | `404`  | Domain does not exist                            | —                     |
 | `409`  | Record exists, or its derived site name collides | —                     |
-| `422`  | Validation Error                                 | `HTTPValidationError` |
+| `422`  | Validation Error                                 | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `PATCH /v1/domains/{domain}/records/{name}`
 
@@ -329,13 +529,13 @@ Update Record. This is the CDN on/off switch: send `{"proxied": true}` or
 | `type`      | `query`  | `false`  | `A` \| `AAAA` | Record type; defaults to `A`. |
 | `x-api-key` | `header` | `true`   | `string`      | Required operator credential. |
 
-**Request body** (required): `application/json` → `RecordPatch`
+**Request body** (required): `application/json` → [`RecordPatch`](#recordpatch)
 
 **Responses**
 
 | Status | Description           | Body        |
 | ------ | --------------------- | ----------- |
-| `200`  | Successful Response   | `DnsRecord` |
+| `200`  | Successful Response   | [`DnsRecord`](#dnsrecord) |
 | `404`  | Record does not exist | —           |
 
 ## `DELETE /v1/domains/{domain}/records/{name}`
@@ -375,8 +575,8 @@ Managed certificates against the clock, soonest expiry first.
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `200`  | Successful Response | `CertificateStatus[]` |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `200`  | Successful Response | [`CertificateStatus[]`](#certificatestatus) |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `POST /v1/cache/purge`
 
@@ -397,23 +597,23 @@ normalized content encoding, so one URL is several entries.
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
-**Request body** (required): `application/json` → `PurgeRequest`
+**Request body** (required): `application/json` → [`PurgeRequest`](#purgerequest)
 
 **Responses**
 
 | Status | Description                                 | Body                  |
 | ------ | ------------------------------------------- | --------------------- |
-| `200`  | Purged on every edge in scope               | `PurgeResult`         |
+| `200`  | Purged on every edge in scope               | [`PurgeResult`](#purgeresult)         |
 | `404`  | No enabled site serves a requested hostname | `object`              |
 | `409`  | Nothing to purge or a contradictory request | `object`              |
-| `409`  | Purged on some edges but not all            | `PurgeResult`         |
-| `422`  | Validation Error                            | `HTTPValidationError` |
+| `409`  | Purged on some edges but not all            | [`PurgeResult`](#purgeresult)         |
+| `422`  | Validation Error                            | [`HTTPValidationError`](#httpvalidationerror) |
 
 A partial purge is a `409`, not a `200`. Some edges dropped the object and
 others did not, so which response a client gets depends on which edge answers —
 that must not read as success.
 
-The partial `409` carries a full `PurgeResult`, not an error object. Branch on
+The partial `409` carries a full [`PurgeResult`](#purgeresult), not an error object. Branch on
 `complete`, and retry the edges named in `failed_hosts`; `hosts` holds what each
 edge reported. A request refused before it reached the fleet — nothing to purge,
 or `entries` and `purge_all` together — is the other `409` and carries an
@@ -435,14 +635,14 @@ omitted, so a fleet-wide number is never quietly computed from a subset.
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
-**Request body** (required): `application/json` → `StatsRequest`
+**Request body** (required): `application/json` → [`StatsRequest`](#statsrequest)
 
 **Responses**
 
 | Status | Description                 | Body                  |
 | ------ | --------------------------- | --------------------- |
-| `200`  | Successful Response         | `CacheStatsReport`    |
-| `422`  | Validation Error            | `HTTPValidationError` |
+| `200`  | Successful Response         | [`CacheStatsReport`](#cachestatsreport)    |
+| `422`  | Validation Error            | [`HTTPValidationError`](#httpvalidationerror) |
 | `503`  | No edge reported statistics | `object`              |
 
 ## `POST /v1/certificates/renew`
@@ -474,7 +674,7 @@ automated caller cannot read a typo as "nothing was due". An empty list is a
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
-**Request body** (required): `application/json` → `RenewRequest`
+**Request body** (required): `application/json` → [`RenewRequest`](#renewrequest)
 
 **Responses**
 
@@ -482,7 +682,7 @@ automated caller cannot read a typo as "nothing was due". An empty list is a
 | ------ | ------------------------------------------- | --------------------- |
 | `200`  | Successful Response                         | `object`              |
 | `404`  | No managed certificate for a requested site | `object`              |
-| `422`  | Validation Error                            | `HTTPValidationError` |
+| `422`  | Validation Error                            | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `GET /v1/edges`
 
@@ -493,7 +693,7 @@ inventory plugin reads these same rows at the start of every run.
 
 | Status | Description         | Body     |
 | ------ | ------------------- | -------- |
-| `200`  | Successful Response | `Edge[]` |
+| `200`  | Successful Response | [`Edge[]`](#edge) |
 
 ## `POST /v1/edges`
 
@@ -503,15 +703,15 @@ joins the fleet on the next `POST /v1/deployments`.
 `201` rather than `202`: this creates a record and returns having finished,
 unlike the deployment routes.
 
-**Request body** (required): `application/json` → `Edge`
+**Request body** (required): `application/json` → [`Edge`](#edge)
 
 **Responses**
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `201`  | Successful Response | `Edge`                |
+| `201`  | Successful Response | [`Edge`](#edge)                |
 | `409`  | Edge already exists | —                     |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `GET /v1/edges/{name}`
 
@@ -521,7 +721,7 @@ Get Edge
 
 | Status | Description         | Body   |
 | ------ | ------------------- | ------ |
-| `200`  | Successful Response | `Edge` |
+| `200`  | Successful Response | [`Edge`](#edge) |
 | `404`  | Edge does not exist | —      |
 
 ## `PATCH /v1/edges/{name}`
@@ -531,19 +731,19 @@ Update Edge. Each field replaces its own value; unset fields are untouched.
 clears them — merging would make "remove the last entry" inexpressible.
 
 The name is not patchable. Certificates, audit history and deployment host
-limits all refer to it, so a rename would orphan them; `EdgePatch` has no such
+limits all refer to it, so a rename would orphan them; [`EdgePatch`](#edgepatch) has no such
 field and forbids extras, which makes it a `422` rather than a silently ignored
 key. Remove the edge and add it again under the new name.
 
-**Request body** (required): `application/json` → `EdgePatch`
+**Request body** (required): `application/json` → [`EdgePatch`](#edgepatch)
 
 **Responses**
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `200`  | Successful Response | `Edge`                |
+| `200`  | Successful Response | [`Edge`](#edge)                |
 | `404`  | Edge does not exist | —                     |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `DELETE /v1/edges/{name}`
 
@@ -571,10 +771,10 @@ that distinction survives.
 
 | Status | Description                                                        | Body                  |
 | ------ | ------------------------------------------------------------------ | --------------------- |
-| `200`  | Successful Response                                                | `EdgeRemoval`         |
+| `200`  | Successful Response                                                | [`EdgeRemoval`](#edgeremoval)         |
 | `404`  | Edge does not exist                                                | —                     |
 | `502`  | Teardown failed and the edge was kept; retry, or pass `force=true` | —                     |
-| `422`  | Validation Error                                                   | `HTTPValidationError` |
+| `422`  | Validation Error                                                   | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `GET /v1/origins/check`
 
@@ -593,7 +793,7 @@ probe runs from the control plane, not from an edge, and is bounded by
 
 | Status | Description         | Body            |
 | ------ | ------------------- | --------------- |
-| `200`  | Successful Response | `OriginCheck[]` |
+| `200`  | Successful Response | [`OriginCheck[]`](#origincheck) |
 
 ## `GET /v1/sites/{name}/certificate`
 
@@ -610,8 +810,8 @@ Certificate
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `200`  | Successful Response | `CertificateInfo`     |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `200`  | Successful Response | [`CertificateInfo`](#certificateinfo)     |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `POST /v1/sites/{name}/certificate/request`
 
@@ -624,14 +824,14 @@ Request Certificate
 | `name`      | `path`   | `true`   | `string` | —                             |
 | `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
-**Request body** (required): `application/json` → `CertificateRequest`
+**Request body** (required): `application/json` → [`CertificateRequest`](#certificaterequest)
 
 **Responses**
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `200`  | Successful Response | `CertificateInfo`     |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `200`  | Successful Response | [`CertificateInfo`](#certificateinfo)     |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `GET /v1/sites/{name}/certificate/preflight`
 
@@ -641,7 +841,7 @@ Reports whether HTTP-01 could validate this site right now: that public DNS
 answers with an edge address, that the virtual host is deployed, and that CAA
 permits the CA, plus advisories on the origin and the record TTL. Contacts no CA
 and changes nothing. The check names and severities are listed under
-[`blitzecdn cert preflight`](/docs/understand/reference/cli#blitzecdn-cert-preflight).
+[`blitzecdn cert preflight`](/docs/reference/cli#blitzecdn-cert-preflight).
 
 **Parameters**
 
@@ -654,9 +854,9 @@ and changes nothing. The check names and severities are listed under
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `200`  | Successful Response | `PreflightReport`     |
-| `404`  | No such site        | `HTTPValidationError` |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `200`  | Successful Response | [`PreflightReport`](#preflightreport)     |
+| `404`  | No such site        | [`HTTPValidationError`](#httpvalidationerror) |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `POST /v1/sites/{name}/certificate/upload`
 
@@ -669,14 +869,14 @@ Upload Certificate
 | `name`      | `path`   | `true`   | `string` | —                             |
 | `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
-**Request body** (required): `multipart/form-data` → `Body_upload_certificate_v1_sites__name__certificate_upload_post`
+**Request body** (required): `multipart/form-data` → [`Body_upload_certificate_v1_sites__name__certificate_upload_post`](#body_upload_certificate_v1_sites__name__certificate_upload_post)
 
 **Responses**
 
 | Status | Description         | Body                  |
 | ------ | ------------------- | --------------------- |
-| `200`  | Successful Response | `CertificateInfo`     |
-| `422`  | Validation Error    | `HTTPValidationError` |
+| `200`  | Successful Response | [`CertificateInfo`](#certificateinfo)     |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## Models
 
@@ -709,15 +909,15 @@ Validated, provider-independent desired state for one CDN virtual host.
 | `cache_valid_not_found` | `string`          | `false`  | `1m`       |
 | `cache_valid_success`   | `string`          | `false`  | `10m`      |
 | `certificate_key_path`  | `string \\        | null`    | `false`    | —   |
-| `certificate_mode`      | `CertificateMode` | `false`  | `disabled` |
+| `certificate_mode`      | [`CertificateMode`](#certificatemode) | `false`  | `disabled` |
 | `certificate_path`      | `string \\        | null`    | `false`    | —   |
 | `enabled`               | `boolean`         | `false`  | `true`     |
-| `firewall`              | `SiteFirewall`    | `false`  | `{}`       |
+| `firewall`              | [`SiteFirewall`](#sitefirewall)    | `false`  | `{}`       |
 | `name`                  | `string`          | `true`   | —          |
 | `origin_host`           | `string`          | `true`   | —          |
 | `origin_port`           | `integer \\       | null`    | `false`    | —   |
 | `origin_request_host`   | `string \\        | null`    | `false`    | —   |
-| `origin_scheme`         | `HttpScheme`      | `false`  | `https`    |
+| `origin_scheme`         | [`HttpScheme`](#httpscheme)      | `false`  | `https`    |
 | `origin_sni`            | `string \\        | null`    | `false`    | —   |
 | `server_names`          | `string[]`        | `true`   | —          |
 
@@ -731,7 +931,7 @@ Validated, provider-independent desired state for one CDN virtual host.
 | `not_after`          | `string`            | `true`   | —       |
 | `not_before`         | `string`            | `true`   | —       |
 | `site`               | `string`            | `true`   | —       |
-| `source`             | `CertificateSource` | `true`   | —       |
+| `source`             | [`CertificateSource`](#certificatesource) | `true`   | —       |
 
 ### `CertificateMode`
 
@@ -761,7 +961,7 @@ stored, so `days_remaining` is always current.
 | `not_after`          | `string`            | `true`   | —       |
 | `renewable`          | `boolean`           | `true`   | —       |
 | `site`               | `string`            | `true`   | —       |
-| `source`             | `CertificateSource` | `true`   | —       |
+| `source`             | [`CertificateSource`](#certificatesource) | `true`   | —       |
 
 `renewable` is `true` only for an ACME certificate. An uploaded one must be
 replaced by whoever supplied it.
@@ -790,7 +990,7 @@ inventory, so it can only narrow the fleet.
 | `return_code` | `integer \\        | null`    | `false` | —   |
 | `rollback_of` | `string \\         | null`    | `false` | —   |
 | `started_at`  | `string \\         | null`    | `false` | —   |
-| `status`      | `DeploymentStatus` | `true`   | —       |
+| `status`      | [`DeploymentStatus`](#deploymentstatus) | `true`   | —       |
 | `stderr`      | `string`           | `false`  | —       |
 | `stdout`      | `string`           | `false`  | —       |
 
@@ -807,7 +1007,7 @@ Whether the fleet still matches the state the control plane declares.
 | `checked_at`    | `string`         | `true`   | —       |
 | `deployment_id` | `string`         | `true`   | —       |
 | `host_limit`    | `string \| null` | `false`  | —       |
-| `hosts`         | `HostDrift[]`    | `false`  | `[]`    |
+| `hosts`         | [`HostRun[]`](#hostrun)      | `false`  | `[]`    |
 
 A task the roles skip under check mode cannot be counted, so the report floors
 rather than exactly measures the difference. An unreachable host is reported as
@@ -871,7 +1071,7 @@ independently, so the outcome of the first is reported rather than implied.
 | Field            | Type        | Required | Default |
 | ---------------- | ----------- | -------- | ------- |
 | `decommissioned` | `boolean`   | `true`   | —       |
-| `hosts`          | `HostRun[]` | `false`  | `[]`    |
+| `hosts`          | [`HostRun[]`](#hostrun) | `false`  | `[]`    |
 | `name`           | `string`    | `true`   | —       |
 
 `hosts` carries the same per-host shape `PurgeResult.hosts` does: the counters,
@@ -879,23 +1079,11 @@ the tasks that changed, and the tasks that failed. It is empty when no edge
 reported at all — which is what a forced removal of a host that no longer exists
 looks like.
 
-### `HostDrift`
-
-What one edge would change if the current desired state were applied.
-
-| Field         | Type      | Required | Default |
-| ------------- | --------- | -------- | ------- |
-| `changed`     | `integer` | `false`  | `0`     |
-| `failed`      | `integer` | `false`  | `0`     |
-| `host`        | `string`  | `true`   | —       |
-| `ok`          | `integer` | `false`  | `0`     |
-| `unreachable` | `integer` | `false`  | `0`     |
-
 ### `HTTPValidationError`
 
 | Field    | Type                | Required | Default |
 | -------- | ------------------- | -------- | ------- |
-| `detail` | `ValidationError[]` | `false`  | —       |
+| `detail` | [`ValidationError[]`](#validationerror) | `false`  | —       |
 
 ### `OriginCheck`
 
@@ -907,7 +1095,7 @@ The result of connecting to one site's origin the way the edge will.
 | `origin`       | `string`          | `true`   | —       |
 | `reachable`    | `boolean`         | `false`  | `false` |
 | `resolved`     | `boolean`         | `false`  | `false` |
-| `scheme`       | `HttpScheme`      | `true`   | —       |
+| `scheme`       | [`HttpScheme`](#httpscheme)      | `true`   | —       |
 | `site`         | `string`          | `true`   | —       |
 | `sni`          | `string \| null`  | `false`  | —       |
 | `tls_verified` | `boolean \| null` | `false`  | —       |
@@ -952,19 +1140,19 @@ regardless of age.
 | `cache_valid_not_found` | `string`          | `false`  | `1m`       |
 | `cache_valid_success`   | `string`          | `false`  | `10m`      |
 | `certificate_key_path`  | `string \| null`  | `false`  | —          |
-| `certificate_mode`      | `CertificateMode` | `false`  | `disabled` |
+| `certificate_mode`      | [`CertificateMode`](#certificatemode) | `false`  | `disabled` |
 | `certificate_path`      | `string \| null`  | `false`  | —          |
 | `domain`                | `string`          | `true`   | —          |
 | `enabled`               | `boolean`         | `false`  | `true`     |
-| `firewall`              | `SiteFirewall`    | `false`  | `{}`       |
+| `firewall`              | [`SiteFirewall`](#sitefirewall)    | `false`  | `{}`       |
 | `name`                  | `string`          | `true`   | —          |
 | `origin_port`           | `integer \| null` | `false`  | —          |
 | `origin_request_host`   | `string \| null`  | `false`  | —          |
-| `origin_scheme`         | `HttpScheme`      | `false`  | `https`    |
+| `origin_scheme`         | [`HttpScheme`](#httpscheme)      | `false`  | `https`    |
 | `origin_sni`            | `string \| null`  | `false`  | —          |
 | `proxied`               | `boolean`         | `false`  | `false`    |
 | `ttl`                   | `integer`         | `false`  | `300`      |
-| `type`                  | `RecordType`      | `false`  | `A`        |
+| `type`                  | [`RecordType`](#recordtype)      | `false`  | `A`        |
 | `value`                 | `string`          | `true`   | —          |
 
 ### `RecordPatch`
@@ -1008,7 +1196,7 @@ command merges instead, keeping the lists you do not name.
 Sources are IP addresses or CIDR networks with their host bits clear;
 `203.0.113.5/24` returns `422`. Countries are ISO 3166-1 alpha-2 and require
 GeoIP on the edge. See [the firewall
-reference](/docs/understand/reference/records) for how the rules compose and why
+reference](/docs/reference/records) for how the rules compose and why
 `/.well-known/acme-challenge/` is never filtered.
 
 ### `RecordType`
@@ -1029,13 +1217,13 @@ reference](/docs/understand/reference/records) for how the rules compose and why
 
 One Ansible invocation. Required fields are `id`, `playbook`, `status`,
 `started_at`, and `finished_at`. Optional fields are `return_code`, `log_path`,
-and `error`; `hosts` defaults to `[]` and contains `HostRun` objects.
+and `error`; `hosts` defaults to `[]` and contains [`HostRun`](#hostrun) objects.
 
 ### `HostRun`
 
 One edge's structured run result. `host` is required. The `ok`, `changed`,
 `failed`, `unreachable`, `skipped`, `rescued`, and `ignored` counters default to
-zero. `changes` and `failures` contain `TaskResult` objects; `report` carries an
+zero. `changes` and `failures` contain [`TaskResult`](#taskresult) objects; `report` carries an
 operation-specific structured fact such as cache statistics.
 
 ### `RunStatus`
@@ -1048,7 +1236,7 @@ operation-specific structured fact such as cache statistics.
 | --------- | ---------------- | -------- | ------- |
 | `task`    | `string`         | `true`   | —       |
 | `action`  | `string`         | `false`  | `""`    |
-| `outcome` | `TaskOutcome`    | `true`   | —       |
+| `outcome` | [`TaskOutcome`](#taskoutcome)    | `true`   | —       |
 | `message` | `string \| null` | `false`  | —       |
 | `role`    | `string \| null` | `false`  | —       |
 
@@ -1062,11 +1250,11 @@ operation-specific structured fact such as cache statistics.
 | -------- | ------------ | -------- | ------- |
 | `host`   | `string`     | `true`   | —       |
 | `uri`    | `string`     | `true`   | —       |
-| `scheme` | `HttpScheme` | `false`  | `https` |
+| `scheme` | [`HttpScheme`](#httpscheme) | `false`  | `https` |
 
 ### `PurgeRequest`
 
-`entries` is an array of at most 500 `PurgeEntry` objects. `purge_all` defaults
+`entries` is an array of at most 500 [`PurgeEntry`](#purgeentry) objects. `purge_all` defaults
 to `false`; `host_limit` is an optional comma-separated edge pattern. Supply
 entries or `purge_all`, never both or neither.
 
@@ -1083,7 +1271,7 @@ purged; read-only `failed_hosts` names edges that may still serve the object.
 ### `CacheStatsReport`
 
 Contains required `collected_at`, optional `host_limit`, and an `edges` array of
-`EdgeStats` objects.
+[`EdgeStats`](#edgestats) objects.
 
 ### `EdgeStats`
 
@@ -1098,7 +1286,7 @@ to request counts.
 
 ### `PreflightReport`
 
-Contains required `site` and a `checks` array of `PreflightCheck` objects.
+Contains required `site` and a `checks` array of [`PreflightCheck`](#preflightcheck) objects.
 
 ### `PreflightCheck`
 

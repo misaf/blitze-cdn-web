@@ -11,7 +11,7 @@ switch for that name.
 
 Records are the source of truth. A proxied record produces the virtual host the
 edge serves; an unproxied one produces nothing at all. You cannot create a
-virtual host any other way — see [`blitzecdn site`](/docs/understand/reference/cli).
+virtual host any other way — see [`blitzecdn site`](/docs/reference/cli).
 
 ## What `proxied` controls
 
@@ -131,7 +131,7 @@ blitzecdn record firewall example.com www \
 ```
 
 Each CLI option replaces its own list and keeps the lists you do not name. The
-equivalent `PATCH` on the [HTTP API](/docs/understand/reference/http-api) replaces the whole
+equivalent `PATCH` on the [HTTP API](/docs/reference/http-api) replaces the whole
 `firewall` object instead, so send every list you want to keep.
 
 A network must have its host bits clear: `203.0.113.5/24` is rejected, because
@@ -162,7 +162,7 @@ not by editing `defaults.yml`, which is tracked and would block the next
 update — and deploy. The shipped
 defaults already read both credentials from the environment. The role installs
 `geoipupdate(8)`, fetches the database, and schedules twice-weekly refreshes.
-See [`blitzecdn_nginx_geoip_enabled`](/docs/understand/reference/ansible) for the full
+See [`blitzecdn_nginx_geoip_enabled`](/docs/reference/ansible) for the full
 variable set.
 
 <Callout type="error">

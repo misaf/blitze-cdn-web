@@ -83,7 +83,7 @@ const footerColumns = [
       { href: '/docs/understand', label: 'System overview' },
       { href: '/docs/understand/architecture', label: 'Architecture' },
       { href: '/docs/understand/domain-model', label: 'Domain model' },
-      { href: '/docs/understand/reference/cli', label: 'CLI' },
+      { href: '/docs/reference/cli', label: 'CLI' },
     ],
   },
 ]

@@ -175,19 +175,19 @@ const principles = [
 
 const referenceLinks = [
   {
-    href: '/docs/understand/reference/cli',
+    href: '/docs/reference/cli',
     label: 'CLI — every command and exit code',
   },
   {
-    href: '/docs/understand/reference/http-api',
+    href: '/docs/reference/http-api',
     label: 'HTTP API — every route and model',
   },
   {
-    href: '/docs/understand/reference/configuration',
+    href: '/docs/reference/configuration',
     label: 'Configuration — every BLITZE_* variable',
   },
   {
-    href: '/docs/understand/reference/ansible',
+    href: '/docs/reference/ansible',
     label: 'Ansible roles — every variable, typed',
   },
 ]
@@ -338,7 +338,7 @@ export default function LandingPage() {
               <Link href="/docs" className={btnPrimary}>
                 Read the docs
               </Link>
-              <Link href="/docs/understand/reference/cli" className={btnGhost}>
+              <Link href="/docs/reference/cli" className={btnGhost}>
                 CLI reference
               </Link>
             </div>
@@ -517,7 +517,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="mt-flow flex justify-center">
-            <Link href="/docs/understand/reference/cli" className={btnPrimary}>
+            <Link href="/docs/reference/cli" className={btnPrimary}>
               See every command
             </Link>
           </div>

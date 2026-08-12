@@ -10,6 +10,5 @@ export default {
   'storage-state': 'Storage and state',
   security: 'Security boundaries',
   'http-api-usage': 'HTTP API behavior',
-  reference: 'Technical reference',
   glossary: 'Glossary',
 }

@@ -61,7 +61,7 @@ Sizing guidance:
   timer, whose `cert renew --deploy` run installs renewed material before it
   reports success — see [Renewal](/docs/operate/certificates#renewal).
 
-Name the canary hosts with [`--limit`](/docs/understand/reference/cli#blitzecdn-deploy) on
+Name the canary hosts with [`--limit`](/docs/reference/cli#blitzecdn-deploy) on
 both plan and deploy. It accepts names or globs, resolves them against the
 inventory, and can only ever narrow the fleet, so a typo converges nothing
 rather than everything:

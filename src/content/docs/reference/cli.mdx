@@ -543,7 +543,7 @@ Run the authenticated HTTP control plane.
 ## `blitzecdn domain`
 
 Manage DNS zones delegated to BlitzeCDN. See
-[Domains and records](/docs/understand/reference/records).
+[Domains and records](/docs/reference/records).
 
 ### `blitzecdn domain add`
 
@@ -652,9 +652,9 @@ blitzecdn record firewall example.com www \
 Countries must be assigned ISO 3166-1 alpha-2 codes: `--allow-country UK` is
 refused with a pointer to `GB`, because the unassigned code would deploy
 cleanly and then match nobody. Country rules also need
-[`blitzecdn_nginx_geoip_enabled`](/docs/understand/reference/ansible) and a MaxMind database
+[`blitzecdn_nginx_geoip_enabled`](/docs/reference/ansible) and a MaxMind database
 on the edge; a deploy fails rather than serving traffic the rules were meant to
-block. See [the firewall reference](/docs/understand/reference/records) for how the rules
+block. See [the firewall reference](/docs/reference/records) for how the rules
 compose.
 
 <Callout type="info">

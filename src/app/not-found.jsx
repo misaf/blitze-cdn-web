@@ -36,7 +36,7 @@ const destinations = [
     label: 'First deployment — deploy a site',
   },
   {
-    href: '/docs/understand/reference/cli',
+    href: '/docs/reference/cli',
     label: 'CLI reference — every command',
   },
   { href: '/faq', label: 'FAQ — scope, limits and guarantees' },
