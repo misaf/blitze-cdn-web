@@ -11,6 +11,7 @@ export default defineConfig([
   globalIgnores([
     '.next/**',
     'out/**',
+    'control-plane/**',
     'public/_pagefind/**',
     'playwright-report/**',
     'test-results/**',

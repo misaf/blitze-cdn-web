@@ -1,6 +1,7 @@
 .next
 out
 node_modules
+control-plane
 public/_pagefind
 playwright-report
 test-results
