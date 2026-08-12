@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
 
 const root = resolve('src/content')
@@ -8,7 +8,10 @@ const banned = [
   /reference (?:is|pages are) generated/i,
   /generated from (?:the )?(?:OpenAPI|Typer|source tree)/i,
   /npm run generate(?=$|[^:])/i,
-  /v?0\.1\.0/i,
+  // Version numbers used to be policed by blocklisting the last release here,
+  // which needed editing every release to keep meaning anything. The version
+  // strings the docs pin are now compared against the control plane itself,
+  // in `check-api-surface.mjs`.
 ]
 const placeholderAssignments = [
   /=\s*['"]FOUNDER_NAME['"]/,
@@ -143,6 +146,63 @@ async function checkNavigation(directory) {
 }
 
 await checkNavigation(docsRoot)
+
+// `check:links` walks the built site, so it never sees the two Markdown files
+// at the repository root — and those are exactly the ones that point *into* the
+// content tree by file path, which no build step would notice going stale. They
+// also cross-link to each other, so a renamed heading in one silently breaks an
+// anchor in the other.
+const rootDocuments = ['README.md', 'DOCUMENTATION.md']
+
+// GitHub's own slugging, which is what these links are read through: lowercase,
+// punctuation dropped, spaces hyphenated.
+const slug = (heading) =>
+  heading
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+
+const headingsOf = (content) =>
+  new Set(
+    [...content.matchAll(/^#{1,6}\s+(.+?)\s*$/gm)].map((match) =>
+      slug(match[1]),
+    ),
+  )
+
+for (const document of rootDocuments) {
+  const path = resolve(document)
+  let content
+  try {
+    content = readFileSync(path, 'utf8')
+  } catch {
+    failures.push(`${document} is missing`)
+    continue
+  }
+  for (const match of content.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) {
+    const target = match[1]
+    if (/^(https?:|mailto:)/.test(target)) continue
+
+    const [location, anchor] = target.split('#')
+    const targetPath = location ? resolve(location) : path
+    if (location && !existsSync(targetPath)) {
+      failures.push(`${document} links to ${location}, which does not exist`)
+      continue
+    }
+    if (!anchor) continue
+
+    // Only Markdown carries headings this can resolve; a fragment on anything
+    // else is not something to guess about.
+    if (extname(targetPath) !== '.md' && extname(targetPath) !== '.mdx') {
+      continue
+    }
+    const targetContent =
+      targetPath === path ? content : readFileSync(targetPath, 'utf8')
+    if (!headingsOf(targetContent).has(anchor)) {
+      failures.push(`${document} links to ${target}, which has no such heading`)
+    }
+  }
+}
 
 for (const file of walk(resolve('src')).filter((path) =>
   ['.js', '.jsx', '.md', '.mdx'].includes(extname(path)),

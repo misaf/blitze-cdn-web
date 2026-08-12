@@ -22,6 +22,28 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      # The reference pages are hand-written, so nothing but a comparison
+      # against the real control plane can prove they still describe it. The
+      # check skips when this checkout is absent — which is right for a
+      # contributor's laptop and wrong for CI, hence `--strict` below.
+      #
+      # Pinned to the release branch rather than the default branch: these
+      # pages document the released control plane, and a merge to `master`
+      # ahead of a release would otherwise fail this build for describing
+      # software nobody is running yet.
+      - name: Check out the control plane
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: misaf/blitze-cdn-cp
+          ref: 1.x
+          path: control-plane
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.12.3'
+          enable-cache: true
+      - name: Install Python
+        run: uv python install 3.14
       - name: Validate release tag
         if: startsWith(github.ref, 'refs/tags/')
         run: |
@@ -43,6 +65,16 @@ jobs:
           npm run format:check
           npm run lint
           npm run check:docs
+      # Only the control plane's own dependencies; the surface check imports
+      # `blitzecdn` to read its routes, models, commands, and settings, and
+      # parses the documented examples with the real models.
+      - name: Install the control plane
+        working-directory: control-plane
+        run: uv sync --frozen
+      - name: Check the reference against the control plane
+        env:
+          BLITZE_CP_PATH: control-plane
+        run: node scripts/check-api-surface.mjs --strict
       - name: Check internal links
         run: npm run check:links
       # A build that produces no search index would ship a search box that

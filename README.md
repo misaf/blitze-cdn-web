@@ -4,6 +4,10 @@ A Nextra site: landing page at `/`, documentation under `/docs`. Builds to a
 static export in `out/`. It ships nothing to edge servers, never runs on a
 controller, and holds no credentials.
 
+This file covers the site itself — how to run it, how it is laid out, and what
+CI checks. To write or edit a page, read
+[DOCUMENTATION.md](DOCUMENTATION.md) instead.
+
 Documentation has two deliberate entry points:
 
 - **Operate BlitzeCDN:** `/docs/operate` is the complete copy-paste lifecycle
@@ -20,13 +24,16 @@ npm ci
 npm run dev          # http://localhost:3000
 npm run build        # static export to out/
 npm run preview      # serve the built out/ on :4173
-npm run check        # lint, formatting, docs check, build, and internal links
+npm run check        # lint, formatting, docs checks, build, and internal links
 npm run test:e2e     # browser and accessibility checks against out/
 npm run format       # write Prettier formatting
 ```
 
 `npm run check` is the pre-push gate: it runs `lint`, `format:check`,
-`check:docs`, `build`, and `check:links` in that order. The e2e suite runs
+`check:docs`, `check:surface`, `build`, and `check:links` in that order.
+`check:surface` needs the control plane checked out beside this repository and
+skips with a warning otherwise — see [Documentation
+checks](#documentation-checks). The e2e suite runs
 separately because it needs a browser (`npx playwright install --with-deps
 chromium`). It starts its own server on `127.0.0.1:4173` against `out/`, so
 build first. To run a single spec or test:
@@ -42,20 +49,20 @@ configured it defaults to the repository's conventional GitHub Pages URL.
 
 ## Layout
 
-| Path                                     | Contents                                                              |
-| ---------------------------------------- | --------------------------------------------------------------------- |
-| `src/app/page.jsx`                       | Landing page — hand-written, safe to restyle                          |
-| `src/app/globals.css`                    | Tailwind entry point and site theme                                   |
-| `src/app/layout.jsx`                     | Shared shell: navbar, footer, theme                                   |
-| `src/content/docs/index.mdx`             | Intent-first documentation landing page                               |
-| `src/content/docs/operate/`              | Canonical lifecycle runbook and focused operational procedures        |
-| `src/content/docs/understand/`           | Architecture and subsystem explanations                               |
-| `src/content/docs/understand/reference/` | Maintained CLI, API, configuration, data-model, and Ansible reference |
-| `src/app/about/page.jsx`                 | About us — hand-designed, not MDX                                     |
-| `src/app/contact/page.jsx`               | Contact us — hand-designed, not MDX                                   |
-| `src/content/faq.mdx`                    | FAQ                                                                   |
-| `src/content/blog/`                      | Blog: `index.mdx` lists the posts beside it                           |
-| `DOCUMENTATION.md`                       | Voice, page structure, callouts, and verification rules               |
+| Path                           | Contents                                                              |
+| ------------------------------ | --------------------------------------------------------------------- |
+| `src/app/page.jsx`             | Landing page — hand-written, safe to restyle                          |
+| `src/app/globals.css`          | Tailwind entry point and site theme                                   |
+| `src/app/layout.jsx`           | Shared shell: navbar, footer, theme                                   |
+| `src/content/docs/index.mdx`   | Intent-first documentation landing page                               |
+| `src/content/docs/operate/`    | Canonical lifecycle runbook and focused operational procedures        |
+| `src/content/docs/understand/` | Architecture and subsystem explanations                               |
+| `src/content/docs/reference/`  | Maintained CLI, API, configuration, data-model, and Ansible reference |
+| `src/app/about/page.jsx`       | About us — hand-designed, not MDX                                     |
+| `src/app/contact/page.jsx`     | Contact us — hand-designed, not MDX                                   |
+| `src/content/faq.mdx`          | FAQ                                                                   |
+| `src/content/blog/`            | Blog: `index.mdx` lists the posts beside it                           |
+| `DOCUMENTATION.md`             | How to write a page: placement, structure, voice, callouts            |
 
 ## Sections and routing
 
@@ -119,12 +126,46 @@ deliberate:
 Nextra's own utilities are compiled under an `x:` prefix and its theme values
 are inlined, so nothing here collides with them.
 
-## Reference documentation
+## Documentation checks
 
-The pages under `src/content/docs/understand/reference/` are ordinary MDX. When
-the control plane changes, update the affected reference and canonical runbook
-procedure in the same pull request. `check:docs` also rejects pages omitted from
-the sidebar and sidebar entries that point to missing content.
+What to write and where it goes is [DOCUMENTATION.md](DOCUMENTATION.md). This
+section is the machinery that checks it.
+
+`check:docs` enforces frontmatter and the sidebar: it rejects a page missing
+`title` or `description`, a page orphaned from its directory's `_meta.js`, and a
+sidebar entry pointing at content that does not exist. It also resolves the
+links in this file and `DOCUMENTATION.md` — both the file paths that reach into
+`src/content/` and the headings the two cross-link to — because `check:links`
+only walks the built site and never sees either of them.
+
+`check:surface` compares the reference pages against the control plane itself,
+because prose is hand-written and coverage cannot be left to memory. It fails on:
+
+- a route, schema, CLI command, setting, or environment variable that exists but
+  has no entry on its reference page — or an entry with nothing behind it;
+- a schema mentioned on the API page without a link to its definition;
+- a JSON example, or the `-d` payload of a tagged `curl` example, that the real
+  model refuses to parse — see [tagging an example for
+  validation](DOCUMENTATION.md#examples-and-verification);
+- a version or desired-state schema number the docs pin that no longer matches
+  the release.
+
+It reads the control plane from `../blitze-cdn-cp`, overridable with
+`BLITZE_CP_PATH` (and `BLITZE_CP_PYTHON` for an interpreter outside that
+checkout's `.venv`). Without it the check skips with a warning rather than
+failing, so a docs-only change does not require cloning the control plane.
+
+Both pipelines check it out and pass `--strict`, so the skip never fires in CI,
+and they cover the two ways the pages and the software can part company:
+
+| Pipeline                                                    | Catches                                            |
+| ----------------------------------------------------------- | -------------------------------------------------- |
+| This repository's `build` job                               | A documentation change that misstates the API      |
+| The control plane's `documentation` job (`just docs-check`) | A code change that leaves the documentation behind |
+
+Each pins the other to the `1.x` release branch: these pages describe the
+released control plane, so a merge ahead of a release should not fail a build
+for describing software nobody is running yet.
 
 ## Search and deployment
 
