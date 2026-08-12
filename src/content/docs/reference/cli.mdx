@@ -5,7 +5,7 @@ description: Commands, arguments, options, exit behavior, and examples for the B
 
 # CLI
 
-Verified against the Typer command tree in `src/blitzecdn/cli.py`.
+Verified against the Typer command tree in `src/blitzecdn/cli/`.
 
 ## Safety and automation
 
@@ -15,6 +15,9 @@ Verified against the Typer command tree in `src/blitzecdn/cli.py`.
 | `plan` | Ansible check mode; should not converge | Rerun after any state change | Review the resulting record before deploy. |
 | `domain add/remove`, `record add/proxy/remove`, `edge add/remove` | Controller state only | No | Review the resulting desired state. |
 | `dns export` | None | Yes | Feed to the system that publishes DNS. |
+| `config set/unset` | Controller state only | No | Applies on the next `deploy`, to every edge. |
+| `db current` | None | Yes | Reports the schema revision. |
+| `db upgrade` | None | Yes | Rewrites local tables. Copy the database first. |
 | `drift` | Ansible check mode; converges nothing | Yes | Exits `6` when an edge has moved. Schedule it. |
 | `origin check` | Connects to each origin; sends no request data | Yes | Exits `3` when an origin fails. Run before `deploy`. |
 | `cert list` | None | Yes | Exits `4` when a certificate has already expired. |
@@ -308,6 +311,97 @@ fails.
   until you do, the edges keep serving the old ones.
 </Callout>
 
+## `blitzecdn config`
+
+Manage fleet-wide Ansible policy, stored in the control-plane database and
+published to every edge by the inventory plugin.
+
+Names must begin with `blitzecdn_`. Values that are derived from edge or
+desired-state records are refused, because a setting that outranked them would
+silently override what the fleet actually says:
+
+- `blitzecdn_firewall_ssh_port`
+- `blitzecdn_firewall_ssh_sources`
+- `blitzecdn_public_addresses`
+- `blitzecdn_nginx_sites`
+
+<Callout type="warning">
+  Secrets do not belong here. A name containing `password`, `secret`, `token`,
+  or `key` is refused: the database is not an encrypted store, and these values
+  are published to every edge as inventory variables. Put credentials in `.env`,
+  which is written `0600`.
+</Callout>
+
+```bash
+blitzecdn config list
+blitzecdn config set blitzecdn_nginx_worker_processes 4
+blitzecdn config set blitzecdn_nginx_geoip_enabled true
+blitzecdn config unset blitzecdn_nginx_worker_processes
+```
+
+Changing a setting converges nothing. The next `blitzecdn deploy` applies it.
+
+### `blitzecdn config list`
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+### `blitzecdn config set`
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `NAME` | `string` | yes | Setting name; must start with `blitzecdn_`. |
+| `VALUE` | `string` | yes | Parsed as YAML, so `true`, `42` and `[one, two]` become a boolean, an integer and a list rather than strings. |
+
+### `blitzecdn config unset`
+
+Removes an override so the shipped default in the role applies again.
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `NAME` | `string` | yes | Setting to remove. Unknown names exit `3`. |
+
+## `blitzecdn db`
+
+Migrate the control-plane database schema. The schema is owned by Alembic
+migrations that ship inside the package, so these commands need no arguments
+and no configuration beyond the database path this installation already uses.
+
+A new database is created at the newest revision on first use, so a fresh
+install never needs these. They exist for an installation that a later release
+has moved the schema ahead of.
+
+```bash
+blitzecdn db current
+blitzecdn db upgrade
+```
+
+`blitzecdn setup` runs the same upgrade, and `install.sh update` runs
+`setup` — so an operator following the documented upgrade path never has to
+run these by hand.
+
+<Callout type="warning">
+  Take a copy of the database before upgrading. SQLite cannot alter most
+  columns in place, so a migration rewrites the table and copies the rows; an
+  interrupted run is far easier to recover from a copy than from the original.
+</Callout>
+
+A controller whose database is older than its code refuses to start, naming the
+columns that are missing and the command to run, rather than failing one
+confusing query at a time during a deploy.
+
+### `blitzecdn db current`
+
+Prints the revision the database is stamped with and the revision this release
+expects, and says what to run when they differ.
+
+### `blitzecdn db upgrade`
+
+| Flag | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `--revision` | `string` | `false` | `head` | Target revision. `head` is the newest; an explicit revision is for rolling back to a known one. |
+
 ## `blitzecdn doctor`
 
 Report local readiness without contacting remote servers.
@@ -329,10 +423,9 @@ Create a restrictive local environment file without overwriting one.
 Create private local configuration. Existing files are preserved, so this
 command is safe to run again.
 
-On an installation that predates dynamic inventory it also imports
-`ansible/inventory/hosts.yml` into the control plane and renames the file to
-`hosts.yml.migrated`. The import runs only when no edges are registered yet, so
-a second `setup` cannot resurrect a host you decommissioned on purpose.
+It creates the control-plane database if this is a first run, and migrates its
+schema if a newer release needs it. It writes no inventory file: the fleet is a
+table, and Ansible reads it through the inventory plugin.
 
 ## `blitzecdn edge`
 

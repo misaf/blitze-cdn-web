@@ -106,17 +106,19 @@ out. See [country rules](/docs/reference/domains) for the rest of the setup.
 
 ## Edge settings
 
-Role variables for the edge fleet live in
-`ansible/inventory/group_vars/blitzecdn_edges/`, a directory of two files:
+Role variables for the edge fleet live in the control-plane database and are
+managed with [`blitzecdn config`](/docs/reference/cli#blitzecdn-config). The
+inventory plugin publishes them to every edge at the start of every run:
 
-| File | Tracked | Purpose |
-| --- | --- | --- |
-| `defaults.yml` | yes | Shipped defaults. Replaced wholesale on upgrade. |
-| `local.yml` | no | Your overrides. Loaded after `defaults.yml` and wins. |
+```bash
+blitzecdn config list
+blitzecdn config set blitzecdn_nginx_worker_processes 4
+blitzecdn config unset blitzecdn_nginx_worker_processes
+```
 
-Ansible reads every file in a `group_vars/<group>/` directory in alphabetical
-order, so `local.yml` sorts last. Keys you leave out fall through to the
-defaults — put only what your site changes in it.
+The shipped defaults are still a tracked file,
+`ansible/inventory/group_vars/blitzecdn_edges/defaults.yml`. A setting in the
+database outranks it; a key you never set falls through to the default.
 
 <Callout type="warning">
   Do not edit `defaults.yml`. It is tracked, and `./install.sh update` refuses
@@ -126,14 +128,19 @@ defaults — put only what your site changes in it.
   ```console
   error: tracked files in /opt/blitzecdn have local changes
   ```
+</Callout>
 
-  `blitzecdn setup` creates `local.yml` if it is missing, on an existing
-  install as well as a fresh one.
+<Callout type="info">
+  Keeping overrides in the database rather than in a file beside the defaults
+  is what puts the fleet's policy under the same recording, auditing and backup
+  as everything else, instead of in a file nothing validates.
 </Callout>
 
 Control-plane settings and secrets belong in `.env` instead — the tables above.
 The split is the one in the architecture: `.env` configures the control plane,
-`local.yml` configures what Ansible does to the edges.
+`blitzecdn config` configures what Ansible does to the edges. Secrets do not go
+in either the database or `defaults.yml`; `config set` refuses a name that looks
+like a credential.
 
 ## Other variables read at startup
 

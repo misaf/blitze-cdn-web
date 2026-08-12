@@ -61,9 +61,9 @@ or raw inventory to an incident report.
 
 ## Inventory and SSH
 
-- **`no such table: edges`:** the database predates dynamic inventory. Run
-  `blitzecdn setup`, which creates the table and imports any existing
-  `ansible/inventory/hosts.yml`.
+- **`control-plane database does not exist`:** nothing has created it yet. Run
+  `blitzecdn setup`, which creates the database and brings its schema up to
+  date.
 - **A deploy converges nothing and reports success:** the fleet is empty. Check
   `blitzecdn edge list`; the inventory is derived from it, so an empty roster
   means Ansible is given no hosts.

@@ -11,11 +11,12 @@ unsupported value fails before the host is touched.
 
 Reference roles by their directory name, for example `blitzecdn_nginx`. They
 ship with the control plane and are not a separately versioned collection. Set
-variables in the control plane's
-[`ansible/inventory/group_vars/blitzecdn_edges/local.yml`](/docs/reference/configuration#edge-settings)
-— not `defaults.yml`, which is tracked and replaced on upgrade. Ansible only
-auto-loads `group_vars` adjacent to the inventory file — a `group_vars/`
-directory anywhere else is silently ignored.
+variables with [`blitzecdn config`](/docs/reference/cli#blitzecdn-config),
+which records them in the control-plane database and publishes them to every
+edge — not in `defaults.yml`, which is tracked and replaced on upgrade. Ansible
+only auto-loads `group_vars` adjacent to the inventory file, so the shipped
+defaults have to stay where they are; a `group_vars/` directory anywhere else
+is silently ignored.
 
 ## Applying role changes safely
 
