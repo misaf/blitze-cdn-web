@@ -61,8 +61,18 @@ or raw inventory to an incident report.
 
 ## Inventory and SSH
 
-- **Inventory missing:** create `ansible/inventory/hosts.yml` or set
+- **`no such table: edges`:** the database predates dynamic inventory. Run
+  `blitzecdn setup`, which creates the table and imports any existing
+  `ansible/inventory/hosts.yml`.
+- **A deploy converges nothing and reports success:** the fleet is empty. Check
+  `blitzecdn edge list`; the inventory is derived from it, so an empty roster
+  means Ansible is given no hosts.
+- **Inventory source missing:** `ansible/inventory/blitzecdn.yml` ships with the
+  project and configures the inventory plugin. If you moved it, set
   `BLITZE_INVENTORY` to an absolute path.
+- **`ansible-playbook` by hand cannot find the fleet:** the plugin reads
+  `BLITZE_DATABASE_PATH`, falling back to `.state/control-plane.db` relative to
+  the project. Export it if your state directory is elsewhere.
 - **SSH host-key failure:** validate the new fingerprint out of band; never
   bypass host-key checking.
 - **`Permission denied (publickey)`:** the controller offers keys only. Install

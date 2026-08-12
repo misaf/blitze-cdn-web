@@ -325,21 +325,38 @@ Create a restrictive local environment file without overwriting one.
 
 ## `blitzecdn setup`
 
-Create private local configuration and an empty edge inventory. Existing files
-are preserved, so this command is safe to run again.
+Create private local configuration. Existing files are preserved, so this
+command is safe to run again.
+
+On an installation that predates dynamic inventory it also imports
+`ansible/inventory/hosts.yml` into the control plane and renames the file to
+`hosts.yml.migrated`. The import runs only when no edges are registered yet, so
+a second `setup` cannot resurrect a host you decommissioned on purpose.
 
 ## `blitzecdn edge`
 
-Manage edge servers without editing Ansible inventory YAML directly.
+Manage edge servers. This *is* the Ansible inventory: the `blitzecdn` inventory
+plugin reads the same rows at the start of every run, so there is no file to
+write and nothing that can disagree with the control plane about which hosts
+exist.
 
 ```bash
 blitzecdn edge add edge-01 --host 192.0.2.10 \
   --public-address 203.0.113.10 \
-  --user deploy --ssh-source 198.51.100.0/24
+  --user deploy --port 22 --ssh-source 198.51.100.0/24
 blitzecdn edge list
 blitzecdn edge update edge-01 --public-address 203.0.113.11
 blitzecdn edge remove edge-01
 ```
+
+To see the fleet as Ansible receives it, including group variables:
+
+```bash
+ansible-inventory -i ansible/inventory/blitzecdn.yml --list
+```
+
+Adding an edge converges nothing and touches no host. The edge simply exists
+from then on, so the next `blitzecdn deploy` includes it.
 
 ### `blitzecdn edge add`
 
@@ -348,20 +365,33 @@ blitzecdn edge remove edge-01
 | `name` | `str` | `true` | — | Stable edge name. |
 | `--host` | `str` | `true` | — | SSH hostname or address. |
 | `--public-address` | `str` | `false` | `--host` | Public CDN IP or hostname; repeatable for NAT or multi-address edges. |
-| `--ssh-source` | `str` | `true` | — | Trusted management CIDR; repeatable and at least one is required. |
+| `--ssh-source` | `str` | `true` | — | Trusted management CIDR; repeatable and at least one is required. Published to every edge as a host variable. |
 | `--user` | `str` | `false` | `deploy` | Non-root SSH user. |
+| `--port` | `int` | `false` | `22` | SSH port. Also sets `blitzecdn_firewall_ssh_port`, so the firewall cannot close the port Ansible connects on. |
+| `--private-key-file` | `str` | `false` | — | SSH private key for this edge. Omit to let SSH resolve one from the agent or `~/.ssh/config`. |
 | `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
 
 ### `blitzecdn edge update`
 
-Replace the public address set used by DNS and certificate preflight without
-changing the edge's SSH route.
+Change an edge's connection details or public addresses. Each flag replaces its
+own value and anything you do not name is kept; the two list flags replace their
+whole list rather than appending, so removing the last entry is expressible.
+
+The name cannot be changed — certificates, audit history and `--limit` all refer
+to it. Remove the edge and add it again under the new name.
 
 | Argument or flag | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `name` | `str` | `true` | — | Existing stable edge name. |
-| `--public-address` | `str` | `true` | — | Replacement public CDN IP or hostname; repeatable. |
+| `--host` | `str` | `false` | — | Replacement SSH hostname or address. |
+| `--user` | `str` | `false` | — | Replacement non-root SSH user. |
+| `--port` | `int` | `false` | — | Replacement SSH port. |
+| `--private-key-file` | `str` | `false` | — | Replacement SSH private key path. |
+| `--public-address` | `str` | `false` | — | Replacement public CDN IP or hostname; repeatable. |
+| `--ssh-source` | `str` | `false` | — | Replacement management CIDR; repeatable. |
 | `--json` | `boolean` | `false` | — | Emit machine-readable JSON. |
+
+At least one flag is required.
 
 ### `blitzecdn edge list`
 
@@ -371,11 +401,12 @@ changing the edge's SSH route.
 
 ### `blitzecdn edge remove`
 
-Tears the host down and then removes it from the inventory, in that order: once
-the entry is gone the host is unaddressable, and it would keep serving its last
-converged virtual hosts — and holding their private keys — indefinitely.
+Tears the host down and then removes it from the control plane, in that order:
+the inventory is derived from those rows, so once the edge is gone the host is
+unaddressable, and it would keep serving its last converged virtual hosts — and
+holding their private keys — indefinitely.
 
-A teardown that fails or cannot reach the host keeps the inventory entry so it
+A teardown that fails or cannot reach the host keeps the edge registered so it
 can be retried.
 
 | Argument or flag | Type | Required | Default | Description |

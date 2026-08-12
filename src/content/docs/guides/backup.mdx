@@ -24,17 +24,17 @@ and managed certificate material.
 
 ## What to back up
 
-| Path (default)                                  | Contents                                         | Notes                                                           |
-| ----------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------- |
-| `.state/control-plane.db`                       | Desired state, deployment snapshots, audit trail | The canonical record. Back up before any deploy.                |
-| `.state/desired-state.yml`                      | The generated Ansible variable file              | Mode 0600; derived from the database and regenerated for a run. |
-| `.state/certificates`                           | Managed certificate key material                 | Do not lose; forces certificate recovery.                       |
-| `.state/letsencrypt`                            | Certbot account and renewal state                | Do not lose; forces account and certificate recovery.           |
-| `.env` or secret-manager records                | API keys and environment-only settings           | Encrypt separately; never commit.                               |
-| `blitzecdn.toml`                                | Non-secret controller configuration              | Preserve ownership and review path overrides.                   |
-| `~/.ssh/known_hosts`                            | Verified edge host identities                    | Re-verify restored fingerprints through a trusted channel.      |
-| `ansible/inventory/hosts.yml` and `group_vars/` | Inventory and role variables                     | Operator-authored, not derived.                                 |
-| Service/unit configuration                      | Runtime user, environment source, restart policy | Recreate with least privilege; do not embed secrets.            |
+| Path (default)                   | Contents                                         | Notes                                                                      |
+| -------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
+| `.state/control-plane.db`        | Desired state, deployment snapshots, audit trail | The canonical record. Back up before any deploy.                           |
+| `.state/desired-state.yml`       | The generated Ansible variable file              | Mode 0600; derived from the database and regenerated for a run.            |
+| `.state/certificates`            | Managed certificate key material                 | Do not lose; forces certificate recovery.                                  |
+| `.state/letsencrypt`             | Certbot account and renewal state                | Do not lose; forces account and certificate recovery.                      |
+| `.env` or secret-manager records | API keys and environment-only settings           | Encrypt separately; never commit.                                          |
+| `blitzecdn.toml`                 | Non-secret controller configuration              | Preserve ownership and review path overrides.                              |
+| `~/.ssh/known_hosts`             | Verified edge host identities                    | Re-verify restored fingerprints through a trusted channel.                 |
+| `ansible/inventory/group_vars/`  | Role variables for the edge group                | Operator-authored, not derived. The fleet itself is in the database above. |
+| Service/unit configuration       | Runtime user, environment source, restart policy | Recreate with least privilege; do not embed secrets.                       |
 
 ## Backup routine
 
