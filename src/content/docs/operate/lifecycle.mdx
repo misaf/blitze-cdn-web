@@ -40,7 +40,7 @@ For the condensed end-to-end sequence, return to
 | What it is    | One host that is both control plane **and** its own edge                                        | A machine that manages remote edges             |
 | Root required | Yes                                                                                             | No                                              |
 | Creates       | Service accounts, a sudo rule, systemd services, loopback SSH trust, `/usr/local/bin/blitzecdn` | `.venv`, `.state`, and `~/.local/bin/blitzecdn` |
-| Install with  | `bootstrap.sh` or `install.sh standalone`                                                       | `./install.sh`                                  |
+| Install with  | `install.sh standalone`                                                                         | `./install.sh`                                  |
 | Remove with   | `install.sh --uninstall`                                                                        | Deleting the checkout                           |
 
 A standalone server is the fastest way to a working system and the right shape
@@ -49,42 +49,7 @@ the machine it runs on and is what you want when the edges live elsewhere.
 
 ## Install a standalone server
 
-### In one command
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/misaf/blitze-cdn-cp/HEAD/bootstrap.sh)" bootstrap \
-  --admin-cidr 203.0.113.8/32 --email ops@example.com
-```
-
-Replace `203.0.113.8/32` with the network you administer SSH from, and
-`ops@example.com` with your ACME account address. Both are required — the
-installer cannot invent them. Add `--version vX.Y.Z` to pin a release,
-`--public-address` for a host behind NAT, and `--deploy` to converge the edge
-immediately instead of preparing only.
-
-<Callout type="error">
-  Read the script before you run it. It runs as root: it creates a service
-  account, writes a sudo rule, generates SSH keys, and enables public services.
-  Anyone able to tamper with that URL, or with the network path to it, controls
-  the server. For production, use the clone below so you can inspect and pin
-  what you install.
-</Callout>
-
-The command form matters. `bash -c "$(curl …)"` downloads the whole script before
-running any of it; `curl … | bash` starts executing as bytes arrive, so a dropped
-connection can run half a script. The literal word `bootstrap` after the closing
-quote is not decoration — it becomes `$0`, so the options that follow reach the
-script.
-
-The bootstrap installs a release tag rather than a moving branch, verifies that
-the tag's package version matches it, refuses a host whose Python is too old
-before installing anything, and refuses to run at all when `/opt/blitzecdn`
-already exists.
-
-### From a clone
-
-Do the same work in two steps, so you can read and pin what you install. This is
-the production route:
+Clone the release you intend to run, then provision from it:
 
 ```bash
 sudo git clone --branch v1.7.5 --depth 1 https://github.com/misaf/blitze-cdn-cp.git /opt/blitzecdn
@@ -92,12 +57,26 @@ sudo /opt/blitzecdn/install.sh standalone \
   --admin-cidr 203.0.113.8/32 --email ops@example.com
 ```
 
-`/opt/blitzecdn` is not a preference. The installer refuses to provision from
-anywhere else, because the hardened systemd units use that path.
+Replace `203.0.113.8/32` with the network you administer SSH from, and
+`ops@example.com` with your ACME account address. Both are required — the
+installer cannot invent them. Add `--public-address` for a host behind NAT, and
+`--deploy` to converge the edge immediately instead of preparing only.
 
-Both routes leave the same host: a `blitzecdn` command on `PATH`, the API on
-loopback, an edge named `edge-local` in the inventory, and no edge configuration
-deployed until you ask for it.
+<Callout type="error">
+  Read `install.sh` before you run it. It runs as root: it creates a service
+  account, writes a sudo rule, generates SSH keys, and enables public services.
+  Clone a tag rather than a branch so you provision from the exact revision you
+  read.
+</Callout>
+
+`/opt/blitzecdn` is not a preference. The installer refuses to provision from
+anywhere else, because the hardened systemd units use that path — and `update`
+and `--fresh` check for a clone with the expected origin, so an unpacked
+tarball will not do.
+
+The result is a host with a `blitzecdn` command on `PATH`, the API on loopback,
+an edge named `edge-local` in the inventory, and no edge configuration deployed
+until you ask for it.
 
 ## Install a controller-only checkout
 
