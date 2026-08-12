@@ -1,0 +1,188 @@
+---
+title: Back up and restore
+description: Create, verify, and restore a complete control-plane recovery set without accidentally reaching production edges.
+---
+
+# Back up and restore
+
+A complete recovery set preserves desired state, inventory, deployment and
+workflow history, audit events, controller credentials, SSH trust and identity,
+and managed certificate material. Edge configuration is not a supported backup
+of controller truth.
+
+<Callout type="error">
+  The backup contains API keys, SSH private material, ACME account state, and
+  certificate private keys. Encrypt it, restrict access, and keep it outside
+  `/opt/blitzecdn`, `/etc/blitzecdn`, and `/var/backups/blitzecdn`; complete
+  purge deletes all three locations.
+</Callout>
+
+## Before you begin
+
+- Record configured path overrides from `blitzecdn.toml` and the environment.
+- Wait for deployments, rollbacks, certificate issuance, and renewal to finish.
+- Keep the restore host unable to reach production edges until verification is
+  complete.
+- Install the same BlitzeCDN release on the restore host before copying state.
+
+The commands below use standalone defaults. A controller-only checkout uses the
+same relative files beneath its project directory but has no systemd service or
+`/etc/blitzecdn` environment by default.
+
+## What to back up
+
+| Path                                     | Why it matters                                                                            |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `/opt/blitzecdn/.state/control-plane.db` | Canonical domains, records, sites, edges, settings, history, workflows, audit, and outbox |
+| `/opt/blitzecdn/.state/certificates/`    | Uploaded and requested certificates and private keys                                      |
+| `/opt/blitzecdn/.state/letsencrypt/`     | Certbot account and renewal state                                                         |
+| `/opt/blitzecdn/.state/id_ed25519*`      | Standalone controller-to-local-edge identity                                              |
+| `/etc/blitzecdn/blitzecdn.env`           | API keys, ACME email, and service environment                                             |
+| `/opt/blitzecdn/blitzecdn.toml`          | Optional controller configuration and path overrides                                      |
+| `/var/lib/blitzecdn/.ssh/`               | Host-key trust and SSH client configuration used by the service account                   |
+| `/opt/blitzecdn/.state/logs/`            | Optional raw evidence; structured deployment results remain in SQLite                     |
+
+Do not treat `.state/desired-state.yml`, `.state/runs`, `.state/collections`, or
+the deployment lock as independent source state. They are generated,
+temporary, or reproducible.
+
+## Create a consistent backup
+
+Create a root-only destination on separate storage:
+
+```bash
+sudo install -d -m 0700 /secure/backup/blitzecdn
+```
+
+Use Python's SQLite backup API, which is available in the installed virtual
+environment. Do not copy a live SQLite file byte-for-byte:
+
+```bash
+sudo -u blitzecdn /opt/blitzecdn/.venv/bin/python -c \
+  'import sqlite3; s=sqlite3.connect("/opt/blitzecdn/.state/control-plane.db"); d=sqlite3.connect("/secure/backup/blitzecdn/control-plane.db"); s.backup(d); d.close(); s.close()'
+```
+
+Copy independent state while no certificate operation is running:
+
+```bash
+sudo cp -a /opt/blitzecdn/.state/certificates \
+  /opt/blitzecdn/.state/letsencrypt \
+  /opt/blitzecdn/.state/id_ed25519 \
+  /opt/blitzecdn/.state/id_ed25519.pub \
+  /etc/blitzecdn \
+  /var/lib/blitzecdn/.ssh \
+  /secure/backup/blitzecdn/
+sudo test ! -e /opt/blitzecdn/blitzecdn.toml || \
+  sudo cp -a /opt/blitzecdn/blitzecdn.toml /secure/backup/blitzecdn/
+```
+
+If raw run logs are required by policy, copy `.state/logs` too. Encrypt or move
+the complete recovery set into your backup system immediately.
+
+## Verify the recovery set
+
+Check the copied database without needing the external `sqlite3` executable:
+
+```bash
+sudo /opt/blitzecdn/.venv/bin/python -c \
+  'import sqlite3; c=sqlite3.connect("/secure/backup/blitzecdn/control-plane.db"); print(c.execute("PRAGMA integrity_check").fetchone()[0]); c.close()'
+```
+
+The expected output is `ok`. Record the current site list, edge list, latest
+deployment ID, audit tail, and certificate expiry so a restore has values to
+compare:
+
+```bash
+blitzecdn site list --json
+blitzecdn edge list --json
+blitzecdn status --limit 1 --json
+blitzecdn audit --limit 5 --json
+blitzecdn cert list --json
+```
+
+Test restoration regularly on an isolated host. A successful copy is not proof
+that service ownership, SSH trust, and certificate state can be reassembled.
+
+## Restore offline
+
+Install the same release on the replacement server, but block routes to
+production edges. Stop all control-plane work before replacing state:
+
+```bash
+sudo systemctl stop blitzecdn-api.service \
+  blitzecdn-cert-renew.timer \
+  blitzecdn-drift.timer
+```
+
+Restore the database and independent state to their original locations. Do not
+restore the old deployment lock or `.state/runs` directory:
+
+```bash
+sudo install -o blitzecdn -g blitzecdn -m 0600 \
+  /secure/backup/blitzecdn/control-plane.db \
+  /opt/blitzecdn/.state/control-plane.db
+sudo cp -a /secure/backup/blitzecdn/certificates \
+  /secure/backup/blitzecdn/letsencrypt \
+  /secure/backup/blitzecdn/id_ed25519 \
+  /secure/backup/blitzecdn/id_ed25519.pub \
+  /opt/blitzecdn/.state/
+sudo cp -a /secure/backup/blitzecdn/blitzecdn/. \
+  /etc/blitzecdn/
+sudo cp -a /secure/backup/blitzecdn/.ssh/. \
+  /var/lib/blitzecdn/.ssh/
+sudo chown -R blitzecdn:blitzecdn /opt/blitzecdn/.state \
+  /var/lib/blitzecdn/.ssh
+sudo chown -R root:blitzecdn /etc/blitzecdn
+sudo chmod 0700 /opt/blitzecdn/.state /var/lib/blitzecdn/.ssh
+sudo chmod 0640 /etc/blitzecdn/blitzecdn.env
+```
+
+If `blitzecdn.toml` exists in the recovery set, restore it to
+`/opt/blitzecdn/blitzecdn.toml` and give it to `blitzecdn:blitzecdn`. Review all
+absolute paths and addresses when the replacement host differs from the source.
+
+## Validate before reconnecting
+
+Run only local checks while production routes are blocked:
+
+```bash
+blitzecdn db current
+blitzecdn doctor --no-resolver --json
+blitzecdn site list --json
+blitzecdn edge list --json
+blitzecdn status --limit 1 --json
+blitzecdn audit --limit 5 --json
+blitzecdn cert list --json
+```
+
+Do not run `validate`, `plan`, `drift`, `origin check`, purge, stats, or deploy
+until you are ready for the replacement controller to contact external systems.
+After verifying the restored identities and rechecking every edge host-key
+fingerprint through a trusted channel, restore connectivity and run:
+
+```bash
+blitzecdn validate
+blitzecdn origin check
+blitzecdn plan
+```
+
+Review the entire plan before restarting services or deploying. Then enable the
+API and timers:
+
+```bash
+sudo systemctl start blitzecdn-api.service \
+  blitzecdn-cert-renew.timer \
+  blitzecdn-drift.timer
+```
+
+A restart marks interrupted deployments `abandoned` and unfinished workflows
+`needs_review`. Inspect both through status, audit, and the API workflow routes
+before retrying external work.
+
+## What loss costs
+
+Losing controller certificates does not revoke copies already installed on
+edges; they continue working until expiry. It does remove the supported source
+for renewal and future deploys. Losing SQLite removes canonical desired state,
+edge inventory, snapshots, and audit history. Reconstructing state by scraping
+edge Nginx configuration is not implemented or supported.

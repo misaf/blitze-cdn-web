@@ -19,7 +19,7 @@ const docsComponents = getDocsMDXComponents()
  * the wide reference tables — role variables, CLI flags, domain records —
  * horizontally scrollable. A scroll container is only reachable by keyboard if
  * it is focusable, so without `tabIndex` a keyboard user cannot reach the
- * columns that overflow: on `/docs/reference/roles` that is the Default and
+ * columns that overflow: in the Ansible reference that is the Default and
  * Choices columns, which is most of the value of the page.
  *
  * The same reasoning already applies to the landing page's code panels; this

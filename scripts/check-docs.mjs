@@ -81,6 +81,69 @@ for (const file of walk(root).filter((path) => extname(path) === '.mdx')) {
   // labels could be kept honest, and a stale label is worse than none.
 }
 
+// The sidebar is the documentation architecture. Every page and non-empty
+// section must be listed exactly once in its directory's _meta.js, and every
+// navigation entry must resolve to content. This catches both orphan pages and
+// stale sidebar links before a build makes either harder to diagnose.
+const docsRoot = resolve('src/content/docs')
+
+function containsMdx(directory) {
+  return readdirSync(directory, { withFileTypes: true }).some((entry) => {
+    const path = join(directory, entry.name)
+    return entry.isDirectory() ? containsMdx(path) : entry.name.endsWith('.mdx')
+  })
+}
+
+async function checkNavigation(directory) {
+  const entries = readdirSync(directory, { withFileTypes: true })
+  const contentKeys = new Set(
+    entries.flatMap((entry) => {
+      if (entry.isFile() && entry.name.endsWith('.mdx')) {
+        return [entry.name.slice(0, -4)]
+      }
+      if (entry.isDirectory() && containsMdx(join(directory, entry.name))) {
+        return [entry.name]
+      }
+      return []
+    }),
+  )
+  const metaPath = join(directory, '_meta.js')
+  let navigation = {}
+  try {
+    const moduleSource = readFileSync(metaPath, 'utf8')
+    navigation = (
+      await import(`data:text/javascript,${encodeURIComponent(moduleSource)}`)
+    ).default
+  } catch (error) {
+    failures.push(
+      `${relative(docsRoot, directory) || '.'} has no readable _meta.js: ${error.message}`,
+    )
+    return
+  }
+  const navigationKeys = new Set(Object.keys(navigation))
+  for (const key of contentKeys) {
+    if (!navigationKeys.has(key)) {
+      failures.push(
+        `${relative(docsRoot, join(directory, key))} is orphaned from _meta.js`,
+      )
+    }
+  }
+  for (const key of navigationKeys) {
+    if (!contentKeys.has(key)) {
+      failures.push(
+        `${relative(docsRoot, metaPath)} lists missing content ${key}`,
+      )
+    }
+  }
+  for (const entry of entries.filter(
+    (item) => item.isDirectory() && containsMdx(join(directory, item.name)),
+  )) {
+    await checkNavigation(join(directory, entry.name))
+  }
+}
+
+await checkNavigation(docsRoot)
+
 for (const file of walk(resolve('src')).filter((path) =>
   ['.js', '.jsx', '.md', '.mdx'].includes(extname(path)),
 )) {

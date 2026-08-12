@@ -6,7 +6,7 @@ change an operational decision.
 
 ## Page types
 
-- **Tutorial:** a complete learning path, such as the quick start.
+- **Tutorial:** a complete learning path, such as the first deployment.
 - **How-to guide:** steps for one operational outcome.
 - **Explanation:** architecture, boundaries, and design decisions.
 - **Reference:** maintained facts about commands, configuration, APIs, and roles.
@@ -31,7 +31,7 @@ Use the sections that apply, in this order:
   “Replace.”
 - Use present tense and short sentences. Put the consequence before the internal
   mechanism.
-- Use the terms in the [public glossary](src/content/docs/glossary.mdx).
+- Use the terms in the [public glossary](src/content/docs/understand/glossary.mdx).
 - Link the first use of a specialized term to its glossary definition. Do not
   add hover-only tooltips; the explanation must remain reachable by keyboard,
   touch, and assistive technology.
@@ -61,13 +61,12 @@ output only when it is stable; use an ellipsis or label abbreviated output.
 Every state-changing procedure must say how to prove it succeeded and how to
 recover when it does not.
 
-Reference pages are maintained MDX and record the reviewed version inline
-(for example, "Verified against the Typer command tree in
-`src/blitzecdn/cli.py` at v1.1.0"). Verify changes against the corresponding
-control-plane or edge release and keep that version note current. Review
-commands and exit codes, API requests/responses/errors, configuration
-precedence/defaults, role variables, and the upgrade guide whenever a public
-interface changes. Before submitting documentation changes, run:
+Reference pages are maintained MDX. Verify them directly against the current
+Typer command tree under `src/blitzecdn/cli/`, FastAPI OpenAPI document,
+`Settings` model, domain models, installer scripts, playbooks, role defaults,
+and argument specifications. Review canonical runbook procedures whenever a
+public interface or lifecycle effect changes. Before submitting documentation
+changes, run:
 
 ```bash
 npm run check

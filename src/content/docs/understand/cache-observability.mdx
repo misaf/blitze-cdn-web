@@ -1,0 +1,54 @@
+---
+title: Cache and observability
+description: Cache key behavior, purge semantics, statistics, run logs, drift, and audit visibility.
+---
+
+# Cache and observability
+
+BlitzeCDN exposes operational evidence from three different sources: structured
+deployment results in SQLite, complete Ansible logs on disk, and live Nginx
+statistics collected from edges. They answer different questions and are not
+substitutes for one another.
+
+## Cache behavior
+
+Each enabled site can enable or disable Nginx caching and configure success and
+not-found validity durations. The cache lives at `/var/cache/nginx/blitzecdn` by
+default. Nginx keys entries by hostname, URI, method, and content encoding.
+
+`blitzecdn cache purge --url URL` removes all method/encoding variants of each
+named URL. `--all` empties the cache and requires confirmation with `--yes` for
+non-interactive use. Purging does not change desired state, does not require a
+deploy, and deliberately does not wait for the deployment lock. Reachable edges
+purge even when another edge is unavailable; partial completion exits 5 in the
+CLI and returns HTTP 409 with per-edge detail in the API.
+
+## Cache and connection statistics
+
+`blitzecdn stats` runs a read-only playbook that reads the BlitzeCDN access log
+and Nginx status endpoint on every edge. `--by-site` adds virtual-host detail.
+The cache hit ratio counts only requests that consulted the cache; redirects,
+Nginx-generated errors, and cache-disabled sites are excluded rather than
+counted as misses. A fresh or quiet edge can therefore have no ratio.
+
+Statistics are point-in-time output. The control plane does not store a metrics
+time series or provide alerting, dashboards, tracing, or log shipping. Export
+results to your monitoring system if history is required.
+
+## Deployment evidence
+
+Every Ansible invocation produces a structured per-host result through the
+`blitzecdn_result` callback. Deployment and drift records persist the fields the
+control plane reasons from: reachability, failures, and changed tasks. Raw
+combined stdout/stderr is written to `.state/logs/<run-id>.log` and retained up
+to `BLITZE_RUN_LOG_RETENTION` files. Losing an old raw log removes diagnostic
+detail, not the stored deployment decision.
+
+`blitzecdn status` reads deployment history. `blitzecdn audit` reads append-only
+operator events. `blitzecdn drift` performs a check-mode convergence and exits 6
+when an edge would change or could not be reached. The hourly systemd timer
+treats exit 6 as an expected result, so alerting must inspect `EXIT_STATUS=6`
+rather than only failed units.
+
+Use [Production maintenance](/docs/operate/production) for schedules and
+[Troubleshooting](/docs/operate/troubleshooting) for evidence collection.

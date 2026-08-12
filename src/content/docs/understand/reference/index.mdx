@@ -1,0 +1,39 @@
+---
+title: Reference
+description: Exact behavior of the CLI, HTTP API, configuration, and Ansible roles.
+---
+
+# Reference
+
+These pages describe exact public interfaces. They are maintained MDX, not
+generated, so read them alongside the release you are running.
+
+Use [Operate BlitzeCDN](/docs/operate) when you need an ordered workflow. Use
+this section when you need the exact meaning of a command, field, setting, or
+role variable.
+
+- [CLI](/docs/understand/reference/cli) — every command, flag, and exit code.
+- [Domains and records](/docs/understand/reference/records) — zones, A records, and the
+  per-record CDN proxy toggle.
+- [HTTP API](/docs/understand/reference/http-api) — every route, model, and status code.
+- [Configuration](/docs/understand/reference/configuration) — every `BLITZE_*` variable and
+  its TOML equivalent.
+- [Ansible roles](/docs/understand/reference/ansible) — every role variable, typed, with
+  defaults.
+
+## Find a subsystem
+
+| Subsystem                      | Focused guide                                                                                                                   | Deep reference                                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Control plane and edges        | [How it works](/docs/understand), [Managing edges](/docs/operate/edges)                                                         | [Architecture](/docs/understand/architecture), [Ansible roles](/docs/understand/reference/ansible)             |
+| Installation, upgrade, removal | [Lifecycle](/docs/operate/lifecycle)                                                                                            | [Configuration](/docs/understand/reference/configuration)                                                      |
+| Domains and DNS                | [DNS hand-off](/docs/operate/dns)                                                                                               | [Domains and records](/docs/understand/reference/records)                                                      |
+| Certificates and TLS           | [Certificates](/docs/operate/certificates)                                                                                      | [CLI](/docs/understand/reference/cli), [HTTP API](/docs/understand/reference/http-api)                         |
+| Deployment, cache, monitoring  | [Deploying](/docs/operate/deploy), [Production](/docs/operate/production)                                                       | [CLI](/docs/understand/reference/cli), [HTTP API](/docs/understand/reference/http-api)                         |
+| Security and recovery          | [Security](/docs/understand/security), [Backup](/docs/operate/backup-restore), [Troubleshooting](/docs/operate/troubleshooting) | [Configuration](/docs/understand/reference/configuration), [Ansible roles](/docs/understand/reference/ansible) |
+
+The roles ship with the control plane in `ansible/roles/`, so one release
+covers both and they cannot drift. The versioned desired-state contract still
+applies to edges: the Nginx role refuses a desired-state version it was not
+written against, so an edge last converged by an older release fails before it
+is touched rather than serving a configuration nobody reviewed.

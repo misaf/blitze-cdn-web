@@ -1,0 +1,263 @@
+---
+title: Certificates
+description: ACME HTTP-01 issuance, certificate uploads, and renewal.
+---
+
+# Certificates
+
+Use this guide to enable TLS with an existing, uploaded, or ACME-issued
+certificate. The controller stores managed key material and distributes it to
+every edge during deployment.
+
+## Before you begin
+
+- Deploy the site in `disabled` mode before requesting an ACME certificate.
+- Publish public DNS for the hostname first. See
+  [DNS hand-off](/docs/operate/dns).
+- Confirm every hostname and the certificate source you intend to use.
+- Back up `.state/certificates` and `.state/letsencrypt`.
+- For API examples, set `API_KEY` and `BASE_URL` as shown in
+  [Common API workflows](/docs/understand/http-api-usage#common-workflows).
+
+<Callout type="error">
+  Private keys are never returned by the API. Protect controller state and use
+  authenticated TLS before uploading key material over a network.
+</Callout>
+
+## Scope: one certificate per hostname
+
+A certificate belongs to a site, and a site is derived from one proxied DNS
+record. Each hostname therefore carries its own certificate, requested and
+renewed on its own:
+
+| Record | Derived site      | Certificate covers |
+| ------ | ----------------- | ------------------ |
+| `@`    | `example-com`     | `example.com`      |
+| `www`  | `www-example-com` | `www.example.com`  |
+| `api`  | `api-example-com` | `api.example.com`  |
+
+Plan for one request per hostname. There is no way to put several hostnames on
+one certificate through the API: a site is created with exactly the name its
+record produces, so a certificate covering an apex and its subdomains together
+cannot be requested.
+
+ACME HTTP-01 cannot issue for a wildcard, and a request for one is refused with
+that reason. To serve a wildcard, obtain the certificate elsewhere and upload it
+to the site a proxied `*` record derives:
+
+```bash
+blitzecdn record add example.com '*' --value 198.51.100.10 --proxied
+```
+
+That record derives the site `wildcard-example-com`, and an uploaded
+`*.example.com` certificate satisfies it. Upload validation accepts a one-label
+subdomain as covered by the wildcard, exactly as a browser does.
+
+<Callout type="info">
+  A `*.example.com` certificate does not cover `example.com`. The apex is a
+  separate site and needs its own certificate, uploaded or requested.
+</Callout>
+
+## Modes
+
+Each site's `certificate_mode` selects how TLS is provided:
+
+- `disabled` — plain HTTP, no certificate.
+- `existing` — reference an already-validated PEM certificate and key on the
+  controller via `certificate_path` and `certificate_key_path`.
+- `uploaded` — submit a PEM chain and key; the manager stores them under the
+  managed upload path.
+- `requested` — issue via centrally coordinated ACME HTTP-01.
+
+Certificate paths are a privilege boundary, not just a syntax concern: a deploy
+copies them onto every edge as root. Domain models confine a site's paths to
+`/etc/blitzecdn/tls/`, `/etc/ssl/`, and `/etc/letsencrypt/`, and the Nginx role
+re-checks the same rules so a hand-edited desired-state file cannot bypass them.
+
+The upload and request endpoints select `uploaded` and `requested` mode and own
+their on-edge paths. You cannot set those modes directly through the site create
+or update endpoints.
+
+## Choose a managed certificate source
+
+<Tabs items={['Request with ACME', 'Upload PEM files']}>
+  <Tabs.Tab>
+
+### Request with ACME HTTP-01
+
+For `requested` sites, the controller runs one Certbot process. Certbot hooks use
+a focused playbook to synchronize the HTTP-01 challenge token to every edge
+before validation, so issuance and validation are coordinated globally rather
+than left to each host.
+
+Before requesting, check readiness:
+
+```bash
+blitzecdn cert preflight example-cdn
+```
+
+This resolves every hostname against your edge addresses, reads CAA, and confirms
+the virtual host is already deployed — the three conditions HTTP-01 validation
+depends on and the control plane cannot control. It exits `3` and names what to
+fix if any of them is not met. See
+[`cert preflight`](/docs/understand/reference/cli#blitzecdn-cert-preflight) for the full
+check list.
+
+Confirm the rest by hand, because nothing on the controller can see it:
+
+- port 80 reaches the edges and nothing upstream redirects
+  `/.well-known/acme-challenge/`,
+- Certbot is installed on the controller,
+- all edges are reachable over SSH.
+
+Request the certificate, replacing the site name and email:
+
+```bash
+curl --fail-with-body -X POST \
+  -H "X-API-Key: $API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"operator@example.com"}' \
+  "$BASE_URL/v1/sites/example-cdn/certificate/request"
+```
+
+The request runs the same checks and returns `409` without contacting the CA if
+one blocks, so a rate-limited request is not spent on an attempt that would fail.
+
+<Callout type="warning">
+  `skip_preflight` issues anyway. Reach for it only when the controller cannot
+  see the truth — split-horizon DNS, or an edge fronted by an address your
+  inventory does not name. Every other blocking failure describes a condition
+  under which the CA cannot validate, so overriding usually spends a rate limit
+  for nothing. The override is recorded in the audit trail.
+</Callout>
+
+  </Tabs.Tab>
+  <Tabs.Tab>
+
+### Upload PEM files
+
+Provide an unencrypted PEM private key and a PEM chain whose leaf SANs cover
+every configured site hostname. Uploaded keys are validated, stored
+restrictively, and never returned by the API.
+
+```bash
+curl --fail-with-body -X POST \
+  -H "X-API-Key: $API_KEY" \
+  -F certificate=@fullchain.pem \
+  -F private_key=@privkey.pem \
+  "$BASE_URL/v1/sites/example-cdn/certificate/upload"
+```
+
+  </Tabs.Tab>
+</Tabs>
+
+## Renewal
+
+### Automatically issue certificates after DNS becomes ready
+
+The running control-plane service checks certificate-disabled sites every 10
+minutes. It contacts the CA only after preflight passes and deploys only when it
+issued at least one certificate. Configure the interval in seconds, or set it to
+`0` to disable the background reconciler:
+
+```bash
+BLITZE_CERTIFICATE_RECONCILE_INTERVAL_SECONDS=600
+```
+
+Run the control plane as usual; reconciliation starts and stops with it:
+
+```bash
+blitzecdn serve
+```
+
+Run `blitzecdn cert renew` on a schedule. It reissues only ACME certificates
+with 30 days or fewer remaining, reuses the address each certificate was
+registered under, and continues past a site that fails — so a transient DNS or
+reachability problem delays one certificate rather than the whole run.
+
+Renewal runs the same preflight checks as issuance. A hostname that has been
+moved off the edges fails with the reason named instead of consuming a CA
+request, and the failure reaches the run's exit code so a scheduled renewal
+alerts. There is no override on this path.
+
+```bash
+blitzecdn cert list --expiring-in 30 --json
+blitzecdn cert renew --deploy
+```
+
+Retry a single failure with `--site` rather than re-running the whole sweep;
+certificate authorities rate limit, and there is no reason to send healthy
+subscriptions back to one:
+
+```bash
+blitzecdn cert renew --site cdn-example-com
+```
+
+### Scheduling it
+
+The standalone installer installs and enables the renewal and drift timers as
+part of the control-plane convergence. Do not copy the unit files manually;
+their service account, paths, and writable directories are provisioned by the
+same installation workflow. Verify the installed schedule:
+
+```bash
+systemctl list-timers 'blitzecdn-*'
+systemctl status blitzecdn-cert-renew.timer blitzecdn-drift.timer
+```
+
+A controller-only checkout creates no system services. If it must run
+unattended, build equivalent supervision around its actual checkout path and
+user; the packaged units deliberately target the standalone `/opt/blitzecdn`
+layout.
+
+The renewal timer fires twice daily with an hour of jitter. The frequency is not
+urgency — against a 30-day window it means roughly sixty attempts before
+anything expires, so a run lost to a transient failure is unremarkable. The
+jitter exists so that every controller installed from these instructions does
+not ask Let's Encrypt at the same second.
+
+The packaged renewal service uses `--deploy`, so renewed material reaches the
+edges in the same scheduled run. The command fails if that installation deploy
+fails, making the timer suitable for failure alerting.
+
+Check what you hold at any time with `blitzecdn cert list`, which sorts by
+soonest expiry and exits `4` if anything has already expired. `blitzecdn doctor`
+reports the same window without contacting any edge.
+
+Without `--deploy`, renewal writes only to the controller store. Use the flag in
+automation so renewal and installation remain one observable operation.
+
+An uploaded certificate is never renewed — BlitzeCDN did not issue it and cannot
+reissue it. One close to expiry appears in the `skipped` list instead, so you
+can ask whoever supplied it for a replacement before it lapses.
+
+Certbot reuses its controller-side account and renewal state beneath
+`.state/letsencrypt`.
+
+Back up both that directory and `.state/certificates`. Losing the state does not
+revoke deployed certificates, but it forces account and certificate recovery.
+
+## Verify TLS
+
+Deploy after a successful request or upload, then inspect the certificate served
+by an edge:
+
+```bash
+blitzecdn plan
+blitzecdn deploy --yes
+openssl s_client -connect edge-01.example.net:443 \
+  -servername cdn.example.com </dev/null
+```
+
+Verify the subject alternative names, issuer, expiry, and chain. API certificate
+metadata proves what the controller stored; the external probe proves what the
+edge serves.
+
+## Recover from failure
+
+- If ACME fails, keep the site in `disabled` mode and verify DNS, port 80, and
+  the challenge deployment before retrying.
+- If upload validation fails, check that the private key is unencrypted, matches
+  the leaf certificate, and that the leaf SANs cover every server name.
+- If deployment fails after a certificate was stored, correct the deployment
+  problem and plan again. Do not request another certificate unnecessarily.

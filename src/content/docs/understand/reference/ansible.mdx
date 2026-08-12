@@ -1,0 +1,481 @@
+---
+title: Ansible roles and variables
+description: Supported Ansible roles, variables, defaults, validation, and edge-server effects.
+---
+
+# Ansible roles and variables
+
+This page tracks each role's `meta/argument_specs.yml` and `defaults/main.yml`
+in `ansible/roles/`. Roles validate these at the start of every run, so an
+unsupported value fails before the host is touched.
+
+Reference roles by their directory name, for example `blitzecdn_nginx`. They
+ship with the control plane and are not a separately versioned collection. Set
+variables with [`blitzecdn config`](/docs/understand/reference/cli#blitzecdn-config),
+which records them in the control-plane database and publishes them to every
+edge — not in `defaults.yml`, which is tracked and replaced on upgrade. Ansible
+only auto-loads `group_vars` adjacent to the inventory file, so the shipped
+defaults have to stay where they are; a `group_vars/` directory anywhere else
+is silently ignored.
+
+## Applying role changes safely
+
+- Defaults are role defaults unless the control plane emits a desired-state
+  value with the same name.
+- Firewall, SSH, certificate-path, resolver, and Nginx-template changes can
+  interrupt management or serving traffic. Plan with a canary inventory first.
+- Never set a required variable to an empty value unless its description
+  explicitly permits it; the firewall source list intentionally fails closed.
+- A role rejecting `blitzecdn_desired_state_version` means the edge was last
+  converged by a control plane too old for the state this one emits. Deploy
+  again from the current control plane to bring it forward.
+- Verify role changes with Nginx configuration tests and external traffic/TLS
+  probes, not only an Ansible `changed=0` result.
+
+## `blitzecdn_base`
+
+Configure baseline edge packages and timezone.
+
+| Variable                  | Type   | Required | Default                   | Choices |
+| ------------------------- | ------ | -------- | ------------------------- | ------- |
+| `blitzecdn_base_packages` | `list` | `true`   | `ca-certificates`, `curl` | —       |
+| `blitzecdn_base_timezone` | `str`  | `true`   | `UTC`                     | —       |
+
+## `blitzecdn_controlplane`
+
+Converge the standalone controller host. `install.sh standalone` and
+`install.sh update` call this role locally; it is not part of `edge.yml`, and
+its variables are installer inputs rather than fleet settings for
+`blitzecdn config`.
+
+| Variable                                               | Default                                               | Effect                                                             |
+| ------------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------ |
+| `blitzecdn_controlplane_install_dir`                   | `/opt/blitzecdn`                                      | Checkout, virtual environment, and state parent                    |
+| `blitzecdn_controlplane_config_dir`                    | `/etc/blitzecdn`                                      | Service environment directory                                      |
+| `blitzecdn_controlplane_service_user`                  | `blitzecdn`                                           | Unprivileged API/CLI account                                       |
+| `blitzecdn_controlplane_service_home`                  | `/var/lib/blitzecdn`                                  | Service account home and SSH trust                                 |
+| `blitzecdn_controlplane_deploy_user`                   | `deploy`                                              | Non-root loopback edge account                                     |
+| `blitzecdn_controlplane_cli_wrapper`                   | `/usr/local/bin/blitzecdn`                            | Root-owned wrapper path                                            |
+| `blitzecdn_controlplane_sudoers_file`                  | `/etc/sudoers.d/blitzecdn-deploy`                     | Explicit edge privilege rule                                       |
+| `blitzecdn_controlplane_packages`                      | `certbot`, `git`, `openssh-server`, `openssl`, `sudo` | Host packages installed after bootstrap                            |
+| `blitzecdn_controlplane_acme_email`                    | `""`                                                  | Required only when creating the first environment file             |
+| `blitzecdn_controlplane_certificate_reconcile_seconds` | `600`                                                 | First-certificate reconciliation interval written on first install |
+| `blitzecdn_controlplane_units`                         | Five packaged API/renewal/drift units                 | Unit files to install                                              |
+| `blitzecdn_controlplane_services`                      | API plus renewal/drift timers                         | Units to enable and start                                          |
+
+The role creates the service/deploy accounts, hands `/opt/blitzecdn` to the
+service account, creates loopback SSH identity and trust, writes the API
+environment only if absent, installs the wrapper and units, and verifies
+key-only loopback SSH plus passwordless sudo. Re-running it preserves the
+existing environment/API key. It rewrites the service account's `known_hosts`
+with current loopback keys, so remote edge fingerprints must be checked and
+recorded again after a standalone repair.
+
+## `blitzecdn_cache`
+
+Remove cached responses from an edge. Run by `blitzecdn cache purge`, not by
+`edge.yml` — it is an operation, not part of convergence.
+
+nginx open source has no purge directive, so an entry is removed by deleting the
+file `proxy_cache_path` stored it in. The path is the MD5 of the same cache key
+nginx computes, which is why this role has to be told the cache settings
+`blitzecdn_nginx` used.
+
+| Variable                                    | Type   | Required | Default                      | Choices |
+| ------------------------------------------- | ------ | -------- | ---------------------------- | ------- |
+| `blitzecdn_cache_path`                      | `path` | `true`   | `/var/cache/nginx/blitzecdn` | —       |
+| `blitzecdn_cache_normalize_accept_encoding` | `bool` | `true`   | `true`                       | —       |
+| `blitzecdn_cache_levels`                    | `str`  | `true`   | `1:2`                        | `1:2`   |
+| `blitzecdn_cache_purge_entries`             | `list` | `true`   | —                            | —       |
+| `blitzecdn_cache_purge_all`                 | `bool` | `true`   | `false`                      | —       |
+| `blitzecdn_cache_purge_methods`             | `list` | `true`   | `GET`, `HEAD`                | —       |
+| `blitzecdn_cache_purge_encodings`           | `list` | `true`   | `""`, `gzip`, `br`           | —       |
+
+<Callout type="warning">
+  The first three **must** match the `blitzecdn_nginx` values of the same name.
+  Nothing at run time can tell a mismatch from an empty cache: a purge aimed at
+  the wrong directory reports success having deleted nothing. The control
+  plane's contract tests assert the two roles agree.
+</Callout>
+
+Deleting the file is enough — nginx keeps the key in its shared-memory zone,
+finds the file gone on the next request, and treats it as a `MISS`. No reload is
+performed. `blitzecdn_cache_purge_all` removes files only, never the level
+directories: nginx creates those at startup and removing them makes every
+subsequent store fail until a reload.
+
+## `blitzecdn_stats`
+
+Report cache and connection counters from an edge. Run by `blitzecdn stats`.
+Read-only — it changes nothing, so it is safe during a deploy.
+
+| Variable                          | Type   | Required | Default                               | Choices |
+| --------------------------------- | ------ | -------- | ------------------------------------- | ------- |
+| `blitzecdn_stats_access_log_path` | `path` | `true`   | `/var/log/nginx/blitzecdn-access.log` | —       |
+| `blitzecdn_stats_status_address`  | `str`  | `true`   | `127.0.0.1`                           | —       |
+| `blitzecdn_stats_status_port`     | `int`  | `true`   | `8090`                                | —       |
+| `blitzecdn_stats_status_path`     | `str`  | `true`   | `/stub_status`                        | —       |
+| `blitzecdn_stats_max_lines`       | `int`  | `true`   | `200000`                              | —       |
+
+The role publishes each host's report as a structured callback fact; it writes
+no controller-side report file. The four Nginx-facing variables must match
+`blitzecdn_nginx`; pointed at the wrong log the role reports a hit ratio of zero,
+which looks like a broken cache rather than a misconfigured reader.
+
+Counting happens on the edge. A busy edge logs gigabytes a day, and shipping
+that back to be counted would cost far more than the answer is worth;
+`blitzecdn_stats_max_lines` bounds how much of the tail is read.
+
+## `blitzecdn_fail2ban`
+
+Protect SSH using Fail2Ban.
+
+| Variable                       | Type  | Required | Default | Choices |
+| ------------------------------ | ----- | -------- | ------- | ------- |
+| `blitzecdn_fail2ban_ban_time`  | `str` | `true`   | `1h`    | —       |
+| `blitzecdn_fail2ban_find_time` | `str` | `true`   | `10m`   | —       |
+| `blitzecdn_fail2ban_max_retry` | `int` | `true`   | `5`     | —       |
+| `blitzecdn_fail2ban_ssh_port`  | `int` | `true`   | `22`    | —       |
+
+## `blitzecdn_firewall`
+
+Configure a fail-closed UFW edge firewall.
+
+| Variable                           | Type   | Required | Default                         | Choices |
+| ---------------------------------- | ------ | -------- | ------------------------------- | ------- |
+| `blitzecdn_firewall_enabled`       | `bool` | `true`   | `true`                          | —       |
+| `blitzecdn_firewall_http_ports`    | `list` | `true`   | `80`, `443`                     | —       |
+| `blitzecdn_firewall_ssh_port`      | `int`  | `true`   | `22`                            | —       |
+| `blitzecdn_firewall_ssh_sources`   | `list` | `true`   | —                               | —       |
+| `blitzecdn_firewall_registry_file` | `path` | `true`   | `/etc/blitzecdn/firewall-rules` | —       |
+
+The registry records only the UFW rules this role installed, so shrinking a
+source/port list removes stale managed rules without touching unrelated UFW
+policy. Edge teardown removes the registry with `/etc/blitzecdn`.
+
+## `blitzecdn_kernel`
+
+Apply conservative edge kernel settings.
+
+| Variable                       | Type   | Required | Default                                                                                                                                                                  | Choices |
+| ------------------------------ | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
+| `blitzecdn_kernel_sysctl_file` | `path` | `true`   | `/etc/sysctl.d/60-blitzecdn.conf`                                                                                                                                        | —       |
+| `blitzecdn_kernel_sysctl`      | `dict` | `true`   | `{'net.core.somaxconn': 16384, 'net.ipv4.tcp_syncookies': 1, 'net.ipv4.tcp_keepalive_time': 90, 'net.ipv4.tcp_keepalive_intvl': 30, 'net.ipv4.tcp_keepalive_probes': 5}` | —       |
+
+## `blitzecdn_nginx`
+
+Converge Nginx CDN virtual hosts.
+
+The role renders each site to `/etc/nginx/sites-available`, links the enabled
+ones, and runs `nginx -t` before it records anything or reloads. If validation
+fails it restores the previous file for every site it changed, removes the files
+it created, confirms the restored tree still loads, and fails the play. The edge
+keeps serving its previous configuration, so a bad render costs you a failed run
+rather than an Nginx that refuses to start at the next reboot.
+
+The role records the sites it manages in
+`blitzecdn_nginx_managed_sites_file`. Any name in that registry the controller
+no longer emits is stale: the role unlinks it from `sites-enabled`, deletes its
+file from `sites-available`, and then removes its managed TLS directory under
+`/etc/blitzecdn/tls/`. Removal runs after the configurations that reference
+those certificates are gone, and only names shaped like a site name select a
+directory, so a hand-edited registry line cannot aim the deletion elsewhere.
+Certificates outside `/etc/blitzecdn/tls/` are never named for a site and are
+never removed.
+
+`blitzecdn_nginx_allow_empty_sites` governs the one case that empties an edge
+completely. When desired state carries no sites at all and the registry still
+lists some, the role fails the play before it changes the host — every managed
+site and its TLS material would go in that single run. Set it to `true` to
+approve that transition. It has no effect on any other deploy: removing some of
+an edge's sites, or converging a fresh edge that has no registry yet, proceeds
+either way, which is what lets a new edge be hardened before its first site
+exists.
+
+<Callout type="error">
+  An empty desired state usually means a new controller was pointed at an
+  existing edge before its state was imported, not that you meant to retire the
+  fleet. Deleting managed TLS material is irreversible — a `REQUESTED`
+  certificate must be issued again, and an `UPLOADED` one restored from wherever
+  you keep it. Confirm the controller lists the sites you expect with
+  [`blitzecdn site list`](/docs/understand/reference/cli#blitzecdn-site-list)
+  before setting `blitzecdn_nginx_allow_empty_sites` to `true`, and set it back
+  afterwards.
+</Callout>
+
+The control plane emits this variable from
+[`BLITZE_ALLOW_EMPTY_SITES`](/docs/understand/reference/configuration#settings); setting it
+in `group_vars` has no effect, because the desired-state value wins.
+
+`blitzecdn_nginx_default_server` installs a catch-all server block that answers
+requests for hostnames no site declares. It serves `/.well-known/acme-challenge/`
+so a new domain can pass HTTP-01 validation before its site exists, returns
+`444` for everything else, and rejects TLS handshakes for unrecognized SNI. Turn
+it off only on a single-tenant edge fronted by something else.
+
+<Callout type="warning">
+  With `blitzecdn_nginx_default_server` set to `false`, Nginx answers a request
+  whose `Host` matches no `server_name` using whichever site loaded first. On a
+  shared edge that serves one customer's configuration for another customer's
+  hostname. Leave it enabled unless a proxy in front already rejects unknown
+  hosts.
+</Callout>
+
+`blitzecdn_nginx_normalize_accept_encoding` collapses client `Accept-Encoding`
+values to `br`, `gzip`, or empty, forwards that to the origin, and adds it to
+the cache key. Leave it enabled: without it, encoded and unencoded responses for
+one URL share a cache entry, and clients receive bodies they cannot decode.
+
+<Callout type="warning">
+  `blitzecdn_nginx_hsts_enabled` applies to every site on the edge and commits
+  the customer's domain, not yours. A browser that has seen `max-age` honors it
+  until it expires — you cannot withdraw it by redeploying. Confirm every domain
+  on the edge will serve HTTPS for at least `blitzecdn_nginx_hsts_max_age`
+  seconds before enabling it.
+</Callout>
+
+`blitzecdn_nginx_access_log_enabled` writes one line per request in the
+`blitzecdn` format, carrying `$upstream_cache_status`, `$request_time`, and
+`$upstream_response_time`. Cache hit ratio is the number a CDN is measured by,
+and the per-response `X-Cache-Status` header reports it only to the client that
+made the request. Turn this off only if you collect the same fields another way.
+
+`blitzecdn_nginx_status_enabled` serves Nginx `stub_status` on
+`blitzecdn_nginx_status_address:blitzecdn_nginx_status_port`. Scrape it from an
+agent on the edge itself, or over an SSH tunnel.
+
+<Callout type="warning">
+  `stub_status` has no authentication. Access is controlled twice and
+  independently: the listen address binds loopback, and
+  `blitzecdn_nginx_status_allow` refuses other sources. If you widen the listen
+  address, narrow `blitzecdn_nginx_status_allow` in the same change — either one
+  alone exposes the edge's request and connection counts to anyone who can reach
+  the port.
+</Callout>
+
+`blitzecdn_nginx_geoip_enabled` installs the GeoIP2 module and defines
+`$blitzecdn_country`, which is what the per-site `allowed_countries` and
+`denied_countries` rules test. It is off by default: it needs a MaxMind country
+database, and GeoLite2 — while free — is an authenticated download.
+
+Give the role `blitzecdn_nginx_geoip_account_id` and
+`blitzecdn_nginx_geoip_license_key` and it installs `geoipupdate(8)`, writes its
+configuration, fetches the database, and schedules refreshes. Leave them empty
+to manage the file yourself; the role then only checks that it is present.
+
+The fetch runs **only when the database is absent**. MaxMind publishes GeoLite2
+twice a week and rate-limits downloads, so re-fetching on every converge would
+spend quota on a file that has not changed. A systemd timer
+(`blitzecdn-geoipupdate.timer`) handles refreshes on the
+`blitzecdn_nginx_geoip_update_calendar` schedule, with
+`blitzecdn_nginx_geoip_update_splay` of random delay so a fleet does not hit
+MaxMind together. nginx picks up a replaced database through `auto_reload`
+without a reload.
+
+A failed refresh is deliberately left visible in `systemctl --failed`. It
+cannot take the edge down — nginx keeps serving the database already on disk —
+so masking the exit status would only hide a database quietly ageing out.
+
+<Callout type="error">
+  `blitzecdn_nginx_geoip_license_key` authenticates to your MaxMind account, not
+  to one database. Supply it from the controller's environment; do not commit it
+  to `group_vars`. The role writes it to a `0600` root-owned `/etc/GeoIP.conf`
+  and sets `no_log` on every task that handles it, and it is never rendered into
+  `/etc/nginx/conf.d`, which is world-readable.
+</Callout>
+
+<Callout type="warning">
+  A site that carries country rules fails the deploy when
+  `blitzecdn_nginx_geoip_enabled` is `false`, before the edge is changed. This
+  is deliberate: the alternative is an edge that reports a converged site while
+  serving every country the rules were meant to block. Enable the variable and
+  install the database, or remove the rules.
+</Callout>
+
+| Variable                                    | Type   | Required | Default                                                                        | Choices |
+| ------------------------------------------- | ------ | -------- | ------------------------------------------------------------------------------ | ------- |
+| `blitzecdn_desired_state_version`           | `int`  | `true`   | —                                                                              | —       |
+| `blitzecdn_nginx_access_log_enabled`        | `bool` | `true`   | `true`                                                                         | —       |
+| `blitzecdn_nginx_access_log_path`           | `path` | `true`   | `/var/log/nginx/blitzecdn-access.log`                                          | —       |
+| `blitzecdn_nginx_acme_root`                 | `path` | `true`   | `/var/lib/blitzecdn/acme`                                                      | —       |
+| `blitzecdn_nginx_allow_empty_sites`         | `bool` | `true`   | `false`                                                                        | —       |
+| `blitzecdn_nginx_cache_inactive`            | `str`  | `true`   | `60m`                                                                          | —       |
+| `blitzecdn_nginx_cache_max_size`            | `str`  | `true`   | `10g`                                                                          | —       |
+| `blitzecdn_nginx_cache_path`                | `path` | `true`   | `/var/cache/nginx/blitzecdn`                                                   | —       |
+| `blitzecdn_nginx_cache_size`                | `str`  | `true`   | `100m`                                                                         | —       |
+| `blitzecdn_nginx_cache_zone`                | `str`  | `true`   | `blitzecdn_cache`                                                              | —       |
+| `blitzecdn_nginx_certificate_path_pattern`  | `str`  | `true`   | `^/(?!.*(?:^\|/)\.\.(?:/\|$))etc/(?:blitzecdn/tls\|ssl\|letsencrypt)/[^;{}]+$` | —       |
+| `blitzecdn_nginx_default_server`            | `bool` | `true`   | `true`                                                                         | —       |
+| `blitzecdn_nginx_default_site_file`         | `path` | `true`   | `/etc/nginx/sites-available/blitzecdn-default.conf`                            | —       |
+| `blitzecdn_nginx_geoip_database`            | `path` | `true`   | `/usr/share/GeoIP/GeoLite2-Country.mmdb`                                       | —       |
+| `blitzecdn_nginx_geoip_account_id`          | `str`  | `true`   | `""`                                                                           | —       |
+| `blitzecdn_nginx_geoip_config_file`         | `path` | `true`   | `/etc/GeoIP.conf`                                                              | —       |
+| `blitzecdn_nginx_geoip_edition`             | `str`  | `true`   | `GeoLite2-Country`                                                             | —       |
+| `blitzecdn_nginx_geoip_license_key`         | `str`  | `true`   | `""`                                                                           | —       |
+| `blitzecdn_nginx_geoip_update_calendar`     | `str`  | `true`   | `Wed,Sat 03:00`                                                                | —       |
+| `blitzecdn_nginx_geoip_update_enabled`      | `bool` | `true`   | `true`                                                                         | —       |
+| `blitzecdn_nginx_geoip_update_splay`        | `str`  | `true`   | `3h`                                                                           | —       |
+| `blitzecdn_nginx_geoip_updater_binary`      | `path` | `true`   | `/usr/bin/geoipupdate`                                                         | —       |
+| `blitzecdn_nginx_geoip_updater_package`     | `str`  | `true`   | `geoipupdate`                                                                  | —       |
+| `blitzecdn_nginx_geoip_enabled`             | `bool` | `true`   | `false`                                                                        | —       |
+| `blitzecdn_nginx_geoip_file`                | `path` | `true`   | `/etc/nginx/conf.d/blitzecdn-geoip.conf`                                       | —       |
+| `blitzecdn_nginx_geoip_package`             | `str`  | `true`   | `libnginx-mod-http-geoip2`                                                     | —       |
+| `blitzecdn_nginx_geoip_reload`              | `str`  | `true`   | `5m`                                                                           | —       |
+| `blitzecdn_nginx_hsts_enabled`              | `bool` | `true`   | `false`                                                                        | —       |
+| `blitzecdn_nginx_hsts_max_age`              | `int`  | `true`   | `31536000`                                                                     | —       |
+| `blitzecdn_nginx_log_format_name`           | `str`  | `true`   | `blitzecdn`                                                                    | —       |
+| `blitzecdn_nginx_managed_sites_file`        | `path` | `true`   | `/etc/nginx/blitzecdn-managed-sites`                                           | —       |
+| `blitzecdn_nginx_normalize_accept_encoding` | `bool` | `true`   | `true`                                                                         | —       |
+| `blitzecdn_nginx_proxy_connect_timeout`     | `str`  | `true`   | `5s`                                                                           | —       |
+| `blitzecdn_nginx_proxy_read_timeout`        | `str`  | `true`   | `30s`                                                                          | —       |
+| `blitzecdn_nginx_resolver_timeout`          | `str`  | `true`   | `5s`                                                                           | —       |
+| `blitzecdn_nginx_resolver_valid`            | `str`  | `true`   | `30s`                                                                          | —       |
+| `blitzecdn_nginx_resolvers`                 | `list` | `true`   | `127.0.0.53`                                                                   | —       |
+| `blitzecdn_nginx_sites`                     | `list` | `true`   | —                                                                              | —       |
+| `blitzecdn_nginx_ssl_ciphers`               | `str`  | `true`   | Mozilla intermediate TLS 1.2 suites                                            | —       |
+| `blitzecdn_nginx_ssl_stapling`              | `bool` | `true`   | `false`                                                                        | —       |
+| `blitzecdn_nginx_status_address`            | `str`  | `true`   | `127.0.0.1`                                                                    | —       |
+| `blitzecdn_nginx_status_allow`              | `list` | `true`   | `127.0.0.1`, `::1`                                                             | —       |
+| `blitzecdn_nginx_status_enabled`            | `bool` | `true`   | `true`                                                                         | —       |
+| `blitzecdn_nginx_status_file`               | `path` | `true`   | `/etc/nginx/conf.d/blitzecdn-status.conf`                                      | —       |
+| `blitzecdn_nginx_status_path`               | `str`  | `true`   | `/stub_status`                                                                 | —       |
+| `blitzecdn_nginx_status_port`               | `int`  | `true`   | `8090`                                                                         | —       |
+| `blitzecdn_nginx_supported_state_versions`  | `list` | `true`   | `1`, `2`                                                                       | —       |
+
+### `blitzecdn_nginx_sites` element keys
+
+| Key                           | Type   | Required | Default    | Choices                                         |
+| ----------------------------- | ------ | -------- | ---------- | ----------------------------------------------- |
+| `cache_enabled`               | `bool` | `false`  | `true`     | —                                               |
+| `cache_valid_not_found`       | `str`  | `false`  | `1m`       | —                                               |
+| `cache_valid_success`         | `str`  | `false`  | `10m`      | —                                               |
+| `certificate_key_path`        | `path` | `false`  | —          | —                                               |
+| `certificate_key_source_path` | `path` | `false`  | —          | —                                               |
+| `certificate_mode`            | `str`  | `false`  | `disabled` | `disabled`, `existing`, `uploaded`, `requested` |
+| `certificate_path`            | `path` | `false`  | —          | —                                               |
+| `certificate_source_path`     | `path` | `false`  | —          | —                                               |
+| `enabled`                     | `bool` | `false`  | `true`     | —                                               |
+| `firewall`                    | `dict` | `false`  | —          | —                                               |
+| `name`                        | `str`  | `true`   | —          | —                                               |
+| `origin_host`                 | `str`  | `true`   | —          | —                                               |
+| `origin_port`                 | `int`  | `false`  | —          | —                                               |
+| `origin_request_host`         | `str`  | `false`  | —          | —                                               |
+| `origin_scheme`               | `str`  | `false`  | `https`    | `http`, `https`                                 |
+| `origin_sni`                  | `str`  | `false`  | —          | —                                               |
+| `server_names`                | `list` | `true`   | —          | —                                               |
+
+#### `firewall` suboptions
+
+Per-hostname request filtering, absent on a site that does not filter. See
+[the firewall reference](/docs/understand/reference/records) for how the rules compose.
+
+| Key                 | Type   | Required | Default | Choices |
+| ------------------- | ------ | -------- | ------- | ------- |
+| `allow_sources`     | `list` | `false`  | `[]`    | —       |
+| `allowed_countries` | `list` | `false`  | `[]`    | —       |
+| `denied_countries`  | `list` | `false`  | `[]`    | —       |
+| `denied_methods`    | `list` | `false`  | `[]`    | —       |
+| `denied_paths`      | `list` | `false`  | `[]`    | —       |
+| `deny_sources`      | `list` | `false`  | `[]`    | —       |
+
+## `blitzecdn_resolver`
+
+Point the host at resolvers that answer public names truthfully.
+
+Off unless `blitzecdn_resolver_enabled` is set. Turn it on where the host
+resolver cannot be trusted for public names — a split-horizon view, an internal
+forwarder, or a transparent proxy that claims every hostname. Such a resolver
+looks healthy for browsing and package installs while making every check that
+compares a resolved address against an expected one fail for the wrong reason.
+Nginx resolves origin _hostnames_ through the same resolver, so this is not
+only a certificate concern.
+
+Writes `/etc/systemd/resolved.conf.d/blitzecdn.conf` rather than editing netplan
+or NetworkManager. Those files are installer- or cloud-init-owned, differ per
+image and renderer, and also carry addresses and routes — a bad edit there costs
+the host, not just its resolution. The role refuses an empty address list,
+refuses hostnames, refuses a host that does not resolve through
+systemd-resolved, and then proves the result by querying a random name under
+the reserved `.invalid` domain. Nothing may answer one, so anything that does is
+inventing addresses. `blitzecdn_teardown` removes the drop-in again.
+
+| Variable                                | Type   | Required | Default | Choices |
+| --------------------------------------- | ------ | -------- | ------- | ------- |
+| `blitzecdn_resolver_addresses`          | `list` | `true`   | —       | —       |
+| `blitzecdn_resolver_domains`            | `list` | `true`   | `~.`    | —       |
+| `blitzecdn_resolver_enabled`            | `bool` | `true`   | `false` | —       |
+| `blitzecdn_resolver_fallback_addresses` | `list` | `true`   | —       | —       |
+
+`blitzecdn_resolver_domains` defaults to `~.`, which claims every domain and so
+makes these servers the default for the host. Narrow it to specific zones to
+leave the rest of resolution on whatever the link supplies.
+
+## `blitzecdn_sshd`
+
+Enforce public-key-only SSH authentication.
+
+Writes `/etc/ssh/sshd_config.d/50-blitzecdn.conf` with
+`AuthenticationMethods publickey`, then reads the effective policy back with
+`sshd -T` and fails the play if anything else is still accepted. Before it
+writes, every account in `blitzecdn_sshd_allow_users` — or the connecting
+`ansible_user` when that list is empty — must already have a non-empty
+`~/.ssh/authorized_keys`, so hardening cannot lock you out. The daemon is
+reloaded, never restarted, so the connection running the deploy survives.
+
+The key check also enforces what `StrictModes` requires: the home directory,
+`~/.ssh`, and `~/.ssh/authorized_keys` must each be owned by the account or by
+root and must not be group- or world-writable. Sshd ignores a key file that
+fails those tests, so an account with a readable `authorized_keys` on a
+world-writable home would still lose access when passwords are disabled. The
+role fails the play instead, naming the path to correct.
+
+The role does not manage the listening port; that belongs to
+`blitzecdn_firewall_ssh_port` and `blitzecdn_fail2ban_ssh_port`.
+
+| Variable                                | Type   | Required | Default                                    | Choices                                           |
+| --------------------------------------- | ------ | -------- | ------------------------------------------ | ------------------------------------------------- |
+| `blitzecdn_sshd_allow_agent_forwarding` | `bool` | `true`   | `false`                                    | —                                                 |
+| `blitzecdn_sshd_allow_tcp_forwarding`   | `bool` | `true`   | `false`                                    | —                                                 |
+| `blitzecdn_sshd_allow_users`            | `list` | `true`   | —                                          | —                                                 |
+| `blitzecdn_sshd_client_alive_count_max` | `int`  | `true`   | `2`                                        | —                                                 |
+| `blitzecdn_sshd_client_alive_interval`  | `int`  | `true`   | `300`                                      | —                                                 |
+| `blitzecdn_sshd_config_path`            | `str`  | `true`   | `/etc/ssh/sshd_config.d/50-blitzecdn.conf` | —                                                 |
+| `blitzecdn_sshd_enabled`                | `bool` | `true`   | `true`                                     | —                                                 |
+| `blitzecdn_sshd_login_grace_time`       | `int`  | `true`   | `20`                                       | —                                                 |
+| `blitzecdn_sshd_max_auth_tries`         | `int`  | `true`   | `3`                                        | —                                                 |
+| `blitzecdn_sshd_max_sessions`           | `int`  | `true`   | `10`                                       | —                                                 |
+| `blitzecdn_sshd_permit_root_login`      | `str`  | `true`   | `no`                                       | `no`, `prohibit-password`, `forced-commands-only` |
+| `blitzecdn_sshd_service`                | `str`  | `true`   | `ssh`                                      | —                                                 |
+
+## `blitzecdn_teardown`
+
+Remove BlitzeCDN configuration and TLS material from an edge. Run by
+`blitzecdn edge remove`, before the host leaves the inventory — afterwards no
+playbook can address it, and anything left behind stays until someone logs in.
+
+Deletes the managed virtual hosts, the catch-all default site, the cache and
+status configuration, the managed-site registry, the cache contents, the ACME
+webroot, and `/etc/blitzecdn` including private keys. Leaves Nginx installed
+and running, and does not touch SSH or firewall policy: reverting those as part
+of a teardown can strand an operator on a host that is merely being unmanaged,
+or leave one open rather than closed.
+
+| Variable                                | Type   | Required | Default                                                | Choices |
+| --------------------------------------- | ------ | -------- | ------------------------------------------------------ | ------- |
+| `blitzecdn_teardown_access_log_path`    | `path` | `true`   | `/var/log/nginx/blitzecdn-access.log`                  | —       |
+| `blitzecdn_teardown_acme_root`          | `path` | `true`   | `/var/lib/blitzecdn/acme`                              | —       |
+| `blitzecdn_teardown_cache_path`         | `path` | `true`   | `/var/cache/nginx/blitzecdn`                           | —       |
+| `blitzecdn_teardown_managed_sites_file` | `path` | `true`   | `/etc/nginx/blitzecdn-managed-sites`                   | —       |
+| `blitzecdn_teardown_marker`             | `str`  | `true`   | `# Managed by BlitzeCDN. Local edits are overwritten.` | —       |
+| `blitzecdn_teardown_remove_logs`        | `bool` | `false`  | `false`                                                | —       |
+| `blitzecdn_teardown_resolver_file`      | `path` | `true`   | `/etc/systemd/resolved.conf.d/blitzecdn.conf`          | —       |
+| `blitzecdn_teardown_state_path`         | `path` | `true`   | `/etc/blitzecdn`                                       | —       |
+
+Every path must equal the value `blitzecdn_nginx` converged with on the same
+host. Pointed elsewhere the role removes nothing, reports success, and the real
+files survive on a host the control plane is about to forget.
+
+Managed configurations are found by their marker comment rather than by reading
+the managed-site registry, so a file written by a run that failed validation —
+which never reached the registry — is still removed. Logs survive by default:
+a decommissioned host is often decommissioned because something went wrong.

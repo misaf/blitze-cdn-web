@@ -1,0 +1,160 @@
+---
+title: Manage edge servers
+description: Onboard, verify, and retire Nginx edge servers without removing them from serving prematurely.
+---
+
+# Manage edge servers
+
+Use this guide to add an edge host to the fleet or take one out of management
+without cutting live traffic. For the responsibility split and why the
+controller converges rather than serves, see [Architecture](/docs/understand/architecture).
+
+## Before you begin
+
+- Confirm the edge meets the platform floor: Debian 12+ or Ubuntu 24.04+.
+- Prepare a non-root SSH user with narrowly managed sudo. Root login must stay
+  disabled; privilege escalation is explicit per play.
+- Have the edge address and at least one trusted management CIDR for SSH.
+- Run `blitzecdn doctor` and confirm no deployment or rollback is running.
+
+<Callout type="info">
+  Adding an edge only updates controller state; its first deploy changes the
+  host. Removing is different: the default removal decommissions the host first,
+  then deletes its inventory row. See [Edges and
+  Ansible](/docs/understand/edge-infrastructure).
+</Callout>
+
+## Prepare SSH identity and trust
+
+A standalone controller runs commands as the `blitzecdn` service account. The
+installer creates `/opt/blitzecdn/.state/id_ed25519`; authorize its public half
+for the remote edge's non-root sudo user during host provisioning:
+
+```bash
+sudo cat /opt/blitzecdn/.state/id_ed25519.pub
+```
+
+Obtain the edge host-key fingerprint through a trusted provider console or
+provisioning record. Compare that trusted value with a scan before recording
+the key for the service account:
+
+```bash
+EDGE_HOST=192.0.2.10
+ssh-keyscan -t ed25519 "$EDGE_HOST" | ssh-keygen -lf -
+sudo -u blitzecdn ssh-keyscan -H -t ed25519 "$EDGE_HOST" | \
+  sudo -u blitzecdn tee -a /var/lib/blitzecdn/.ssh/known_hosts >/dev/null
+```
+
+Do not trust the scan itself; it proves only what answered at that moment. A
+controller-only checkout uses the invoking user's SSH agent, default identity,
+and `~/.ssh/known_hosts` unless `--private-key-file` selects another key.
+
+## Add an edge
+
+```bash
+blitzecdn edge add edge-01 --host 192.0.2.10 \
+  --public-address 203.0.113.10 \
+  --ssh-source 198.51.100.0/24 \
+  --user deploy \
+  --private-key-file /opt/blitzecdn/.state/id_ed25519
+```
+
+`--ssh-source` is repeatable and at least one is required; an empty list
+deliberately fails closed. `--public-address` is also repeatable and separates
+the public CDN address from the SSH route for NAT and split-DNS deployments. It
+defaults to `--host`. `--user` defaults to `deploy`.
+
+Management CIDRs are published as the union across every registered edge. The
+canary proves the new host first; the final fleet deploy also updates existing
+edge firewalls when the new row introduces another management network.
+
+Correct the public address of an existing NAT or split-DNS edge without changing
+its SSH route:
+
+```bash
+blitzecdn edge update edge-01 --public-address 203.0.113.11
+```
+
+Verify the edge is present before converging it:
+
+```bash
+blitzecdn edge list
+```
+
+<Callout type="warning">
+  Bootstrap the host out of band — install the OS, create the non-root sudo
+  user, and set its initial state — before adding it. The edge roles harden the
+  host but do not provision the machine.
+</Callout>
+
+## Deploy to the new edge only
+
+Prove the new host in isolation with [`--limit`](/docs/understand/reference/cli#blitzecdn-deploy),
+which resolves names and globs against the inventory and can only ever narrow
+the fleet:
+
+```bash
+blitzecdn plan --limit edge-01
+blitzecdn deploy --limit edge-01 --yes
+```
+
+Probe every proxied hostname externally through the new edge. Only then run a
+new plan against the complete inventory and deploy so the rest of the fleet
+reaches the same state. See [Production](/docs/operate/production) for the staged
+rollout policy.
+
+## Verify the edge
+
+```bash
+blitzecdn edge list --json
+blitzecdn status --limit 1
+```
+
+Confirm the edge appears in the inventory, the hostname answers, and every
+proxied site resolves. Edges keep serving when the controller is unavailable, so
+reach the edge directly rather than through the controller.
+
+## Remove an edge
+
+Remove the host from load balancers and public DNS, verify it receives no live
+traffic, then run the default decommissioning removal:
+
+```bash
+blitzecdn edge remove edge-02 --yes
+```
+
+The control plane runs `decommission.yml` while the row still exists, removes
+BlitzeCDN-managed Nginx sites and TLS private keys, the cache, ACME webroot,
+managed-site registry, `/etc/blitzecdn`, and the resolver drop-in, and only then
+deletes the edge row. Nginx remains installed, access logs remain by default,
+and SSH/firewall hardening remains in place.
+
+<Callout type="error">
+  Never remove an edge that still receives live traffic. Teardown withdraws its
+  managed virtual hosts before the inventory row disappears. The operation is
+  not reversible; re-adding the row does not restore deleted keys or cache.
+</Callout>
+
+Use `--no-decommission` only when the host was already wiped. Use `--force` only
+when teardown failed because the host no longer exists. Either option can leave
+BlitzeCDN configuration and private keys on a reachable host, so inspect and
+clean it manually before it leaves your control.
+
+## Recover from a bad add or remove
+
+Re-add a removed edge and converge only it, verifying the fingerprint again:
+
+```bash
+blitzecdn edge add edge-02 --host 198.51.100.33 \
+  --ssh-source 198.51.100.0/24 \
+  --user deploy \
+  --private-key-file /opt/blitzecdn/.state/id_ed25519
+blitzecdn plan --limit edge-02
+blitzecdn deploy --limit edge-02
+```
+
+Rerun `blitzecdn plan` before any retry after a partial, ambiguous, or timed-out
+convergence. If a host is lost, rebuild it off the controller — the edges are
+not a supported database substitute for the controller — then add it back as
+above. For a failed or lost host during serving, continue with
+[Incident response](/docs/operate/incident-response).

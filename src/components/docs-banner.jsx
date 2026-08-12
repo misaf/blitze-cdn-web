@@ -39,7 +39,7 @@ export default function DocsBanner() {
   return (
     <Banner storageKey="production-checklist">
       Before changing production edges, review the{' '}
-      <Link href="/docs/guides/deployment">deployment checklist →</Link>
+      <Link href="/docs/operate/deploy">deployment checklist →</Link>
     </Banner>
   )
 }

@@ -6,7 +6,7 @@ description: Common questions about BlitzeCDN's scope, guarantees, failure behav
 # Frequently asked questions
 
 Answers here describe the current release. Where an answer depends on an exact
-flag, route or variable, the [reference](/docs/reference/cli) is verified against
+flag, route or variable, the [reference](/docs/understand/reference/cli) is verified against
 the source and is the authority.
 
 ## Scope and limits
@@ -25,7 +25,7 @@ No. It does not provision virtual machines, manage DNS, issue wildcard
 certificates, or provide active/active job execution. Each of those needs an
 explicit provider or distributed-state design, and the release would rather
 refuse them than half-implement them. See
-[deliberate limits](/docs/architecture#deliberate-limits).
+[deliberate limits](/docs/understand/architecture#deliberate-limits).
 
 Cache invalidation _is_ supported, but synchronously: `blitzecdn cache purge`
 reaches every edge it can and reports which ones purged. An edge that was
@@ -143,7 +143,7 @@ before validation. Certificates are issued once and distributed from there.
 
 ### How is the reference maintained?
 
-Everything under [Reference](/docs/reference/cli) is maintained as MDX in this
+Everything under [Reference](/docs/understand/reference/cli) is maintained as MDX in this
 repository. Changes to commands, API routes, configuration, or roles should
 update the corresponding page in the same release pull request.
 

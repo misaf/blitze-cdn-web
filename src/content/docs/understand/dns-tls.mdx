@@ -1,0 +1,70 @@
+---
+title: DNS and TLS
+description: Why BlitzeCDN stores DNS intent without publishing it, and how one controller coordinates certificates across every edge.
+---
+
+# DNS and TLS
+
+BlitzeCDN models the records that determine CDN intent, but it is not an
+authoritative DNS server. It exports what an external DNS system must publish.
+This keeps edge addressing and DNS-provider credentials outside the control
+plane.
+
+## DNS responsibility
+
+An unproxied record exports its stored A or AAAA value. A proxied record exports
+its hostname, type, TTL, and proxy intent without an address because the DNS
+system must choose one or more registered edge public addresses.
+
+The safe order for a new hostname is:
+
+1. add the domain and proxied record;
+2. deploy the HTTP virtual host to the edges;
+3. publish public DNS to edge addresses;
+4. pass certificate preflight and issue the certificate;
+5. deploy again so every edge receives it.
+
+Changing DNS before step 2 can direct traffic or an ACME validation request to
+an edge that does not yet know the hostname.
+
+## Origin identity
+
+For a proxied record, `value` is the origin address. The derived site defaults
+to HTTPS. `origin_request_host` controls the HTTP `Host` header and `origin_sni`
+controls TLS server-name validation; when unset, both follow the public
+hostname/origin defaults defined by the site model. `blitzecdn origin check`
+runs from the controller and separately reports resolution, reachability, and
+TLS verification.
+
+## Certificate sources
+
+Each hostname has one certificate. Supported modes are:
+
+- `disabled`: HTTP only;
+- `existing`: the edge uses operator-owned paths under an allowed TLS root;
+- `uploaded`: the controller validates an uploaded certificate and key;
+- `requested`: the controller issued it through ACME HTTP-01.
+
+Uploaded and requested private keys live only in the controller certificate
+store and under `/etc/blitzecdn/tls/<site>/` on edges. They are never returned by
+the API or rendered in plans.
+
+## ACME coordination
+
+Before contacting the CA, preflight checks that the site is already deployed,
+the hostname resolves to a registered edge public address, and CAA permits the
+configured CA. Origin health and TTL are advisory. A controller using split DNS
+should configure public resolvers with `BLITZE_PREFLIGHT_DNS_SERVERS`.
+
+Certbot writes temporary ACME state below `.state/letsencrypt`. Its auth hook
+publishes the same challenge token to every edge, so validation succeeds
+regardless of which edge public DNS selects. On success the controller stores
+the certificate; a later deploy distributes it.
+
+The API service periodically reconciles first certificates for sites that have
+become ready. The renewal timer runs `cert renew --deploy` twice daily. Renewal
+leaves certificates outside the 30-day window untouched and deploys only after
+at least one succeeds.
+
+Use [Publish DNS](/docs/operate/dns) and
+[Manage certificates](/docs/operate/certificates) for procedures.

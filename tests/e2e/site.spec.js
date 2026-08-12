@@ -4,9 +4,8 @@ import { expect, test } from '@playwright/test'
 /*
  * Every route is listed with the `h1` it must render. This list had drifted
  * out of sync with the content tree — it still named `/docs/contributing` and
- * `/docs/guides/upgrading`, both deleted, and expected the old "Reference
- * compatibility" heading — so three of eleven tests could not pass and the
- * suite stopped being run. Two real landmark bugs shipped behind that red.
+ * removed routes and old headings, so three of eleven tests could not pass and
+ * the suite stopped being run. Two real landmark bugs shipped behind that red.
  *
  * If you delete or rename a page, this array is the other half of the change.
  */
@@ -17,18 +16,29 @@ const routes = [
   ['/contact', 'Where to send what'],
   ['/faq', 'Frequently asked questions'],
   ['/blog', 'Blog'],
-  ['/docs/architecture', 'Architecture'],
-  ['/docs/glossary', 'Glossary'],
-  ['/docs/reference', 'Reference'],
-  ['/docs/reference/cli', 'CLI'],
-  ['/docs/reference/domains', 'Domains'],
-  ['/docs/reference/roles', 'Ansible role variables'],
-  ['/docs/guides/how-it-works', 'How it works'],
-  ['/docs/guides/quickstart', 'Quick start'],
-  ['/docs/guides/go-live', 'Take a real site live'],
-  ['/docs/guides/deployment', 'Deploying'],
-  ['/docs/guides/dns', 'DNS hand-off'],
-  ['/docs/guides/incidents', 'Incident response'],
+  ['/docs/operate', 'Operate BlitzeCDN'],
+  ['/docs/operate/lifecycle', 'Install, upgrade, rebuild, and remove'],
+  ['/docs/operate/first-deployment', 'First deployment'],
+  ['/docs/operate/deploy', 'Deploying'],
+  ['/docs/operate/edges', 'Manage edge servers'],
+  ['/docs/operate/backup-restore', 'Back up and restore'],
+  ['/docs/operate/troubleshooting', 'Troubleshooting'],
+  ['/docs/understand', 'Understand BlitzeCDN'],
+  ['/docs/understand/architecture', 'Architecture'],
+  ['/docs/understand/control-plane', 'Control plane'],
+  ['/docs/understand/domain-model', 'Domain and data model'],
+  ['/docs/understand/edge-infrastructure', 'Edges and Ansible'],
+  ['/docs/understand/dns-tls', 'DNS and TLS'],
+  ['/docs/understand/cache-observability', 'Cache and observability'],
+  ['/docs/understand/storage-state', 'Storage and state'],
+  ['/docs/understand/glossary', 'Glossary'],
+  ['/docs/understand/reference', 'Reference'],
+  ['/docs/understand/reference/cli', 'CLI'],
+  ['/docs/understand/reference/records', 'Domains'],
+  ['/docs/understand/reference/ansible', 'Ansible roles and variables'],
+  ['/docs/operate/go-live', 'Take a real site live'],
+  ['/docs/operate/dns', 'DNS hand-off'],
+  ['/docs/operate/incident-response', 'Incident response'],
 ]
 
 /* Routes written by hand in `src/app/`, bypassing the Nextra docs layout. */

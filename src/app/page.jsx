@@ -174,14 +174,20 @@ const principles = [
 ]
 
 const referenceLinks = [
-  { href: '/docs/reference/cli', label: 'CLI — every command and exit code' },
-  { href: '/docs/reference/api', label: 'HTTP API — every route and model' },
   {
-    href: '/docs/reference/configuration',
+    href: '/docs/understand/reference/cli',
+    label: 'CLI — every command and exit code',
+  },
+  {
+    href: '/docs/understand/reference/http-api',
+    label: 'HTTP API — every route and model',
+  },
+  {
+    href: '/docs/understand/reference/configuration',
     label: 'Configuration — every BLITZE_* variable',
   },
   {
-    href: '/docs/reference/roles',
+    href: '/docs/understand/reference/ansible',
     label: 'Ansible roles — every variable, typed',
   },
 ]
@@ -332,12 +338,13 @@ export default function LandingPage() {
               <Link href="/docs" className={btnPrimary}>
                 Read the docs
               </Link>
-              <Link href="/docs/reference/cli" className={btnGhost}>
+              <Link href="/docs/understand/reference/cli" className={btnGhost}>
                 CLI reference
               </Link>
             </div>
             <p className="mt-9 font-mono text-[0.74rem] tracking-[0.06em] text-ink-faint">
-              Debian 12+ / Ubuntu 24.04+ &nbsp;·&nbsp; one controller node
+              Controller: Debian 13+ / Ubuntu 24.04+ &nbsp;·&nbsp; edges: Debian
+              12+ / Ubuntu 24.04+
             </p>
           </div>
           <LedgerSpread />
@@ -391,7 +398,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="mt-flow flex justify-center">
-            <Link href="/docs/architecture" className={btnGhost}>
+            <Link href="/docs/understand/architecture" className={btnGhost}>
               Read the architecture
             </Link>
           </div>
@@ -510,7 +517,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="mt-flow flex justify-center">
-            <Link href="/docs/reference/cli" className={btnPrimary}>
+            <Link href="/docs/understand/reference/cli" className={btnPrimary}>
               See every command
             </Link>
           </div>
@@ -552,7 +559,7 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="mt-flow flex justify-center">
-            <Link href="/docs/guides/deployment" className={btnPrimary}>
+            <Link href="/docs/operate/deploy" className={btnPrimary}>
               Read the deployment guide
             </Link>
           </div>
@@ -639,7 +646,7 @@ export default function LandingPage() {
           This site ships nothing to edge servers, never runs on a controller,
           and holds no credentials. See{' '}
           <Link
-            href="/docs/architecture"
+            href="/docs/understand/architecture"
             className="text-rule-ink underline underline-offset-2"
           >
             architecture

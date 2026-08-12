@@ -1,0 +1,79 @@
+---
+title: Domain and data model
+description: The canonical objects BlitzeCDN stores, derives, snapshots, and exposes to operators.
+---
+
+# Domain and data model
+
+BlitzeCDN stores operator intent as domains and DNS records. A proxied record
+derives a CDN site; operators never create a site directly. This relationship is
+the center of the model and explains why DNS-shaped commands control edge
+virtual hosts.
+
+## Canonical relationships
+
+```text
+Domain
+  └── DNS record (A or AAAA)
+        ├── proxied = false → exported DNS answer only
+        └── proxied = true  → derived CdnSite
+                                ├── origin policy
+                                ├── cache policy
+                                ├── certificate policy
+                                └── request firewall policy
+
+Edge rows ───────────────→ dynamic Ansible inventory
+Ansible settings ────────→ fleet-wide group variables
+Snapshot + deployment ──→ immutable convergence history
+```
+
+## Domains and records
+
+A domain is a delegable zone name. A record is keyed by domain, label, and
+record type. Only `A` and `AAAA` records are supported, and `value` must be an
+address of the matching family. For a proxied record, that address is the
+origin; public DNS must instead answer with edge addresses. For an unproxied
+record, DNS answers with `value` directly.
+
+The record also stores the policy that becomes its site: origin protocol and
+port, request host and SNI, enabled state, certificate mode and paths, cache
+TTLs, and per-hostname request filters. Turning proxying off preserves this
+policy so turning it on later does not silently reset it.
+
+## Derived sites
+
+`DnsRecord.to_site()` is the single mapping from record intent to `CdnSite`.
+Only proxied records produce sites. The internal site name is a deterministic
+slug of the fully qualified hostname; validation rejects two records whose
+hostnames would collide after slugging.
+
+The site document is what the control plane renders for Ansible. Its
+`blitzecdn_desired_state_version` is an explicit controller/role contract. The
+edge role refuses an unsupported version before changing the host.
+
+## Edges and settings
+
+An edge row contains its stable name, SSH address, non-root user, port, optional
+private-key path, public serving addresses, and management CIDRs. The dynamic
+inventory plugin reads these rows at the start of every Ansible run. There is no
+second host list to synchronize.
+
+Fleet-wide non-secret role overrides live in `ansible_settings` and are managed
+with `blitzecdn config`. Host-specific SSH and address policy stays on the edge
+row. Secrets remain in the environment, never in either table.
+
+## History and durable operations
+
+Each deployment stores status, operator, check/apply mode, host limit, timestamps,
+the immutable snapshot it attempted, and structured per-host results. Audit
+events are append-only operator facts. Workflow rows record checkpoints around
+multi-system work. Outbox and projection tables support durable follow-up and
+derived-state bookkeeping.
+
+SQLite is authoritative for domains, records, derived sites, edges, settings,
+deployments, workflows, and audit history. Certificate files are authoritative
+for private key material and are intentionally not stored in SQLite. See
+[Storage and state](/docs/understand/storage-state).
+
+For exact record fields and validation, use
+[Domains, records, and sites](/docs/understand/reference/records).

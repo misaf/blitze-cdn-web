@@ -8,8 +8,8 @@ Documentation has two deliberate entry points:
 
 - **Operate BlitzeCDN:** `/docs/operate` is the complete copy-paste lifecycle
   runbook. It links outward to focused procedures.
-- **Understand BlitzeCDN:** `/docs/architecture` starts the conceptual path;
-  focused guides and technical reference provide progressively deeper detail.
+- **Understand BlitzeCDN:** `/docs/understand` starts the conceptual path and
+  drills through subsystem explanations into exact technical reference.
 
 ## Setup
 
@@ -42,22 +42,20 @@ configured it defaults to the repository's conventional GitHub Pages URL.
 
 ## Layout
 
-| Path                               | Contents                                                                                                                                                    |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/app/page.jsx`                 | Landing page — hand-written, safe to restyle                                                                                                                |
-| `src/app/globals.css`              | Tailwind entry point and site theme                                                                                                                         |
-| `src/app/layout.jsx`               | Shared shell: navbar, footer, theme                                                                                                                         |
-| `src/content/docs/*.mdx`           | Hand-written prose (index, architecture, glossary)                                                                                                          |
-| `src/content/docs/guides/*.mdx`    | Hand-written operator guides (quickstart, sites, deployment, certificates, API, security, API key rotation, backup, incidents, production, troubleshooting) |
-| `src/content/docs/reference/*.mdx` | Maintained CLI, domains, API, configuration, and role reference                                                                                             |
-| `src/app/about/page.jsx`           | About us — hand-designed, not MDX                                                                                                                           |
-| `src/app/contact/page.jsx`         | Contact us — hand-designed, not MDX                                                                                                                         |
-| `src/components/ui.jsx`            | Shared design recipes for the designed pages                                                                                                                |
-| `src/content/faq.mdx`              | FAQ                                                                                                                                                         |
-| `src/content/blog/`                | Blog: `index.mdx` lists the posts beside it                                                                                                                 |
-| `src/components/post-list.jsx`     | Builds the blog index from the page map                                                                                                                     |
-| `postcss.config.mjs`               | Loads `@tailwindcss/postcss`                                                                                                                                |
-| `DOCUMENTATION.md`                 | Voice, page structure, callouts, and verification rules                                                                                                     |
+| Path                                     | Contents                                                              |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| `src/app/page.jsx`                       | Landing page — hand-written, safe to restyle                          |
+| `src/app/globals.css`                    | Tailwind entry point and site theme                                   |
+| `src/app/layout.jsx`                     | Shared shell: navbar, footer, theme                                   |
+| `src/content/docs/index.mdx`             | Intent-first documentation landing page                               |
+| `src/content/docs/operate/`              | Canonical lifecycle runbook and focused operational procedures        |
+| `src/content/docs/understand/`           | Architecture and subsystem explanations                               |
+| `src/content/docs/understand/reference/` | Maintained CLI, API, configuration, data-model, and Ansible reference |
+| `src/app/about/page.jsx`                 | About us — hand-designed, not MDX                                     |
+| `src/app/contact/page.jsx`               | Contact us — hand-designed, not MDX                                   |
+| `src/content/faq.mdx`                    | FAQ                                                                   |
+| `src/content/blog/`                      | Blog: `index.mdx` lists the posts beside it                           |
+| `DOCUMENTATION.md`                       | Voice, page structure, callouts, and verification rules               |
 
 ## Sections and routing
 
@@ -123,10 +121,10 @@ are inlined, so nothing here collides with them.
 
 ## Reference documentation
 
-The pages under `src/content/docs/reference/` are ordinary MDX and are reviewed
-like the guides. When the control plane or edge collection changes, update the
-affected reference page in the same pull request and verify its examples against
-the released interface.
+The pages under `src/content/docs/understand/reference/` are ordinary MDX. When
+the control plane changes, update the affected reference and canonical runbook
+procedure in the same pull request. `check:docs` also rejects pages omitted from
+the sidebar and sidebar entries that point to missing content.
 
 ## Search and deployment
 

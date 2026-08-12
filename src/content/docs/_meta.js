@@ -1,8 +1,5 @@
 export default {
-  index: 'Overview',
+  index: 'Documentation home',
   operate: 'Operate BlitzeCDN',
-  architecture: 'Architecture',
-  guides: 'Focused guides',
-  reference: 'Technical reference',
-  glossary: 'Glossary',
+  understand: 'Understand BlitzeCDN',
 }

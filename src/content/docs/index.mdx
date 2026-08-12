@@ -1,136 +1,84 @@
 ---
-title: Overview
-description: What BlitzeCDN is, how its two halves divide responsibility, and where to go next.
+title: Documentation home
+description: Choose the operational runbook or the subsystem documentation for BlitzeCDN.
 ---
 
 # BlitzeCDN documentation
 
-Use BlitzeCDN to manage Nginx CDN edge servers from one controller. Choose the
-path that matches what you need now.
-
-The product has a strict responsibility split:
-
-- **Python** owns validation, desired state, deployment history, planning,
-  rollback, audit records, and process execution.
-- **Ansible** exclusively owns remote Linux state. It carries defensive
-  validation but no product workflow decisions.
+BlitzeCDN is a security-focused control plane for converging Nginx CDN edge
+servers. Start from what you need to accomplish, not from the repository's
+implementation history.
 
 <RouteCardGrid
   items={[
     {
-      title: 'Operate BlitzeCDN',
+      title: 'I need to operate BlitzeCDN',
       href: '/docs/operate',
-      note: 'One copy-paste runbook for install, verify, maintenance, upgrade, rebuild, recovery, and removal.',
+      note: 'Install, configure, verify, deploy, maintain, upgrade, repair, rebuild, recover, or completely remove the system.',
     },
     {
-      title: 'Understand BlitzeCDN',
-      href: '/docs/architecture',
-      note: 'Architecture, controller and edge boundaries, state, trust, and execution flow.',
-    },
-    {
-      title: 'Take a real site live',
-      href: '/docs/guides/go-live',
-      note: 'One path from the lab to your own hostname on HTTPS.',
-    },
-    {
-      title: 'Operate safely',
-      href: '/docs/guides/deployment',
-      note: 'Plan, deploy, verify, and recover production changes.',
-    },
-    {
-      title: 'Look up exact behavior',
-      href: '/docs/reference/cli',
-      note: 'Use versioned CLI, API, configuration, and role reference.',
-    },
-    {
-      title: 'Route a domain',
-      href: '/docs/reference/domains',
-      note: 'Add a zone, point subdomains at origins, and toggle the CDN per record.',
-    },
-    {
-      title: 'Respond to an incident',
-      href: '/docs/guides/incidents',
-      note: 'Establish serving state, contain risk, and recover controller truth.',
+      title: 'I need to understand BlitzeCDN',
+      href: '/docs/understand',
+      note: 'Follow architecture, control-plane, domain, edge, DNS/TLS, deployment, cache, security, and storage boundaries into exact reference.',
     },
   ]}
 />
 
-The project is opinionated: Debian 12+ and Ubuntu 24.04+ edges, OpenSSH
-host-key verification, non-root SSH users with explicit sudo, UFW, Fail2Ban,
-centrally coordinated ACME HTTP-01 issuance, managed certificate uploads, and
-existing TLS certificate paths. Certificates are issued once by the controller
-and distributed to every edge.
+## Operate BlitzeCDN
 
-## Choose a documentation mode
+The [operator runbook](/docs/operate) is the canonical command path. It keeps the
+complete standalone lifecycle on one page and explicitly separates:
 
-### Operate BlitzeCDN
+- fresh installation;
+- state-preserving repair;
+- state-preserving upgrade;
+- deployment and rollback;
+- backup and isolated restore;
+- destructive fresh rebuild;
+- unsupported state-preserving uninstall;
+- supported complete purge.
 
-Start with the [operator runbook](/docs/operate). It keeps the whole lifecycle
-on one page and links to a focused guide at each decision point. Use the
-[Quick start](/docs/guides/quickstart) only when you want a learning tutorial
-with a disposable example deployment.
+Use a focused procedure when the runbook links you there:
 
-### Understand BlitzeCDN
+| Outcome                                              | Procedure                                                |
+| ---------------------------------------------------- | -------------------------------------------------------- |
+| Choose an install, upgrade, rebuild, or removal mode | [Lifecycle](/docs/operate/lifecycle)                     |
+| Learn on a first deployment                          | [First deployment](/docs/operate/first-deployment)       |
+| Move a real hostname to HTTPS                        | [Take a site live](/docs/operate/go-live)                |
+| Plan, canary, deploy, or roll back                   | [Deploy and roll back](/docs/operate/deploy)             |
+| Add, change, or retire edge servers                  | [Manage edge servers](/docs/operate/edges)               |
+| Publish DNS                                          | [Publish DNS](/docs/operate/dns)                         |
+| Issue, upload, renew, or inspect TLS                 | [Manage certificates](/docs/operate/certificates)        |
+| Protect or recover controller state                  | [Back up and restore](/docs/operate/backup-restore)      |
+| Collect evidence and repair a failure                | [Troubleshoot and repair](/docs/operate/troubleshooting) |
+| Handle uncertain serving state                       | [Incident response](/docs/operate/incident-response)     |
 
-Start with [Architecture](/docs/architecture), then use the focused guides for
-subsystem behavior and the technical reference for exact interfaces.
+## Understand BlitzeCDN
 
-## Documentation map
+Start with the [system overview](/docs/understand), then follow the subsystem
+whose boundary you are investigating:
 
-### Start here — in this order
+| Question                                                     | Explanation                                                     |
+| ------------------------------------------------------------ | --------------------------------------------------------------- |
+| What runs where, and who owns each decision?                 | [Architecture](/docs/understand/architecture)                   |
+| How do CLI/API requests reach storage and external work?     | [Control plane](/docs/understand/control-plane)                 |
+| Which objects are stored, derived, and snapshotted?          | [Domain and data model](/docs/understand/domain-model)          |
+| How does inventory become Linux state?                       | [Edges and Ansible](/docs/understand/edge-infrastructure)       |
+| Who publishes DNS and how are certificates coordinated?      | [DNS and TLS](/docs/understand/dns-tls)                         |
+| How do snapshots, locks, canaries, rollback, and drift work? | [Deployment lifecycle](/docs/understand/deployment-model)       |
+| What do purge, stats, logs, audit, and drift report?         | [Cache and observability](/docs/understand/cache-observability) |
+| Which files and database tables are authoritative?           | [Storage and state](/docs/understand/storage-state)             |
+| Where are trust and privilege boundaries enforced?           | [Security boundaries](/docs/understand/security)                |
 
-- [How it works](/docs/guides/how-it-works) — the sequence every change follows,
-  and what BlitzeCDN deliberately leaves to you.
-- [Quick start](/docs/guides/quickstart) — stand up a controller and make the
-  first deploy, end to end.
-- [Take a real site live](/docs/guides/go-live) — from that lab to a hostname you
-  own, served over HTTPS.
+## Exact reference
 
-### Operate it — one task at a time
+Use reference pages to look up facts after you understand the workflow:
 
-- [Sites & deployment](/docs/guides/sites) — what a site is, how desired state,
-  snapshots, and rollback work.
-- [Deploying](/docs/guides/deployment) — the operator's deployment checklist.
-- [DNS hand-off](/docs/guides/dns) — publish the records that send visitors to an
-  edge.
-- [Certificates](/docs/guides/certificates) — ACME HTTP-01 issuance, uploads, and
-  renewal.
-- [Managing edge hosts](/docs/guides/manage) — add and remove Nginx edges
-  without cutting live traffic.
-- [API usage](/docs/guides/api) — authenticate operators and drive the control
-  plane over HTTP.
+- [CLI](/docs/understand/reference/cli) — commands, flags, confirmation, and exit codes.
+- [HTTP API](/docs/understand/reference/http-api) — authentication, routes, schemas, and status codes.
+- [Configuration](/docs/understand/reference/configuration) — every controller environment variable and TOML key.
+- [Domains, records, and sites](/docs/understand/reference/records) — exact data fields and validation.
+- [Ansible roles and variables](/docs/understand/reference/ansible) — defaults, effects, and defensive checks.
 
-### Keep it safe and running
-
-- [Security](/docs/guides/security) — hardening the control plane and edges.
-- [API key rotation](/docs/guides/api-key-rotation) — replace operator secrets
-  without locking out every client.
-- [Backup & recovery](/docs/guides/backup) — what to back up and how to recover.
-- [Incident response](/docs/guides/incidents) — contain and recover when serving
-  state or controller truth is uncertain.
-- [Production](/docs/guides/production) — sizing, scaling, and operational
-  caveats.
-- [Troubleshooting](/docs/guides/troubleshooting) — errors, stalls, and how to
-  resolve them.
-
-### Reference — exact values, looked up
-
-- [CLI](/docs/reference/cli) — every command, flag, and exit code.
-- [HTTP API](/docs/reference/api) — every route, model, and status code.
-- [Configuration](/docs/reference/configuration) — every `BLITZE_*` variable and
-  its TOML equivalent.
-- [Ansible roles](/docs/reference/roles) — every role variable, typed, with
-  defaults.
-- [Domains and records](/docs/reference/domains) — zones, A records, and the
-  per-record CDN proxy toggle.
-
-Everything under Reference is maintained as MDX in this repository. When a
-public interface changes, update its reference page alongside the release and
-verify commands and examples against the corresponding project version.
-
-### Concepts — what the words mean
-
-- [Architecture](/docs/architecture) — trust boundaries, execution flow, and the
-  limits this release deliberately accepts.
-- [Glossary](/docs/glossary) — definitions for controller, convergence,
-  snapshots, canonical state, and other recurring terms.
+The implementation is the source of truth. Interface changes must update the
+matching reference and any canonical operating procedure in the same change.

@@ -1,0 +1,62 @@
+---
+title: Storage and state
+description: Authoritative, generated, secret, temporary, and remote state and what each lifecycle operation does to it.
+---
+
+# Storage and state
+
+The default standalone installation keeps source and controller runtime state
+under `/opt/blitzecdn`, machine-level configuration under `/etc/blitzecdn`, and
+edge state in standard Nginx and BlitzeCDN paths. These locations have different
+backup and deletion requirements.
+
+## Controller paths
+
+| Path                                     | Contents                                                                                | Backup?                                       |
+| ---------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `/opt/blitzecdn/.state/control-plane.db` | Domains, records, derived sites, edges, settings, deployments, workflows, audit, outbox | Yes; use SQLite backup                        |
+| `/opt/blitzecdn/.state/certificates/`    | Uploaded and ACME-managed certificates and private keys                                 | Yes                                           |
+| `/opt/blitzecdn/.state/letsencrypt/`     | Certbot account, configuration, work, and logs                                          | Yes for managed ACME continuity               |
+| `/opt/blitzecdn/.state/logs/`            | Complete per-run Ansible logs                                                           | According to evidence policy                  |
+| `/opt/blitzecdn/.state/collections/`     | Installed Ansible dependencies                                                          | No; reproducible from the release             |
+| `/opt/blitzecdn/.state/runs/`            | Per-invocation variables and callback results                                           | No; temporary                                 |
+| `/opt/blitzecdn/.state/deployment.lock`  | Cross-process deployment lock                                                           | No; never delete merely because a run is slow |
+| `/opt/blitzecdn/.state/id_ed25519`       | Standalone controller-to-edge private SSH key                                           | Yes for an exact restore                      |
+| `/etc/blitzecdn/blitzecdn.env`           | API keys and service environment                                                        | Yes; secret                                   |
+| `/opt/blitzecdn/blitzecdn.toml`          | Optional non-secret controller configuration                                            | Yes if created                                |
+
+`generated_vars_path` is a publication file beneath the state directory, not
+an authoring interface. Each deploy renders the immutable snapshot it is about
+to apply. Per-run purge, stats, challenge, and decommission variables use unique
+files beneath `.state/runs` and are removed after use.
+
+## Edge paths
+
+| Path                                          | Contents                                             |
+| --------------------------------------------- | ---------------------------------------------------- |
+| `/etc/blitzecdn/tls/<site>/`                  | Controller-managed certificate chain and private key |
+| `/var/lib/blitzecdn/acme/`                    | Shared HTTP-01 webroot                               |
+| `/var/cache/nginx/blitzecdn/`                 | Cached responses                                     |
+| `/etc/nginx/blitzecdn-managed-sites`          | Registry of managed sites                            |
+| `/var/log/nginx/blitzecdn-access.log`         | Access evidence and stats input                      |
+| `/etc/systemd/resolved.conf.d/blitzecdn.conf` | Optional resolver policy                             |
+
+Managed Nginx configuration files carry a marker as their first line. Teardown
+selects by that marker so it also finds a file written by a failed run that
+never reached the registry.
+
+## Lifecycle effects
+
+- `install.sh update` makes a mode-0600 archive in `/var/backups/blitzecdn`,
+  preserves `.state`, `.env`, and `/etc/blitzecdn`, and never deploys edges.
+- rerunning `install.sh standalone` converges the host and preserves existing
+  credentials and state.
+- `install.sh --fresh` deletes all BlitzeCDN-owned controller and local-edge
+  state, including update backups, then installs the same release from scratch.
+- `install.sh --uninstall` performs the same deletion and does not reinstall.
+- `blitzecdn edge remove` affects one remote edge and its database row; it does
+  not remove the controller.
+
+See [Install, upgrade, rebuild, and remove](/docs/operate/lifecycle) for exact
+deletion scopes and [Back up and restore](/docs/operate/backup-restore) for the
+supported recovery procedure.

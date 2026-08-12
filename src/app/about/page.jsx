@@ -326,7 +326,7 @@ export default function AboutPage() {
           </div>
 
           <div className="mt-flow flex justify-center">
-            <Link href="/docs/architecture" className={btnGhost}>
+            <Link href="/docs/understand/architecture" className={btnGhost}>
               See how they play out
             </Link>
           </div>

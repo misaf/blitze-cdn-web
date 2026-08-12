@@ -1,0 +1,47 @@
+---
+title: API key rotation
+description: Rotate operator API keys without exposing them or locking every client out.
+---
+
+# API key rotation
+
+Rotate API keys through an overlap: add the replacement, migrate clients, then
+remove the old key. Keys authenticate an operator name but do not grant distinct
+roles in this release.
+
+## Before you begin
+
+- Identify every client using the operator key and its owner.
+- Use a secret manager; never place keys in shell history, CLI arguments, TOML,
+  tickets, or logs.
+- Keep one independent break-glass operator until the new key is verified.
+
+## Rotate
+
+1. Generate a random secret of at least 32 characters in the secret manager.
+2. Add `operator-new:secret` to `BLITZE_API_KEYS` while retaining the old entry.
+3. Restart the API process through its service manager.
+4. Call an authenticated read-only route with the new key.
+5. Update clients individually and monitor authentication failures and `429`s.
+6. Remove the old entry, restart again, and verify the old key receives `401`.
+
+```bash
+curl --fail-with-body \
+  -H "X-API-Key: $NEW_BLITZE_API_KEY" \
+  http://127.0.0.1:8000/v1/sites
+```
+
+## Verify
+
+- New clients receive `200`; the retired key receives `401`.
+- `blitzecdn audit` attributes subsequent mutations to the intended operator.
+- Proxy and application logs contain no raw key values.
+- Authentication failures remain below the shared-address throttle.
+
+## Recover
+
+If all clients are locked out, restore the break-glass entry through the service
+environment and restart locally. Do not weaken authentication or expose an
+unauthenticated temporary endpoint. Treat a disclosed key as an
+[incident](/docs/operate/incident-response), rotate it immediately, and review its audit
+history.

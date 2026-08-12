@@ -1,0 +1,68 @@
+---
+title: Edges and Ansible
+description: How edge inventory, playbooks, roles, rollout limits, and teardown fit together.
+---
+
+# Edges and Ansible
+
+An edge is a Debian 12+ or Ubuntu 24.04+ host that runs Nginx. The Python
+controller decides desired state and invokes playbooks; Ansible is the only
+component allowed to mutate remote Linux state.
+
+## Inventory
+
+`ansible/inventory/blitzecdn.yml` configures the custom `blitzecdn` inventory
+plugin. It is not a host list. The plugin reads the `edges` table from the
+control-plane database and creates the `blitzecdn_edges` group for every run.
+
+`--limit` values are expanded against those edge rows before Ansible starts.
+A typo that matches no managed edge fails instead of becoming a successful
+zero-host play. Limits can narrow the fleet but cannot introduce an unmanaged
+host.
+
+## Main convergence
+
+`ansible/playbooks/edge.yml` runs with `serial: 25%`, fails the play on any host
+error, and applies roles in this order:
+
+1. base packages and operating-system baseline;
+2. optional resolver policy;
+3. kernel settings;
+4. UFW firewall policy;
+5. Nginx, sites, cache, TLS material, and optional GeoIP;
+6. public-key-only SSH policy;
+7. Fail2Ban.
+
+The firewall precedes SSH hardening so a firewall validation failure cannot
+leave a host key-only and unreachable. Role argument specifications validate
+inputs again on the edge. Exact variables and defaults are in the
+[Ansible reference](/docs/understand/reference/ansible).
+
+## Specialized playbooks
+
+| Playbook             | Behavior                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------- |
+| `acme-challenge.yml` | Publishes or removes one HTTP-01 token on every edge; token values are not logged                       |
+| `cache-purge.yml`    | Purges reachable edges even if another edge fails, then reports partial completion                      |
+| `stats.yml`          | Reads Nginx connection and cache counters; a silent edge does not hide other results                    |
+| `decommission.yml`   | Removes managed sites, TLS keys, cache, and edge state before the inventory row is deleted              |
+| `control-plane.yml`  | Converges accounts, local SSH trust, wrapper, environment, and systemd units on a standalone controller |
+
+Purge, stats, and decommission use per-run variable files and do not share the
+deployment lock. Deployments and rollbacks do share the lock because they
+publish desired state and advance canonical history.
+
+## Decommission boundary
+
+`blitzecdn edge remove` runs teardown while the edge is still addressable, then
+deletes its row. The teardown removes BlitzeCDN Nginx configurations, managed
+TLS material, cache, ACME webroot, managed-site registry, and resolver drop-in.
+It leaves Nginx installed, retains access logs by default, and deliberately
+leaves SSH and firewall policy in place so the unmanaged host is not exposed or
+made unreachable.
+
+`--no-decommission` skips remote cleanup. `--force` deletes the inventory row
+after a failed teardown. Both can leave BlitzeCDN state and private keys on the
+host; use them only when the host has already been wiped or no longer exists.
+
+Operational procedures are in [Manage edge servers](/docs/operate/edges).

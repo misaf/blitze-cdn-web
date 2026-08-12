@@ -1,0 +1,84 @@
+---
+title: Control plane
+description: How the Python control plane is composed, where responsibility lives, and how CLI and API requests become durable operations.
+---
+
+# Control plane
+
+The control plane is a Python application with two entry points: the synchronous
+`blitzecdn` CLI and an authenticated FastAPI service. Both build the same
+`ControlPlane` object and call the same application services. Neither entry point
+talks directly to SQLite, Ansible, Certbot, or edge hosts.
+
+## Layers and ownership
+
+| Layer               | Owns                                                                  | Does not own                  |
+| ------------------- | --------------------------------------------------------------------- | ----------------------------- |
+| `domain/`           | Immutable models, validation, state transitions, exit-relevant status | Files, processes, HTTP, SQL   |
+| `application/`      | DNS, edge, certificate, deployment, and workflow use cases            | Concrete adapters             |
+| `ports.py`          | Interfaces required by application services                           | Implementations               |
+| `infrastructure/`   | SQLite, Ansible, Certbot, files, process execution, origin probes     | Product policy                |
+| `cli/` and `api.py` | Input parsing, authentication, serialization, transport status        | Business rules                |
+| `control_plane.py`  | Production dependency wiring                                          | Forwarding or duplicate logic |
+
+The composition root deliberately exposes services and narrow read ports, not
+the concrete repository. This prevents an HTTP or CLI read path from bypassing
+the same transactions and validation used by mutations.
+
+## Request flow
+
+```text
+CLI command or HTTP route
+        │
+        ▼
+application command/service
+        │
+        ├── validate immutable domain models
+        ├── commit state and audit/outbox records in SQLite
+        └── call a narrow port when external work is required
+                    │
+                    ├── Ansible runner → edge fleet
+                    ├── Certbot issuer → ACME CA
+                    └── origin probe → configured origins
+```
+
+The event bus writes audit and outbox entries only after a service announces a
+domain event. Callers cannot manufacture an audit record independently of the
+operation it claims to describe.
+
+## CLI and API execution
+
+The CLI waits for deployments and rollbacks to finish. It is intended for a
+human terminal or bounded automation and communicates failure with documented
+[exit codes](/docs/understand/reference/cli#exit-codes).
+
+The API queues long deployments and rollbacks, commits the queued row first,
+and returns `202 Accepted`. A worker thread performs the convergence and the
+client polls the deployment resource. Short, bounded operations such as origin
+checks, cache purges, stats, and certificate preflight answer inline. See
+[HTTP API behavior](/docs/understand/http-api-usage).
+
+## Crash visibility
+
+Deployment rows and workflow journals make ambiguous work visible after a
+restart:
+
+- queued or running deployments from a dead process become `abandoned`;
+- unfinished workflows become `needs_review` and retain completed checkpoints;
+- per-run structured host results remain in SQLite;
+- complete Ansible output remains in `.state/logs` until retention removes it.
+
+This does not make external work transactional. A controller can still stop
+after an edge changed but before the final database update. The records tell an
+operator that verification is required instead of silently claiming success.
+
+## Runtime service
+
+A standalone installation runs `blitzecdn-api.service` as the unprivileged
+`blitzecdn` account, bound to `127.0.0.1:8000`. The unit reads
+`/etc/blitzecdn/blitzecdn.env`, can write only `/opt/blitzecdn/.state`, and
+restarts on failure. First-certificate reconciliation lives in this API process;
+certificate renewal and drift are separate systemd timers.
+
+For exact settings and paths, use [Configuration](/docs/understand/reference/configuration)
+and [Storage and state](/docs/understand/storage-state).

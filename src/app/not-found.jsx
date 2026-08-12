@@ -16,7 +16,7 @@ import {
  * almost everyone who lands here — they wanted a page, not a bug tracker — and
  * it ignores the visual language `/about` and `/contact` share, so it reads as
  * a different site. Pages were removed from this tree during heavy development
- * (`/docs/contributing`, `/docs/guides/upgrading`), so stale inbound links are
+ * (including earlier documentation hierarchies), so stale inbound links are
  * a live path, not a hypothetical one.
  *
  * Reporting the broken link is still offered, last, where it belongs.
@@ -25,14 +25,20 @@ import {
 export const metadata = {
   title: 'Page not found',
   description:
-    'That page does not exist. Jump to the documentation, the quick start, ' +
+    'That page does not exist. Jump to the documentation, first deployment, ' +
     'or search the site.',
 }
 
 const destinations = [
   { href: '/docs', label: 'Documentation — start here' },
-  { href: '/docs/guides/quickstart', label: 'Quick start — deploy a site' },
-  { href: '/docs/reference/cli', label: 'CLI reference — every command' },
+  {
+    href: '/docs/operate/first-deployment',
+    label: 'First deployment — deploy a site',
+  },
+  {
+    href: '/docs/understand/reference/cli',
+    label: 'CLI reference — every command',
+  },
   { href: '/faq', label: 'FAQ — scope, limits and guarantees' },
 ]
 

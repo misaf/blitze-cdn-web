@@ -1,0 +1,49 @@
+---
+title: Incident response
+description: Establish serving state, contain risk, recover controller truth, and preserve evidence during an incident.
+---
+
+# Incident response
+
+Use this runbook when edge serving, certificate validity, credentials, or the
+controller's record of state cannot be trusted.
+
+## First 15 minutes
+
+1. Name an incident lead and record times, observations, and commands.
+2. Check external traffic independently of the controller.
+3. Stop new mutations; do not delete locks or rewrite desired state manually.
+4. Capture `status`, retained deployment output, `audit`, controller logs, edge
+   Nginx status, and certificate metadata before changing anything.
+5. Contain exposed credentials or management access without destroying evidence.
+
+## Decide what failed
+
+| Failure                  | Are edges normally serving? | Required recovery                                                                    |
+| ------------------------ | --------------------------- | ------------------------------------------------------------------------------------ |
+| Controller unavailable   | Yes                         | Restore controller state and credentials; validate before deploying                  |
+| Controller database lost | Yes                         | Restore the canonical database backup; edges are not a supported database substitute |
+| Certificate state lost   | Until current copies expire | Recover ACME/account state or re-issue, then deploy                                  |
+| One edge lost            | Other edges yes             | Rebuild the host, verify SSH trust, and converge it                                  |
+| Deployment timed out     | Unknown                     | Inspect hosts, rerun plan, then converge deliberately                                |
+| API key exposed          | Usually yes                 | Rotate with overlap, review audit records, and restrict the disclosure path          |
+
+## Recover service
+
+Prefer the smallest reversible action. Restore controller truth before issuing
+new changes. Validate configuration and inventory, run a fresh plan, converge a
+canary when possible, and probe traffic externally before widening.
+
+## Verify and close
+
+- Every hostname passes external HTTP/TLS probes from multiple networks.
+- No deployment remains in a non-terminal state without an owner.
+- Controller desired state, successful snapshot, and observed edge state agree.
+- Exposed credentials are rotated and their audit window reviewed.
+- Backups used during recovery are re-created and verified.
+- Record the trigger, impact, timeline, contributing controls, and follow-up
+  owner without putting secrets into the incident document.
+
+For private vulnerability reporting, use the route on the
+[contact page](/contact). For operational symptoms, continue with
+[troubleshooting](/docs/operate/troubleshooting).

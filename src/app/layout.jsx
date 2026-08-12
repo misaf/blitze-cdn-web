@@ -49,10 +49,8 @@ const GITHUB_URL = 'https://github.com/misaf/blitze-cdn-web'
 /*
  * The colophon's three link columns.
  *
- * Grouped by what the reader is trying to do rather than by page type: find
- * out about the project, learn how to operate it, or look up an exact value.
- * That last split is the same one the docs sidebar makes between Guides and
- * Reference, and it is the distinction operators actually navigate by.
+ * Grouped by the documentation's two primary intents: operate the system or
+ * understand it. Exact reference stays under Understand, matching the sidebar.
  *
  * `external: true` marks a link that leaves the site. It is not decoration —
  * every one of these used to look identical to the internal ones, so a link to
@@ -71,21 +69,21 @@ const footerColumns = [
     ],
   },
   {
-    head: 'Operating',
+    head: 'Operate',
     links: [
-      { href: '/docs', label: 'Documentation' },
-      { href: '/docs/guides/quickstart', label: 'Quick start' },
-      { href: '/docs/guides/deployment', label: 'Deploying' },
-      { href: '/docs/architecture', label: 'Architecture' },
+      { href: '/docs/operate', label: 'Operator runbook' },
+      { href: '/docs/operate/lifecycle', label: 'Install and remove' },
+      { href: '/docs/operate/deploy', label: 'Deploy and roll back' },
+      { href: '/docs/operate/troubleshooting', label: 'Troubleshoot' },
     ],
   },
   {
-    head: 'Reference',
+    head: 'Understand',
     links: [
-      { href: '/docs/reference/cli', label: 'CLI' },
-      { href: '/docs/reference/api', label: 'HTTP API' },
-      { href: '/docs/reference/configuration', label: 'Configuration' },
-      { href: '/docs/reference/roles', label: 'Ansible roles' },
+      { href: '/docs/understand', label: 'System overview' },
+      { href: '/docs/understand/architecture', label: 'Architecture' },
+      { href: '/docs/understand/domain-model', label: 'Domain model' },
+      { href: '/docs/understand/reference/cli', label: 'CLI' },
     ],
   },
 ]

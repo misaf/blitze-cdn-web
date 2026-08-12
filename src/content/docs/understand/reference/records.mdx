@@ -1,0 +1,212 @@
+---
+title: Domains, records, and sites
+description: Domain delegation, DNS record fields, proxy behavior, validation, and derived CDN sites.
+---
+
+# Domains and DNS records
+
+A **domain** is a zone a customer has delegated to BlitzeCDN. A **record** is one
+name in that zone. Each record carries a `proxied` flag, which is the CDN on/off
+switch for that name.
+
+Records are the source of truth. A proxied record produces the virtual host the
+edge serves; an unproxied one produces nothing at all. You cannot create a
+virtual host any other way — see [`blitzecdn site`](/docs/understand/reference/cli).
+
+## What `proxied` controls
+
+| `proxied` | The edge                                                   | DNS should answer with |
+| --------- | ---------------------------------------------------------- | ---------------------- |
+| `true`    | Serves the hostname and fetches from `value` as its origin | An edge address        |
+| `false`   | Does not know the hostname exists                          | `value`                |
+
+<Callout type="warning">
+  Both halves must change together. BlitzeCDN owns the edge half only; DNS
+  publication is a separate system. An unproxied hostname whose DNS still points
+  at an edge is answered by the catch-all server block with `444` — a closed
+  connection, not your origin. Flip the record, deploy, and confirm DNS.
+</Callout>
+
+## Add a domain and its subdomains
+
+```bash
+blitzecdn domain add example.com
+
+blitzecdn record add example.com api --value 198.51.100.20 --proxied
+blitzecdn record add example.com img --value 198.51.100.21 --proxied
+blitzecdn record add example.com db  --value 198.51.100.22
+```
+
+Each record points at its own address, so `api` and `img` are proxied through
+the edge to different origins while `db` bypasses the CDN entirely.
+
+These records are what the edges serve, not what resolvers answer with. For
+publishing the public DNS a proxied hostname needs, see
+[DNS hand-off](/docs/operate/dns).
+
+Use `@` for the zone apex and `*` for a wildcard:
+
+```bash
+blitzecdn record add example.com @ --value 198.51.100.5 --proxied
+blitzecdn record add example.com '*' --value 198.51.100.6 --proxied
+```
+
+## Turn the CDN on or off
+
+```bash
+blitzecdn record proxy example.com api --off   # bypass the edge
+blitzecdn record proxy example.com api --on    # route through the edge
+blitzecdn deploy
+```
+
+## Verify
+
+`site list` shows what the edge will serve. Only proxied records appear:
+
+```bash
+blitzecdn record proxy example.com api --off
+blitzecdn validate
+blitzecdn site list --json
+```
+
+`api.example.com` is absent from the output. Turn it back on, run `validate`
+again, and it returns.
+
+## Fields
+
+| Field     | Type          | Required | Default | Description                    |
+| --------- | ------------- | -------- | ------- | ------------------------------ |
+| `domain`  | `str`         | `true`   | —       | Zone the record belongs to.    |
+| `name`    | `str`         | `true`   | —       | Subdomain label, `@`, or `*`.  |
+| `type`    | `A` \| `AAAA` | `false`  | `A`     | Record type.                   |
+| `value`   | `str`         | `true`   | —       | IP address; must match `type`. |
+| `ttl`     | `int`         | `false`  | `300`   | Seconds, 1–604800.             |
+| `proxied` | `bool`        | `false`  | `false` | Route through the CDN edge.    |
+
+The fields below apply only while `proxied` is `true`. They are kept, not
+cleared, when you turn the proxy off, so turning it back on does not lose a
+cache or TLS setting.
+
+| Field                   | Type                                                  | Default    | Description                                                                                                                                      |
+| ----------------------- | ----------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `origin_scheme`         | `http` \| `https`                                     | `https`    | Scheme used to reach the origin.                                                                                                                 |
+| `origin_port`           | `int`                                                 | —          | Origin port.                                                                                                                                     |
+| `origin_request_host`   | `str`                                                 | —          | `Host` header sent to the origin.                                                                                                                |
+| `origin_sni`            | `str`                                                 | —          | TLS SNI sent to the origin. Defaults to `origin_request_host`, then to `origin_host` — never to a `server_names` entry, which may be a wildcard. |
+| `enabled`               | `bool`                                                | `true`     | Render the virtual host but leave it unlinked when `false`.                                                                                      |
+| `cache_enabled`         | `bool`                                                | `true`     | Cache responses at the edge.                                                                                                                     |
+| `cache_valid_success`   | `str`                                                 | `10m`      | Cache lifetime for 200, 301, 302.                                                                                                                |
+| `cache_valid_not_found` | `str`                                                 | `1m`       | Cache lifetime for 404.                                                                                                                          |
+| `certificate_mode`      | `disabled` \| `existing` \| `uploaded` \| `requested` | `disabled` | See [certificates](/docs/operate/certificates).                                                                                                  |
+| `firewall`              | `object`                                              | `{}`       | Per-hostname request filtering. See below.                                                                                                       |
+
+## Firewall
+
+`firewall` filters requests to one hostname at the edge. The host packet filter
+cannot do this: it sees an address and a port, and every hostname on an edge
+shares both. Filtering per hostname happens in the virtual host, after the
+request is parsed.
+
+The posture is open. An empty `firewall` serves everyone, and each list below
+subtracts from that.
+
+| Field               | Type        | Default | Description                                               |
+| ------------------- | ----------- | ------- | --------------------------------------------------------- |
+| `allow_sources`     | `list[str]` | `[]`    | CIDR networks exempted from `deny_sources`.               |
+| `deny_sources`      | `list[str]` | `[]`    | CIDR networks answered with `403`.                        |
+| `allowed_countries` | `list[str]` | `[]`    | ISO 3166-1 alpha-2 codes; every other country gets `403`. |
+| `denied_countries`  | `list[str]` | `[]`    | ISO 3166-1 alpha-2 codes answered with `403`.             |
+| `denied_methods`    | `list[str]` | `[]`    | HTTP methods answered with `405`.                         |
+| `denied_paths`      | `list[str]` | `[]`    | URI prefixes answered with `403`.                         |
+
+`allow_sources` is not a whitelist. Nginx takes the first matching access rule
+and the allows are written before the denies, so an allow entry only exempts an
+address from the denies under it. To close a hostname, deny everything and list
+the exceptions:
+
+```bash
+blitzecdn record firewall example.com www \
+  --deny-source 0.0.0.0/0 --deny-source ::/0 \
+  --allow-source 203.0.113.0/24
+```
+
+Each CLI option replaces its own list and keeps the lists you do not name. The
+equivalent `PATCH` on the [HTTP API](/docs/understand/reference/http-api) replaces the whole
+`firewall` object instead, so send every list you want to keep.
+
+A network must have its host bits clear: `203.0.113.5/24` is rejected, because
+it reads as one address and matches 256.
+
+Countries are ISO 3166-1 alpha-2 and are checked against the assigned list, not
+just the two-letter shape. `UK` is rejected with a pointer to `GB` — the code
+would otherwise validate, deploy, render, and match nobody, leaving a rule that
+looks enforced and blocks nothing.
+
+### Enabling country rules
+
+Country rules need the GeoIP2 module and a MaxMind country database on the
+edge. Until both are in place a deploy **fails** rather than serving traffic
+the rules were meant to block.
+
+GeoLite2 is free, but downloads are authenticated. Create a MaxMind account,
+generate a license key, then add both to the control plane's `.env` — `init`
+and `setup` scaffold the names, commented out:
+
+```bash
+BLITZE_MAXMIND_ACCOUNT_ID=123456
+BLITZE_MAXMIND_LICENSE_KEY=your-key
+```
+
+Turn it on with `blitzecdn config set blitzecdn_nginx_geoip_enabled true` —
+not by editing `defaults.yml`, which is tracked and would block the next
+update — and deploy. The shipped
+defaults already read both credentials from the environment. The role installs
+`geoipupdate(8)`, fetches the database, and schedules twice-weekly refreshes.
+See [`blitzecdn_nginx_geoip_enabled`](/docs/understand/reference/ansible) for the full
+variable set.
+
+<Callout type="error">
+  The license key authenticates to your MaxMind account, not to one database.
+  Keep it in the environment or a secret manager; do not commit it. The role
+  writes it to a `0600` root-owned file and never renders it into an nginx
+  configuration.
+</Callout>
+
+Verify on the edge after deploying:
+
+```bash
+systemctl list-timers blitzecdn-geoipupdate.timer
+ls -l /usr/share/GeoIP/GeoLite2-Country.mmdb
+```
+
+GeoLite2 is IP-to-country inference, not identity. It is wrong for some
+addresses, and a VPN or proxy defeats it entirely. Treat a country rule as
+coarse traffic shaping, not as an access control you can rely on.
+
+Country and method rules are evaluated by an earlier nginx phase than source
+rules, so they always win. `allow_sources` cannot exempt an address from a
+country block.
+
+<Callout type="info">
+  These rules never apply to `/.well-known/acme-challenge/`. A hostname that
+  filtered out its certificate authority would keep serving until the
+  certificate expired, weeks later, with nothing linking the outage to the rule
+  that caused it.
+</Callout>
+
+## Derived site names
+
+Each proxied record derives an internal site name from its hostname by replacing
+dots with hyphens (`api.example.com` becomes `api-example-com`). You do not set
+it, but it is worth knowing two things:
+
+- Certificates are stored under it, so it is deterministic and stable.
+- Two hostnames can collide — `a.b.example.com` and `a-b.example.com` both give
+  `a-b-example-com`. The second one is refused with a conflict; rename it.
+
+## Reserved domains cannot get public certificates
+
+`certificate_mode: requested` uses ACME, and no public CA will issue for a name
+reserved by RFC 6761 or RFC 2606 — `.test`, `.invalid`, `.localhost`,
+`.example`. `blitzecdn validate` reports this before certbot is invoked. Upload
+a certificate instead, or leave TLS disabled.

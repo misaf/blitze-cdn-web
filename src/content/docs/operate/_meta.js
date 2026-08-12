@@ -1,0 +1,15 @@
+export default {
+  index: 'Operator runbook',
+  lifecycle: 'Install, upgrade, and remove',
+  'first-deployment': 'First deployment',
+  'go-live': 'Take a site live',
+  deploy: 'Deploy and roll back',
+  edges: 'Manage edge servers',
+  dns: 'Publish DNS',
+  certificates: 'Manage certificates',
+  'backup-restore': 'Back up and restore',
+  production: 'Production maintenance',
+  'api-key-rotation': 'Rotate API keys',
+  troubleshooting: 'Troubleshoot and repair',
+  'incident-response': 'Respond to incidents',
+}

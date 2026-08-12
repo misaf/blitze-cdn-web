@@ -1,0 +1,158 @@
+---
+title: Configuration
+description: Environment variables, configuration files, defaults, validation, and runtime settings.
+---
+
+# Configuration
+
+The CLI automatically reads `.env` from the project directory. Values already
+present in the process environment take precedence, so production services can
+continue to use systemd or a secret manager without changing local workflows.
+
+Describes `Settings.from_environment` in `src/blitzecdn/config.py`.
+
+Precedence: environment variable, then the matching key in
+`blitzecdn.toml`, then the default. Relative paths resolve against
+`BLITZE_PROJECT_DIR` (default: the working directory).
+
+## Operational rules
+
+- Environment values override TOML. Record which layer owns each production
+  value so a service-manager override does not surprise an operator.
+- Relative paths are resolved once from `BLITZE_PROJECT_DIR`; use explicit
+  absolute paths for service deployments.
+- Restart the API after changing startup configuration or keys.
+- Treat path changes as migrations: stop mutations, copy state with ownership
+  intact, update configuration, then run `doctor` and `validate`.
+- Rotate API secrets with the [overlap procedure](/docs/operate/api-key-rotation).
+- `BLITZE_ORIGIN_CHECK_TIMEOUT_SECONDS` is the per-origin budget for
+  [`blitzecdn origin check`](/docs/understand/reference/cli#blitzecdn-origin-check). Keep it
+  short: an origin that needs longer than this to accept a TCP connection is one
+  the edges will struggle with too.
+- `BLITZE_ACME_CA_DOMAIN` is the CA identity a CAA record must name for
+  [`cert preflight`](/docs/understand/reference/cli#blitzecdn-cert-preflight) to consider
+  issuance permitted. Change it only when `BLITZE_CERTBOT` is pointed at another
+  ACME server — a CAA check against the wrong CA is worse than none, because it
+  passes while the real CA is refused.
+
+## Settings
+
+| Environment variable                            | TOML key                                             | Default                                              | Constraints                                                                                                                                 |
+| ----------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BLITZE_ACME_CA_DOMAIN`                         | `[blitzecdn].acme_ca_domain`                         | `letsencrypt.org`                                    | A CA identity, such as `letsencrypt.org`                                                                                                    |
+| `BLITZE_ACME_CHALLENGE_PLAYBOOK`                | `[blitzecdn].acme_challenge_playbook_path`           | `<project_dir>/ansible/playbooks/acme-challenge.yml` | —                                                                                                                                           |
+| `BLITZE_ACME_DEFAULT_EMAIL`                     | `[blitzecdn].acme_default_email`                     | —                                                    | —                                                                                                                                           |
+| `BLITZE_ALLOW_EMPTY_SITES`                      | `[blitzecdn].allow_empty_sites`                      | `false`                                              | Approves converging an empty desired state onto an edge that has managed sites                                                              |
+| `BLITZE_ANSIBLE_DIR`                            | `[blitzecdn].ansible_dir`                            | `<project_dir>/ansible`                              | —                                                                                                                                           |
+| `BLITZE_ANSIBLE_PLAYBOOK`                       | `[blitzecdn].ansible_playbook`                       | `ansible-playbook`                                   | —                                                                                                                                           |
+| `BLITZE_CACHE_PURGE_PLAYBOOK`                   | `[blitzecdn].cache_purge_playbook_path`              | `<project_dir>/ansible/playbooks/cache-purge.yml`    | —                                                                                                                                           |
+| `BLITZE_CERTBOT`                                | `[blitzecdn].certbot`                                | `certbot`                                            | —                                                                                                                                           |
+| `BLITZE_CERTIFICATE_DIR`                        | `[blitzecdn].certificate_dir`                        | `<state_dir>/certificates`                           | —                                                                                                                                           |
+| `BLITZE_CERTIFICATE_RECONCILE_INTERVAL_SECONDS` | `[blitzecdn].certificate_reconcile_interval_seconds` | `600`                                                | `0` disables; maximum `86400`                                                                                                               |
+| `BLITZE_CERTIFICATE_RENEWAL_BUDGET_SECONDS`     | `[blitzecdn].certificate_renewal_budget_seconds`     | `300`                                                | ≥ 30, ≤ 7200. Wall clock for one `POST /v1/certificates/renew` sweep; sites not reached are reported as skipped and retried by the next run |
+| `BLITZE_CERTIFICATE_RENEWAL_WORKERS`            | `[blitzecdn].certificate_renewal_workers`            | `2`                                                  | ≥ 1, ≤ 16. Renewal sweeps in flight at once, on a pool of their own so a slow CA cannot stall other endpoints                               |
+| `BLITZE_DATABASE_PATH`                          | `[blitzecdn].database_path`                          | `<state_dir>/control-plane.db`                       | —                                                                                                                                           |
+| `BLITZE_DECOMMISSION_PLAYBOOK`                  | `[blitzecdn].decommission_playbook_path`             | `<project_dir>/ansible/playbooks/decommission.yml`   | —                                                                                                                                           |
+| `BLITZE_DEPLOYMENT_LOCK`                        | `[blitzecdn].deployment_lock_path`                   | `<state_dir>/deployment.lock`                        | —                                                                                                                                           |
+| `BLITZE_DEPLOYMENT_OUTPUT_LIMIT_BYTES`          | `[blitzecdn].output_limit_bytes`                     | `1048576`                                            | ≥ 4096, ≤ 10485760                                                                                                                          |
+| `BLITZE_DEPLOYMENT_TIMEOUT_SECONDS`             | `[blitzecdn].deployment_timeout_seconds`             | `900`                                                | ≥ 30, ≤ 7200                                                                                                                                |
+| `BLITZE_GENERATED_VARS`                         | `[blitzecdn].generated_vars_path`                    | `<state_dir>/desired-state.yml`                      | —                                                                                                                                           |
+| `BLITZE_INVENTORY`                              | `[blitzecdn].inventory_path`                         | `<project_dir>/ansible/inventory/blitzecdn.yml`      | Configures the inventory plugin; the fleet itself is in the database                                                                        |
+| `BLITZE_MAXMIND_ACCOUNT_ID`                     | `[blitzecdn].maxmind_account_id`                     | `""`                                                 | MaxMind account ID for the edge GeoLite2 download                                                                                           |
+| `BLITZE_ORIGIN_CHECK_TIMEOUT_SECONDS`           | `[blitzecdn].origin_check_timeout_seconds`           | `5`                                                  | ≥ 1, ≤ 60                                                                                                                                   |
+| `BLITZE_PLAYBOOK`                               | `[blitzecdn].playbook_path`                          | `<project_dir>/ansible/playbooks/edge.yml`           | —                                                                                                                                           |
+| `BLITZE_PREFLIGHT_DNS_SERVERS`                  | `[blitzecdn].preflight_dns_servers`                  | host resolver                                        | Comma-separated IP addresses; hostnames are rejected                                                                                        |
+| `BLITZE_PREFLIGHT_DNS_TIMEOUT_SECONDS`          | `[blitzecdn].preflight_dns_timeout_seconds`          | `5`                                                  | ≥ 1, ≤ 60                                                                                                                                   |
+| `BLITZE_RUN_LOG_RETENTION`                      | `[blitzecdn].run_log_retention`                      | `500`                                                | ≥ 10, ≤ 100000; keeps newest per-run logs                                                                                                   |
+| `BLITZE_STATE_DIR`                              | `[blitzecdn].state_dir`                              | `<project_dir>/.state`                               | —                                                                                                                                           |
+| `BLITZE_STATS_PLAYBOOK`                         | `[blitzecdn].stats_playbook_path`                    | `<project_dir>/ansible/playbooks/stats.yml`          | —                                                                                                                                           |
+
+Certificate preflight predicts what the CA will see, and the CA resolves from
+the public internet. `BLITZE_PREFLIGHT_DNS_SERVERS` sends its lookups to those
+resolvers instead of the controller's own, which matters wherever the host
+resolves differently from the public view — a split-horizon zone, an internal
+forwarder, or a transparent proxy that claims every hostname. Left unset,
+lookups go through the host resolver as before, including `/etc/hosts`.
+Addresses only: a hostname here would have to be resolved by the resolver being
+bypassed. `blitzecdn doctor` reports which resolver is in use and whether it
+answers reserved names it cannot know.
+
+`BLITZE_ALLOW_EMPTY_SITES` is forwarded to the edge as
+[`blitzecdn_nginx_allow_empty_sites`](/docs/understand/reference/ansible#blitzecdn_nginx),
+where it decides whether a deploy may remove the last managed site. Leave it
+`false`. A desired state that has become empty is far more often a controller
+pointed at an edge whose sites were never imported than a fleet you meant to
+empty, and the edge stops that deploy before it changes the host.
+
+Set it to `true` only for the run that retires an edge's sites deliberately,
+then set it back. Because it is an ordinary setting, a value left in
+`blitzecdn.toml` silently approves every later deploy — which is the case the
+edge check exists to catch.
+
+## Secrets
+
+Secrets are deliberately not valid TOML keys — they are environment-only.
+
+| Environment variable         | Notes                                                                                                                                                                |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BLITZE_API_KEYS`            | Comma-separated `operator:secret`. Each secret needs ≥ 32 characters. Duplicate operators are rejected.                                                              |
+| `BLITZE_API_KEY`             | Single unnamed key, registered as operator `default`. Also ≥ 32 characters.                                                                                          |
+| `BLITZE_MAXMIND_LICENSE_KEY` | MaxMind license key, for fetching GeoLite2 onto the edges. Authenticates to the account, so it is not a valid TOML key: a `blitzecdn.toml` carrying one is rejected. |
+
+Both MaxMind values are forwarded into the Ansible subprocess environment and
+read by `group_vars` with `lookup('env', ...)`, never passed as `--extra-vars`
+— argv is readable by every account on the controller. They are set on every
+run even when empty, so a stale export in the deploying shell cannot change
+what converges.
+
+Set them in `.env`, which `init` and `setup` scaffold with both names commented
+out. See [country rules](/docs/understand/reference/records) for the rest of the setup.
+
+## Edge settings
+
+Role variables for the edge fleet live in the control-plane database and are
+managed with [`blitzecdn config`](/docs/understand/reference/cli#blitzecdn-config). The
+inventory plugin publishes them to every edge at the start of every run:
+
+```bash
+blitzecdn config list
+blitzecdn config set blitzecdn_nginx_worker_processes 4
+blitzecdn config unset blitzecdn_nginx_worker_processes
+```
+
+The shipped defaults are still a tracked file,
+`ansible/inventory/group_vars/blitzecdn_edges/defaults.yml`. A setting in the
+database outranks it; a key you never set falls through to the default.
+
+<Callout type="warning">
+  Do not edit `defaults.yml`. It is tracked, and `./install.sh update` refuses
+  to run when a tracked file has local changes, so an edit there blocks
+  upgrading:
+
+```console
+error: tracked files in /opt/blitzecdn have local changes
+```
+
+</Callout>
+
+<Callout type="info">
+  Keeping overrides in the database rather than in a file beside the defaults is
+  what puts the fleet's policy under the same recording, auditing and backup as
+  everything else, instead of in a file nothing validates.
+</Callout>
+
+Control-plane settings and secrets belong in `.env` instead — the tables above.
+The split is the one in the architecture: `.env` configures the control plane,
+`blitzecdn config` configures what Ansible does to the edges. Secrets do not go
+in either the database or `defaults.yml`; `config set` refuses a name that looks
+like a credential.
+
+## Other variables read at startup
+
+| Environment variable |
+| -------------------- |
+| `BLITZE_CONFIG`      |
+| `BLITZE_PROJECT_DIR` |
+
+Variables not listed here are not supported configuration. New keys must update
+this page when the related release is documented.

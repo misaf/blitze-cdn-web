@@ -450,7 +450,7 @@ main :where(.nextra-code) {
  * note is marked against a ruled page.
  *
  * The hue goes with the border. The theme ships amber, and on a page like
- * `/docs/guides/quickstart` that fill was the largest field of colour on the
+ * `/docs/operate/first-deployment` that fill was the largest field of colour on the
  * site — a fourth hue, in a palette whose whole discipline is that it has
  * exactly three (see the note at the top of this file). Since the box is
  * already reduced to one edge, the edge can carry the oxblood that marks
@@ -608,7 +608,7 @@ body:has([data-docs-section='reference']) main td code {
  * ---------------------------------------------------------------------------
  * The reference table of contents is a command index.
  *
- * `/docs/reference/cli` has thirty entries, and because every one of them is
+ * `/docs/understand/reference/cli` has thirty entries, and because every one of them is
  * set in mono and starts with the same word, depth was carried by indentation
  * alone — a flat grey column in which `blitzecdn record` and `blitzecdn record
  * proxy` look like peers. The MDX already nests them correctly (commands are
@@ -737,7 +737,7 @@ main pre [style*='--shiki-light:#D73A49'] {
  *
  * `@theguild/remark-mermaid` initialises mermaid with its stock `default` and
  * `dark` themes and exposes no `themeVariables` hook through Nextra, so the
- * diagrams on `/docs/architecture` render in mermaid's own blues and lilacs —
+ * diagrams on `/docs/understand/architecture` render in mermaid's own blues and lilacs —
  * the one place on the site with a palette nobody chose.
  *
  * Mermaid injects a `<style>` block into each diagram whose rules are scoped

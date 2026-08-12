@@ -389,7 +389,7 @@ export default function ContactPage() {
               links={[
                 { href: '/faq', label: 'Read the FAQ first' },
                 {
-                  href: '/docs/guides/troubleshooting',
+                  href: '/docs/operate/troubleshooting',
                   label: 'Operations and troubleshooting',
                 },
                 { href: '/about', label: 'Who you are writing to' },

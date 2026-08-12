@@ -1,0 +1,143 @@
+---
+title: Publish DNS
+description: Publish the DNS records a proxied hostname needs, using the addresses BlitzeCDN deliberately leaves to you.
+---
+
+# DNS hand-off
+
+Use this guide to take a hostname live on the CDN. BlitzeCDN decides which
+hostnames the [edges](/docs/understand/glossary#edge) serve; it does not answer DNS
+queries, so the records that send visitors to an edge are published by you or
+your customer.
+
+## Before you begin
+
+- Add the zone and its records first. See
+  [Domains and DNS records](/docs/understand/reference/records).
+- Have the public addresses of every edge that should answer for the hostname.
+  `blitzecdn edge list` reports what the inventory holds.
+- Know where the zone is hosted and who can change it. On a customer domain that
+  is often not you, which makes this the step most likely to stall.
+
+<Callout type="info">
+  There is no DNS management in this release. A record in BlitzeCDN is intent:
+  it tells the edges which hostname to serve and where to fetch from. Nothing
+  reaches visitors until public DNS answers with an edge address.
+</Callout>
+
+## Export what has to be published
+
+```bash
+blitzecdn dns export --json
+```
+
+A [proxied](/docs/understand/reference/records#what-proxied-controls) record exports no
+`value`:
+
+```json
+{
+  "domain": "example.com",
+  "fqdn": "www.example.com",
+  "name": "www",
+  "origin": "198.51.100.10",
+  "proxied": true,
+  "ttl": 300,
+  "type": "A"
+}
+```
+
+That absence is deliberate. The hostname must resolve to an edge, and which edge
+addresses exist is a fact about your fleet rather than about the record, so the
+export names the `origin` instead and leaves the published address to you. An
+unproxied record keeps its `value` and is published exactly as it reads — it
+bypasses the proxy entirely.
+
+## Publish the records
+
+For each proxied hostname, create an `A` record — or `AAAA` for IPv6 — pointing
+at your edge addresses. Repeat the record for every edge that should answer.
+
+The zone apex is the same shape as any other name: BlitzeCDN stores it as `@` and
+exports its `fqdn` as the bare domain. Publish it as an `A` record at the apex.
+Record types are `A` and `AAAA` only, so a provider feature that flattens a
+`CNAME` at the apex is outside what the export describes.
+
+Keep the origin reachable under a name of its own. Once the public hostname
+points at an edge, that name no longer reaches the origin server, and you still
+need a way in for deploys and debugging:
+
+```bash
+blitzecdn record add example.com origin --value 198.51.100.10
+```
+
+Left unproxied, that record publishes its address as-is and the edges never see
+it.
+
+## Lower the TTL before moving a live hostname
+
+Resolvers that cached the previous address keep answering with it for up to the
+record's TTL. Certificate issuance follows public DNS, so a slow rollover can
+look like an unexplained issuance failure.
+
+Lower the TTL on the existing record well before the cutover — at least the old
+TTL's worth of time ahead, so the long-cached copies expire first — then move the
+address and raise it again once traffic has settled.
+[`cert preflight`](/docs/understand/reference/cli#blitzecdn-cert-preflight) reports a TTL
+above one hour as an advisory for this reason.
+
+## Confirm CAA permits your CA
+
+If the zone has a `CAA` record, it must name the CA BlitzeCDN issues through, or
+the order is refused before validation begins. A zone with no `CAA` record at all
+constrains nobody and needs no change. `cert preflight` reads `CAA` on the name
+and each ancestor and reports what it found.
+
+## Verify
+
+Resolve the hostname and compare the answer with your edge addresses:
+
+```bash
+dig +short www.example.com A
+```
+
+Then let the control plane check the same thing against the inventory, along with
+`CAA` and whether the vhost is deployed:
+
+```bash
+blitzecdn cert preflight www-example-com
+```
+
+It exits `3` and names what to fix if the hostname resolves somewhere that is not
+an edge. A clean run is the signal that the hand-off is complete and a
+certificate can be requested — continue with
+[Certificates](/docs/operate/certificates).
+
+## Roll back
+
+To take a hostname off the CDN, reverse the two halves in this order:
+
+1. Point public DNS back at the origin address and wait out the TTL. Traffic
+   leaves the edges while they are still configured to serve it, so nothing is
+   refused mid-change.
+2. Turn the proxy off, then deploy:
+
+   ```bash
+   blitzecdn record proxy example.com www --off
+   blitzecdn deploy
+   ```
+
+Doing it in the other order leaves DNS pointing at an edge that no longer serves
+the hostname, and the catch-all answers those requests with a `444`.
+
+## Troubleshooting
+
+- Resolves to the wrong address, or nowhere: the record has not propagated, or it
+  was published in a zone that is not authoritative. Check the TTL of the answer
+  you get back.
+- Resolves to an edge but requests fail: the hostname is not deployed. See
+  [Deploying](/docs/operate/deploy).
+- Requests get a `444`: the edge has no vhost for that hostname. Confirm the
+  record is proxied and that the last deployment succeeded.
+- Issuance fails after DNS looks right: see
+  [Certificates](/docs/operate/certificates) and
+  [Troubleshooting](/docs/operate/troubleshooting).
