@@ -1,5 +1,6 @@
 ---
 title: HTTP API
+description: Authentication, endpoints, request schemas, responses, and errors for the control-plane HTTP API.
 ---
 
 # HTTP API
@@ -75,6 +76,26 @@ Audit Events
 | --- | --- | --- |
 | `200` | Successful Response | `AuditEvent[]` |
 | `422` | Validation Error | `HTTPValidationError` |
+
+## `GET /v1/workflows`
+
+Lists durable deployment, rollback, and certificate workflows. A workflow in
+`needs_review` was interrupted while an external system may already have acted;
+inspect its completed steps before retrying.
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `limit` | `query` | `false` | `integer` | Maximum workflows to return. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
+
+## `GET /v1/workflows/{workflow_id}`
+
+Returns one durable workflow and its idempotent checkpoints.
+
+| Name | In | Required | Type | Description |
+| --- | --- | --- | --- | --- |
+| `workflow_id` | `path` | `true` | `string` | Workflow identifier. |
+| `x-api-key` | `header` | `true` | `string` | Required operator credential. |
 
 ## `GET /v1/deployments`
 

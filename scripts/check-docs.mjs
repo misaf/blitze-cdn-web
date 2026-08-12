@@ -27,6 +27,41 @@ function walk(directory) {
 
 for (const file of walk(root).filter((path) => extname(path) === '.mdx')) {
   const content = readFileSync(file, 'utf8')
+  const frontmatter = content.match(/^---\n([\s\S]*?)\n---(?:\n|$)/)
+  if (!frontmatter) {
+    failures.push(`${relative(root, file)} has no frontmatter`)
+  } else {
+    const metadata = Object.fromEntries(
+      frontmatter[1]
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => {
+          const separator = line.indexOf(':')
+          return separator < 1
+            ? [line, '']
+            : [
+                line.slice(0, separator).trim(),
+                line.slice(separator + 1).trim(),
+              ]
+        }),
+    )
+    for (const required of ['title', 'description']) {
+      if (!metadata[required]) {
+        failures.push(`${relative(root, file)} is missing ${required} metadata`)
+      }
+    }
+    const isBlogPost =
+      relative(root, file).startsWith(`blog/`) &&
+      relative(root, file) !== 'blog/index.mdx'
+    if (isBlogPost) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(metadata.date ?? '')) {
+        failures.push(`${relative(root, file)} has an invalid or missing date`)
+      }
+      if (!metadata.author) {
+        failures.push(`${relative(root, file)} is missing author metadata`)
+      }
+    }
+  }
   for (const pattern of banned) {
     if (pattern.test(content)) {
       failures.push(`${relative(root, file)} contains stale phrase ${pattern}`)
