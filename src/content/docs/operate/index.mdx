@@ -50,10 +50,10 @@ non-root SSH user with public-key login and passwordless sudo. Read
 
 ## 2. Install a fresh server
 
-Pin the release you inspected. Replace the CIDR, public address, and email:
+Clone the maintained `2.x` branch. Replace the CIDR, public address, and email:
 
 ```bash
-sudo git clone --branch v2.0.0 --depth 1 \
+sudo git clone --branch 2.x \
   https://github.com/misaf/blitze-cdn-cp.git /opt/blitzecdn
 sudo /opt/blitzecdn/install.sh standalone \
   --admin-cidr 203.0.113.8/32 \
@@ -279,8 +279,8 @@ journalctl -u blitzecdn-api.service --since '30 minutes ago' --no-pager
   `--fresh` is irreversible without an external backup. It deletes the database,
   desired state, deployment history, audit records, API keys, controller and
   local-edge certificates, caches, logs, accounts, units, and update backups. It
-  then reinstalls the same release with empty state. It is not an upgrade or
-  repair command.
+  then reinstalls the same release branch, tag, or development commit with empty
+  state. It is not an upgrade or repair command.
 </Callout>
 
 ```bash
@@ -291,8 +291,9 @@ sudo /opt/blitzecdn/install.sh --fresh \
 ```
 
 The checkout must be a Git clone of the upstream repository. The command reads
-the current release before deletion, performs the complete purge, clones that
-same tag or commit, and runs the standalone installer. It asks for confirmation;
+the current source before deletion, performs the complete purge, preserves the
+`2.x` branch or the exact tag/development commit, and runs the standalone
+installer. It asks for confirmation;
 `--yes` suppresses it. Restore desired state only through the isolated recovery
 procedure, then validate and plan before reaching production edges.
 

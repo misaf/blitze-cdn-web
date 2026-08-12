@@ -49,10 +49,10 @@ the machine it runs on and is what you want when the edges live elsewhere.
 
 ## Install a standalone server
 
-Clone the release you intend to run, then provision from it:
+Clone the maintained `2.x` branch, then provision from it:
 
 ```bash
-sudo git clone --branch v2.0.0 --depth 1 https://github.com/misaf/blitze-cdn-cp.git /opt/blitzecdn
+sudo git clone --branch 2.x https://github.com/misaf/blitze-cdn-cp.git /opt/blitzecdn
 sudo /opt/blitzecdn/install.sh standalone \
   --admin-cidr 203.0.113.8/32 --email ops@example.com
 ```
@@ -81,7 +81,7 @@ until you ask for it.
 ## Install a controller-only checkout
 
 ```bash
-git clone --depth 1 https://github.com/misaf/blitze-cdn-cp.git
+git clone --branch 2.x https://github.com/misaf/blitze-cdn-cp.git
 cd blitze-cdn-cp
 ./install.sh
 ```
@@ -199,10 +199,13 @@ sudo /opt/blitzecdn/install.sh --fresh \
   --admin-cidr 203.0.113.8/32 --email ops@example.com
 ```
 
-Performs the complete purge above, then re-clones the release that was running
-and installs it exactly as a new server. The checkout must be the upstream Git
-repository. The standalone options pass through unchanged. The rebuilt system
-has empty state; update backups are not restored because the purge deletes them.
+Performs the complete purge above, then restores the source line that was
+running and installs it exactly as a new server. An exact release tag remains
+on that tag, a `2.x` installation remains attached to that branch, and any
+other development checkout remains pinned to its exact commit. The checkout
+must be the upstream Git repository. The standalone options pass through
+unchanged. The rebuilt system has empty state; update backups are not restored
+because the purge deletes them.
 
 ## Verify
 
