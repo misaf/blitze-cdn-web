@@ -463,6 +463,98 @@ automated caller cannot read a typo as "nothing was due". An empty list is a
 | `404` | No managed certificate for a requested site | `object` |
 | `422` | Validation Error | `HTTPValidationError` |
 
+## `GET /v1/edges`
+
+List Edges. The fleet, and therefore the Ansible inventory: the `blitzecdn`
+inventory plugin reads these same rows at the start of every run.
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `Edge[]` |
+
+## `POST /v1/edges`
+
+Add Edge. Registers a host; converges nothing and contacts nothing. The edge
+joins the fleet on the next `POST /v1/deployments`.
+
+`201` rather than `202`: this creates a record and returns having finished,
+unlike the deployment routes.
+
+**Request body** (required): `application/json` → `Edge`
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `201` | Successful Response | `Edge` |
+| `409` | Edge already exists | — |
+| `422` | Validation Error | `HTTPValidationError` |
+
+## `GET /v1/edges/{name}`
+
+Get Edge
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `Edge` |
+| `404` | Edge does not exist | — |
+
+## `PATCH /v1/edges/{name}`
+
+Update Edge. Each field replaces its own value; unset fields are untouched.
+`public_addresses` and `ssh_sources` replace their whole list, so sending `[]`
+clears them — merging would make "remove the last entry" inexpressible.
+
+The name is not patchable. Certificates, audit history and deployment host
+limits all refer to it, so a rename would orphan them; `EdgePatch` has no such
+field and forbids extras, which makes it a `422` rather than a silently ignored
+key. Remove the edge and add it again under the new name.
+
+**Request body** (required): `application/json` → `EdgePatch`
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `Edge` |
+| `404` | Edge does not exist | — |
+| `422` | Validation Error | `HTTPValidationError` |
+
+## `DELETE /v1/edges/{name}`
+
+Remove Edge. Tears the host down, then deregisters it — in that order. The
+inventory is derived from these rows, so deregistering first would leave a host
+no playbook can address again, still serving its last converged virtual hosts
+and still holding their private keys.
+
+Answers inline rather than queueing, like the purge and stats routes: one
+playbook against one host. It is still bounded by `deployment_timeout_seconds`,
+so set a client timeout to match.
+
+Returns `200` with a body rather than `204`. A forced removal that tore nothing
+down is a success by the caller's own instruction, and `hosts` is the only place
+that distinction survives.
+
+**Query parameters**
+
+| Name | Type | Default | Description |
+| --- | --- | --- | --- |
+| `decommission` | `boolean` | `true` | Strip BlitzeCDN configuration and TLS private keys from the host before deregistering it. |
+| `force` | `boolean` | `false` | Deregister even if the teardown failed. For a host that no longer exists; on one that is merely unreachable this leaves its configuration and private keys in place. |
+
+**Responses**
+
+| Status | Description | Body |
+| --- | --- | --- |
+| `200` | Successful Response | `EdgeRemoval` |
+| `404` | Edge does not exist | — |
+| `502` | Teardown failed and the edge was kept; retry, or pass `force=true` | — |
+| `422` | Validation Error | `HTTPValidationError` |
+
 ## `GET /v1/origins/check`
 
 Connect to every enabled site's origin the way the edge will: resolve, connect,
@@ -707,6 +799,64 @@ unreachable, not as drift.
 | `host_limit` | `string \| null` | `false` | — |
 
 Same constraints as `DeployRequest.host_limit`.
+
+### `Edge`
+
+One edge server: how the controller reaches it, and what the world reaches. The
+Ansible inventory is derived from these, so a field here is a field the
+`blitzecdn` inventory plugin publishes.
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `host` | `string` | `true` | — |
+| `name` | `string` | `true` | — |
+| `port` | `integer` | `false` | `22` |
+| `private_key_file` | `string \| null` | `false` | — |
+| `public_addresses` | `string[]` | `false` | `[]` |
+| `ssh_sources` | `string[]` | `false` | `[]` |
+| `user` | `string` | `false` | `deploy` |
+
+`host` becomes `ansible_host`, `user` becomes `ansible_user`, `port` becomes
+both `ansible_port` and `blitzecdn_firewall_ssh_port` — published from one field
+so the firewall cannot close the port Ansible connects on.
+
+`public_addresses` is what the world reaches, and is empty for the ordinary
+single-homed case, where it falls back to `host`. Certificate preflight checks a
+customer's hostname against these, so on a NAT'd edge they must be set.
+
+`ssh_sources` are management CIDRs. Every edge is published the union of every
+edge's sources, as a host variable — narrowing them per host would let an edge
+registered before a second office existed refuse the operator sitting in it.
+
+### `EdgePatch`
+
+A partial update to an edge. Every field optional; unset means untouched. No
+`name` field, deliberately — see `PATCH /v1/edges/{name}`.
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `host` | `string \| null` | `false` | — |
+| `port` | `integer \| null` | `false` | — |
+| `private_key_file` | `string \| null` | `false` | — |
+| `public_addresses` | `string[] \| null` | `false` | — |
+| `ssh_sources` | `string[] \| null` | `false` | — |
+| `user` | `string \| null` | `false` | — |
+
+### `EdgeRemoval`
+
+What `DELETE /v1/edges/{name}` did. The teardown and the deregistration fail
+independently, so the outcome of the first is reported rather than implied.
+
+| Field | Type | Required | Default |
+| --- | --- | --- | --- |
+| `decommissioned` | `boolean` | `true` | — |
+| `hosts` | `HostRun[]` | `false` | `[]` |
+| `name` | `string` | `true` | — |
+
+`hosts` carries the same per-host shape `PurgeResult.hosts` does: the counters,
+the tasks that changed, and the tasks that failed. It is empty when no edge
+reported at all — which is what a forced removal of a host that no longer exists
+looks like.
 
 ### `HostDrift`
 
