@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           repository: misaf/blitze-cdn-cp
-          ref: 1.x
+          ref: 2.x
           path: control-plane
           persist-credentials: false
       - uses: astral-sh/setup-uv@v7

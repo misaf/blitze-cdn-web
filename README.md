@@ -163,9 +163,10 @@ and they cover the two ways the pages and the software can part company:
 | This repository's `build` job                               | A documentation change that misstates the API      |
 | The control plane's `documentation` job (`just docs-check`) | A code change that leaves the documentation behind |
 
-Each pins the other to the `1.x` release branch: these pages describe the
-released control plane, so a merge ahead of a release should not fail a build
-for describing software nobody is running yet.
+Each pipeline pins the other to its **release** branch — this repository checks
+out the control plane at `2.x`, and the control plane checks out this site at
+`1.x` — so the pages describe the released control plane and a merge ahead of a
+release does not fail a build for describing software nobody is running yet.
 
 ## Search and deployment
 
