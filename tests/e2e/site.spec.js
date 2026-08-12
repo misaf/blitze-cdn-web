@@ -157,6 +157,26 @@ test('primary documentation navigation works', async ({ page }) => {
   await expect(page.locator('h1').first()).toContainText('BlitzeCDN')
 })
 
+test('documentation tables use the compact ledger treatment', async ({
+  page,
+}) => {
+  await page.goto('/docs')
+
+  const table = page.locator('main table').first()
+  const heading = table.locator('th').first()
+  await expect(table).toBeVisible()
+  await expect(table).toHaveCSS('border-top-style', 'solid')
+  await expect(table).toHaveCSS('border-top-width', '2px')
+  await expect(heading).toHaveCSS('text-transform', 'uppercase')
+  await expect(heading).toHaveCSS('font-family', /IBM Plex Mono/)
+  await expect(heading).toHaveCSS('padding-top', '7.2px')
+  await expect(table.locator('td').first()).toHaveCSS('font-size', '14px')
+  await expect(table.locator('td').first()).toHaveCSS(
+    'border-left-width',
+    '2px',
+  )
+})
+
 test('RSS feed is available', async ({ request }) => {
   const response = await request.get('/feed.xml')
   expect(response.ok()).toBeTruthy()

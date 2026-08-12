@@ -519,6 +519,73 @@ main pre.not-prose {
 }
 
 /*
+ * Documentation tables are ledger entries, not neutral theme tables.
+ *
+ * The route marker keeps this treatment on `/docs` only: blog and FAQ content
+ * share the same MDX renderer, while the hand-built pages already give their
+ * tables an intentional presentation of their own. The table remains the
+ * horizontal scroll container supplied by Nextra and made keyboard reachable
+ * in `mdx-components.js`; these rules change only its visual vocabulary.
+ *
+ * A strong oxblood head rule opens the entry, column headings use the site's
+ * mono small-cap treatment, and every row sits on the same quiet ruling used
+ * throughout the rest of the interface. There are no alternating fills or
+ * rounded outer box: both would make the table read as a generic data grid
+ * rather than part of the same ledger page as the surrounding prose.
+ */
+body:has([data-docs-route]) main table {
+  border-block-start: 2px solid var(--color-rule);
+  border-block-end: 1px solid var(--line);
+  background-color: var(--panel);
+}
+
+body:has([data-docs-route]) main :is(th, td) {
+  border-color: var(--line);
+  border-block-end-width: 1px;
+  /* Nextra applies its cell padding with generated utilities, so this is the
+     one compact-table declaration that must explicitly win that cascade. */
+  padding: 0.45rem 0.7rem !important;
+  vertical-align: top;
+}
+
+body:has([data-docs-route]) main td {
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+body:has([data-docs-route]) main th {
+  background-color: var(--surface);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+/* The first column is the lookup key in every docs table: an outcome, command,
+   variable, record, or field name. A restrained rule and slightly stronger ink
+   make that key easy to reacquire without introducing another fill colour. */
+body:has([data-docs-route]) main tbody td:first-child {
+  border-inline-start: 2px solid var(--line) !important;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+body:has([data-docs-route]) main tbody tr:hover td:first-child {
+  border-inline-start-color: var(--color-rule);
+}
+
+body:has([data-docs-route]) main tbody tr:last-child td {
+  border-block-end-width: 0;
+}
+
+body:has([data-docs-route]) main tbody tr:hover td {
+  background-color: var(--surface);
+}
+
+/*
  * ---------------------------------------------------------------------------
  * Reference pages get the width their content actually needs.
  *
@@ -587,13 +654,13 @@ body:has([data-docs-section='reference']) main table {
 }
 
 body:has([data-docs-section='reference']) main :is(th, td) {
-  min-width: 8.5rem;
+  min-width: 7rem;
 }
 
 /* The first column carries the command itself and needs more room than the
    prose columns beside it. */
 body:has([data-docs-section='reference']) main :is(th, td):first-child {
-  min-width: 14rem;
+  min-width: 12rem;
 }
 
 /* A command is one token: breaking `record add/proxy/remove` across lines makes
