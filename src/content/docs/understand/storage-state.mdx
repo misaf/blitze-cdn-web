@@ -18,6 +18,7 @@ backup and deletion requirements.
 | `/opt/blitzecdn/.state/certificates/`    | Uploaded and ACME-managed certificates and private keys                         | Yes                                           |
 | `/opt/blitzecdn/.state/letsencrypt/`     | Certbot account, configuration, work, and logs                                  | Yes for managed ACME continuity               |
 | `/opt/blitzecdn/.state/logs/`            | Complete per-run Ansible logs                                                   | According to evidence policy                  |
+| `/opt/blitzecdn/.state/ansible-runner/`  | Transient Ansible Runner artifacts; each run directory is removed after capture | No                                            |
 | `/opt/blitzecdn/.state/collections/`     | Installed Ansible dependencies                                                  | No; reproducible from the release             |
 | `/opt/blitzecdn/.state/runs/`            | Per-invocation variables and callback results                                   | No; temporary                                 |
 | `/opt/blitzecdn/.state/deployment.lock`  | Cross-process deployment lock                                                   | No; never delete merely because a run is slow |

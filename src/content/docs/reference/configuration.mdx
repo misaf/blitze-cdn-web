@@ -104,10 +104,11 @@ Secrets are deliberately not valid TOML keys — they are environment-only.
 | `BLITZE_API_KEY`             | Single unnamed key, registered as operator `default`. Also ≥ 32 characters.                                                                                          |
 | `BLITZE_MAXMIND_LICENSE_KEY` | MaxMind license key, for fetching GeoLite2 onto the edges. Authenticates to the account, so it is not a valid TOML key: a `blitzecdn.toml` carrying one is rejected. |
 
-Both MaxMind values are forwarded into the Ansible subprocess environment and
-read by `group_vars` with `lookup('env', ...)`, never passed as `--extra-vars`
-— argv is readable by every account on the controller. They are set on every
-run even when empty, so a stale export in the deploying shell cannot change
+Both MaxMind values are forwarded into the Ansible Runner execution environment
+and read by `group_vars` with `lookup('env', ...)`, never passed as
+`--extra-vars` — argv is readable by every account on the controller. Runner's
+environment-file persistence is disabled. The values are set on every run even
+when empty, so a stale export in the deploying shell cannot change
 what converges.
 
 Set them in `.env`, which `init` and `setup` scaffold with both names commented

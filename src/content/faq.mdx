@@ -34,17 +34,21 @@ incomplete rather than silently queued.
 
 ### Why is there only one controller node?
 
-Multi-controller operation needs a real distributed job queue, not a lock file.
-The current deployment lock is an `fcntl` lock on an open file — correct for one
-controller, meaningless across several. Rather than ship something that looks
-like HA and is not, this release supports one controller and says so.
+API deployments are handed to Dramatiq through Redis, but the database,
+deployment lock, generated state, and certificate store remain local to one
+controller. The `fcntl` lock is correct on that node and meaningless across
+several. Active/active operation also needs distributed state, locking, and
+secret material; a durable queue alone does not make the controller highly
+available.
 
-### Why not use `ansible-runner`?
+### What does `ansible-runner` do?
 
-BlitzeCDN needs one local playbook process with explicit command, timeout,
-output and lock semantics. `ansible-runner`'s event and container features would
-add state without replacing the distributed job queue that multi-controller
-operation actually requires.
+BlitzeCDN uses Ansible Runner's Python interface in subprocess mode for runtime
+playbook execution. Runner owns the local process lifecycle, timeout, and
+artifacts; the `blitzecdn_result` callback remains the structured per-host result
+contract, and the roles still implement all hardening. The controller does not
+currently use Runner execution environments, and Runner does not make the
+single-controller architecture active/active.
 
 ## Desired state and validation
 
@@ -88,9 +92,9 @@ configuration does not reach a running server.
 
 ### What happens on a timeout?
 
-The controller signals the whole `ansible-playbook` process group — `SIGTERM`,
-then `SIGKILL` after five seconds — so per-host workers stop rather than
-continuing to converge edges after the run has been recorded as timed out.
+Ansible Runner enforces the configured timeout and shuts down the playbook
+execution it manages. The controller maps that outcome to `timed_out` and keeps
+the run log for diagnosis.
 
 Importantly, **a timeout is not proof that no remote changes occurred.** Rerun
 `plan` before retrying.

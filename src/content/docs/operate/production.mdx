@@ -18,8 +18,10 @@ first.
 
 ## One controller
 
-This release supports **one controller node**. There is no active/active job
-execution and no distributed job queue. Plan around that:
+This release supports **one controller node**. API deployments use a durable
+Dramatiq/Redis queue, but controller state, locking, generated files, and
+certificate material are local; there is no active/active controller. Plan
+around that:
 
 - The controller is a single point of failure for _changes_, not for serving —
   edges keep serving when it is down.
@@ -37,10 +39,11 @@ authenticated TLS reverse proxy in front of it before allowing remote clients.
 
 ## Sizing the controller
 
-The controller runs one local `ansible-playbook` process per deployment, with
-`BLITZE_DEPLOYMENT_TIMEOUT_SECONDS` (default 900 s). It retains complete per-run
-logs, while `BLITZE_DEPLOYMENT_OUTPUT_LIMIT_BYTES` (default 1 MiB) limits only
-the tail quoted into an error. It also runs Certbot.
+Ansible Runner launches one local `ansible-playbook` execution per deployment,
+with `BLITZE_DEPLOYMENT_TIMEOUT_SECONDS` (default 900 s). The controller moves
+Runner's stdout artifact into its complete per-run log, while
+`BLITZE_DEPLOYMENT_OUTPUT_LIMIT_BYTES` (default 1 MiB) limits only the tail
+quoted into an error. It also runs Certbot.
 Sizing guidance:
 
 - Give it enough CPU and network for the largest planned concurrent Ansible run;

@@ -22,9 +22,9 @@ If you need to act before studying the design, return to the
     API --> CP
     CP --> DB[(SQLite desired state and history)]
     CP --> Certs[Certificate store / Certbot]
-    CP --> Ansible[Ansible subprocess]
-    Ansible --> EdgeA[Nginx edge A]
-    Ansible --> EdgeB[Nginx edge B]
+    CP --> Runner[Ansible Runner]
+    Runner --> EdgeA[Nginx edge A]
+    Runner --> EdgeB[Nginx edge B]
     EdgeA --> Origin[Origin]
     EdgeB --> Origin
     Client[Client traffic] --> EdgeA
@@ -43,12 +43,14 @@ changes desired state and converges hosts; it is not in the serving path.
   and audit repository.
 - `infrastructure.filesystem` writes an ephemeral, mode-0600 Ansible variable
   file atomically and rejects symlink destinations.
-- `infrastructure.ansible` uses an argument array, closed stdin, explicit cwd,
-  local temporary directory, timeout, bounded retained output, and a deployment
-  lock. It translates OS/process errors at the boundary.
-- `infrastructure.process` stops a timed-out child's entire process group. Both
-  Ansible and Certbot fan work out across hosts, so signalling only the direct
-  child would leave workers mutating remote state after the run was recorded.
+- `infrastructure.ansible` invokes Ansible Runner's Python interface in
+  subprocess mode with an explicit project, inventory, limit, environment, and
+  timeout. It disables environment-file persistence, captures Runner's stdout
+  artifact as the retained run log, translates Runner status at the boundary,
+  and keeps the cross-process deployment lock.
+- `infrastructure.process` provides explicit subprocess and timeout controls for
+  controller-side tools such as Certbot. Ansible process lifecycle belongs to
+  Runner.
 - `infrastructure.certificates` validates key pairs, SAN coverage, and validity,
   stores managed key material restrictively, and invokes one controller-side
   Certbot process. Certbot hooks use a focused playbook to synchronize an
@@ -160,8 +162,9 @@ Typer provides nested CLI commands, validation-friendly annotations, and stable
 automation help without maintaining a parser framework. Pydantic owns
 configuration and domain-boundary validation. SQLModel owns mapped persistence,
 and Alembic alone creates and verifies the SQLite schema. `pathlib`, `tomllib`,
-and `subprocess` keep filesystem, configuration, and process controls explicit.
-`ansible-runner` was not selected because BlitzeCDN needs one local playbook
-process and explicit command, timeout, output, and lock semantics; its event and
-container features would add state without replacing the distributed job queue
-that multi-controller operation actually requires.
+and `subprocess` keep filesystem, configuration, and Certbot process controls
+explicit. `ansible-runner` is the runtime playbook adapter: it owns local
+Ansible process lifecycle, timeout, and artifacts, while the custom callback
+preserves BlitzeCDN's structured per-host result contract. It runs in subprocess
+mode rather than an execution environment, and does not change the
+single-controller availability boundary.

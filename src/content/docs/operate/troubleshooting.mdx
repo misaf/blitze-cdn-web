@@ -111,10 +111,9 @@ or raw inventory to an incident report.
   process exits.
 - **Timeout:** confirm network and package-repository health and host state. A
   timeout is not proof that no remote changes occurred; rerun `plan` before
-  retrying. On timeout the controller signals the whole `ansible-playbook`
-  process group (`SIGTERM`, then `SIGKILL` after five seconds), so per-host
-  workers stop rather than converging edges after the run is recorded as timed
-  out.
+  retrying. Ansible Runner enforces the configured timeout and shuts down its
+  managed playbook execution; the controller records `timed_out` and retains
+  the run log.
 - **Stuck `queued`/`running`:** API deployments run in a Dramatiq worker, so the
   record only settles when Ansible finishes. If the controller was restarted
   mid-run, startup marks the record `abandoned`; rerun plan before retrying.

@@ -67,11 +67,9 @@ outcome is unknown, because nobody was watching when it ended. The honest
 response to an unknown outcome is to look, which is why the guidance is to rerun
 `plan` before retrying.
 
-Timeouts get the same treatment. On timeout the controller signals the entire
-`ansible-playbook` process group — `SIGTERM`, then `SIGKILL` after five seconds
-— because Ansible fans work out to per-host workers, and signalling only the
-direct child would leave those workers happily mutating remote state after the
-run was already recorded as timed out. Even then, a timeout is not proof that
+Timeouts get the same treatment. Ansible Runner enforces the configured timeout
+and shuts down the playbook execution it manages; the controller records the
+run as timed out and retains its log. Even then, a timeout is not proof that
 nothing changed remotely. Rerun `plan`.
 
 ## The through-line

@@ -866,7 +866,7 @@ main svg[aria-roledescription] .edgeLabel rect {
  * Inline code inside a heading.
  *
  * `code.nextra-code` carries its own background and padding, and inherits the
- * heading's font-size — so a heading like "Why not use `ansible-runner`?" gets
+ * heading's font-size — so a heading like "What does `ansible-runner` do?" gets
  * a grey box wedged into it at full display size, and the same chips make the
  * table of contents lumpy. Scaling relative to the heading keeps the chip
  * legible as code without letting it set the line's height.
