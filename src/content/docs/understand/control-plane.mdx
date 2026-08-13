@@ -34,7 +34,7 @@ CLI command or HTTP route
 application command/service
         │
         ├── validate immutable domain models
-        ├── commit state and audit/outbox records in SQLite
+        ├── commit state and audit records in SQLite
         └── call a narrow port when external work is required
                     │
                     ├── Ansible runner → edge fleet
@@ -42,7 +42,7 @@ application command/service
                     └── origin probe → configured origins
 ```
 
-The event bus writes audit and outbox entries only after a service announces a
+The event bus writes audit entries only after a service announces a
 domain event. Callers cannot manufacture an audit record independently of the
 operation it claims to describe.
 
@@ -53,7 +53,7 @@ human terminal or bounded automation and communicates failure with documented
 [exit codes](/docs/reference/cli#exit-codes).
 
 The API queues long deployments and rollbacks, commits the queued row first,
-and returns `202 Accepted`. A worker thread performs the convergence and the
+and returns `202 Accepted`. A Dramatiq worker performs the convergence and the
 client polls the deployment resource. Short, bounded operations such as origin
 checks, cache purges, stats, and certificate preflight answer inline. See
 [HTTP API behavior](/docs/understand/http-api-usage).
@@ -77,8 +77,8 @@ operator that verification is required instead of silently claiming success.
 A standalone installation runs `blitzecdn-api.service` as the unprivileged
 `blitzecdn` account, bound to `127.0.0.1:8000`. The unit reads
 `/etc/blitzecdn/blitzecdn.env`, can write only `/opt/blitzecdn/.state`, and
-restarts on failure. First-certificate reconciliation lives in this API process;
-certificate renewal and drift are separate systemd timers.
+restarts on failure. Its APScheduler publishes reconciliation, renewal, and
+drift jobs to Redis; `blitzecdn-worker.service` executes them through Dramatiq.
 
 For exact settings and paths, use [Configuration](/docs/reference/configuration)
 and [Storage and state](/docs/understand/storage-state).

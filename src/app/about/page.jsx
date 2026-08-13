@@ -337,20 +337,14 @@ export default function AboutPage() {
         <div className={inner}>
           <p className={eyebrow}>How it is put together</p>
           <div className={split}>
-            <h2 className={h2}>Three repositories, deliberately</h2>
+            <h2 className={h2}>Two repositories, deliberately</h2>
             <p className={lede}>
-              The control plane and the edge roles are released independently,
-              which makes the desired-state document they exchange a versioned
-              public interface rather than an internal detail. A version-skewed
-              pair fails before the first host is touched.
+              The control plane and edge roles ship together so their internal
+              desired-state contract cannot be version-skewed. The separate web
+              repository holds documentation and no controller credentials.
             </p>
           </div>
           <ExternalCardGrid items={repositories} />
-          <div className="mt-flow flex justify-center">
-            <Link href="/blog/a-version-is-an-interface" className={btnGhost}>
-              Why a version is an interface
-            </Link>
-          </div>
         </div>
       </section>
 

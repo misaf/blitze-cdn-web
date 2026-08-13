@@ -31,16 +31,16 @@ same relative files beneath its project directory but has no systemd service or
 
 ## What to back up
 
-| Path                                     | Why it matters                                                                            |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `/opt/blitzecdn/.state/control-plane.db` | Canonical domains, records, sites, edges, settings, history, workflows, audit, and outbox |
-| `/opt/blitzecdn/.state/certificates/`    | Uploaded and requested certificates and private keys                                      |
-| `/opt/blitzecdn/.state/letsencrypt/`     | Certbot account and renewal state                                                         |
-| `/opt/blitzecdn/.state/id_ed25519*`      | Standalone controller-to-local-edge identity                                              |
-| `/etc/blitzecdn/blitzecdn.env`           | API keys, ACME email, and service environment                                             |
-| `/opt/blitzecdn/blitzecdn.toml`          | Optional controller configuration and path overrides                                      |
-| `/var/lib/blitzecdn/.ssh/`               | Host-key trust and SSH client configuration used by the service account                   |
-| `/opt/blitzecdn/.state/logs/`            | Optional raw evidence; structured deployment results remain in SQLite                     |
+| Path                                     | Why it matters                                                                    |
+| ---------------------------------------- | --------------------------------------------------------------------------------- |
+| `/opt/blitzecdn/.state/control-plane.db` | Canonical domains, records, sites, edges, settings, history, workflows, and audit |
+| `/opt/blitzecdn/.state/certificates/`    | Uploaded and requested certificates and private keys                              |
+| `/opt/blitzecdn/.state/letsencrypt/`     | Certbot account and renewal state                                                 |
+| `/opt/blitzecdn/.state/id_ed25519*`      | Standalone controller-to-local-edge identity                                      |
+| `/etc/blitzecdn/blitzecdn.env`           | API keys, ACME email, and service environment                                     |
+| `/opt/blitzecdn/blitzecdn.toml`          | Optional controller configuration and path overrides                              |
+| `/var/lib/blitzecdn/.ssh/`               | Host-key trust and SSH client configuration used by the service account           |
+| `/opt/blitzecdn/.state/logs/`            | Optional raw evidence; structured deployment results remain in SQLite             |
 
 Do not treat `.state/desired-state.yml`, `.state/runs`, `.state/collections`, or
 the deployment lock as independent source state. They are generated,
@@ -146,7 +146,6 @@ absolute paths and addresses when the replacement host differs from the source.
 Run only local checks while production routes are blocked:
 
 ```bash
-blitzecdn db current
 blitzecdn doctor --no-resolver --json
 blitzecdn site list --json
 blitzecdn edge list --json

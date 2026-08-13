@@ -71,14 +71,11 @@ then converges the edges. `deploy --yes` skips that interactive validation and
 preview for reviewed automation. `doctor` is the one before all of them: it
 reports local readiness without touching anything remote.
 
-### Why do the two repositories have to stay in step?
+### How is the control plane / edge contract checked?
 
-The control plane and the edge roles ship separately, so the desired-state
-document they exchange is a versioned interface, not an internal detail. The
-control plane emits `blitzecdn_desired_state_version`; the Nginx role declares
-`blitzecdn_nginx_supported_state_versions` and refuses to run against anything
-else. A version-skewed pair fails before the first host is touched, instead of
-midway through a rollout.
+The control plane and roles ship together. Contract tests render real desired
+state, validate its keys against the role argument specification, and render
+the Nginx templates before a release is built.
 
 ## Failure behaviour
 
@@ -100,7 +97,7 @@ Importantly, **a timeout is not proof that no remote changes occurred.** Rerun
 
 ### A deployment is stuck in `queued` or `running`. What now?
 
-API deployments run on a worker thread, so the record only settles when Ansible
+API deployments run in a Dramatiq worker, so the record only settles when Ansible
 finishes. If the controller restarted mid-run, startup marks the record
 `abandoned`. Rerun `plan` before retrying.
 

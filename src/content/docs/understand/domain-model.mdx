@@ -47,9 +47,8 @@ Only proxied records produce sites. The internal site name is a deterministic
 slug of the fully qualified hostname; validation rejects two records whose
 hostnames would collide after slugging.
 
-The site document is what the control plane renders for Ansible. Its
-`blitzecdn_desired_state_version` is an explicit controller/role contract. The
-edge role refuses an unsupported version before changing the host.
+The site document is what the control plane renders for Ansible. Contract tests
+verify that its keys and values match the role argument specification.
 
 ## Edges and settings
 
@@ -67,7 +66,7 @@ row. Secrets remain in the environment, never in either table.
 Each deployment stores status, operator, check/apply mode, host limit, timestamps,
 the immutable snapshot it attempted, and structured per-host results. Audit
 events are append-only operator facts. Workflow rows record checkpoints around
-multi-system work. Outbox and projection tables support durable follow-up and
+multi-system work. Workflow and projection tables support durable follow-up and
 derived-state bookkeeping.
 
 SQLite is authoritative for domains, records, derived sites, edges, settings,

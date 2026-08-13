@@ -49,6 +49,7 @@ Precedence: environment variable, then the matching key in
 | `BLITZE_CERTBOT`                                | `[blitzecdn].certbot`                                | `certbot`                                            | —                                                                                                                                           |
 | `BLITZE_CERTIFICATE_DIR`                        | `[blitzecdn].certificate_dir`                        | `<state_dir>/certificates`                           | —                                                                                                                                           |
 | `BLITZE_CERTIFICATE_RECONCILE_INTERVAL_SECONDS` | `[blitzecdn].certificate_reconcile_interval_seconds` | `600`                                                | `0` disables; maximum `86400`                                                                                                               |
+| `BLITZE_CERTIFICATE_RENEWAL_INTERVAL_SECONDS`   | `[blitzecdn].certificate_renewal_interval_seconds`   | `43200`                                              | `0` disables the APScheduler renewal job; maximum `604800`                                                                                  |
 | `BLITZE_CERTIFICATE_RENEWAL_BUDGET_SECONDS`     | `[blitzecdn].certificate_renewal_budget_seconds`     | `300`                                                | ≥ 30, ≤ 7200. Wall clock for one `POST /v1/certificates/renew` sweep; sites not reached are reported as skipped and retried by the next run |
 | `BLITZE_CERTIFICATE_RENEWAL_WORKERS`            | `[blitzecdn].certificate_renewal_workers`            | `2`                                                  | ≥ 1, ≤ 16. Renewal sweeps in flight at once, on a pool of their own so a slow CA cannot stall other endpoints                               |
 | `BLITZE_DATABASE_PATH`                          | `[blitzecdn].database_path`                          | `<state_dir>/control-plane.db`                       | —                                                                                                                                           |
@@ -56,6 +57,7 @@ Precedence: environment variable, then the matching key in
 | `BLITZE_DEPLOYMENT_LOCK`                        | `[blitzecdn].deployment_lock_path`                   | `<state_dir>/deployment.lock`                        | —                                                                                                                                           |
 | `BLITZE_DEPLOYMENT_OUTPUT_LIMIT_BYTES`          | `[blitzecdn].output_limit_bytes`                     | `1048576`                                            | ≥ 4096, ≤ 10485760                                                                                                                          |
 | `BLITZE_DEPLOYMENT_TIMEOUT_SECONDS`             | `[blitzecdn].deployment_timeout_seconds`             | `900`                                                | ≥ 30, ≤ 7200                                                                                                                                |
+| `BLITZE_DRIFT_CHECK_INTERVAL_SECONDS`           | `[blitzecdn].drift_check_interval_seconds`           | `3600`                                               | `0` disables the APScheduler drift job; maximum `86400`                                                                                     |
 | `BLITZE_GENERATED_VARS`                         | `[blitzecdn].generated_vars_path`                    | `<state_dir>/desired-state.yml`                      | —                                                                                                                                           |
 | `BLITZE_HISTORY_RETENTION`                      | `[blitzecdn].history_retention`                      | `1000`                                               | ≥ 50, ≤ 100000; keeps newest check-mode deployments and finished workflows. Real deployments are never pruned — they are the snapshots a rollback chooses from |
 | `BLITZE_INVENTORY`                              | `[blitzecdn].inventory_path`                         | `<project_dir>/ansible/inventory/blitzecdn.yml`      | Configures the inventory plugin; the fleet itself is in the database                                                                        |
@@ -66,6 +68,7 @@ Precedence: environment variable, then the matching key in
 | `BLITZE_PREFLIGHT_DNS_SERVERS`                  | `[blitzecdn].preflight_dns_servers`                  | host resolver                                        | Comma-separated IP addresses; hostnames are rejected                                                                                        |
 | `BLITZE_PREFLIGHT_DNS_TIMEOUT_SECONDS`          | `[blitzecdn].preflight_dns_timeout_seconds`          | `5`                                                  | ≥ 1, ≤ 60                                                                                                                                   |
 | `BLITZE_RUN_LOG_RETENTION`                      | `[blitzecdn].run_log_retention`                      | `500`                                                | ≥ 10, ≤ 100000; keeps newest per-run logs                                                                                                   |
+| `BLITZE_REDIS_URL`                              | `[blitzecdn].redis_url`                              | `redis://127.0.0.1:6379/0`                            | Redis URL used by the API and Dramatiq worker; Redis is required for all background and scheduled work                                   |
 | `BLITZE_STATE_DIR`                              | `[blitzecdn].state_dir`                              | `<project_dir>/.state`                               | —                                                                                                                                           |
 | `BLITZE_STATS_PLAYBOOK`                         | `[blitzecdn].stats_playbook_path`                    | `<project_dir>/ansible/playbooks/stats.yml`          | —                                                                                                                                           |
 
@@ -126,16 +129,8 @@ The shipped defaults are still a tracked file,
 `ansible/inventory/group_vars/blitzecdn_edges/defaults.yml`. A setting in the
 database outranks it; a key you never set falls through to the default.
 
-<Callout type="warning">
-  Do not edit `defaults.yml`. It is tracked, and `./install.sh update` refuses
-  to run when a tracked file has local changes, so an edit there blocks
-  upgrading:
-
-```console
-error: tracked files in /opt/blitzecdn have local changes
-```
-
-</Callout>
+Do not edit `defaults.yml`; use `blitzecdn config set` so the value is validated,
+audited, and stored with the rest of controller state.
 
 <Callout type="info">
   Keeping overrides in the database rather than in a file beside the defaults is

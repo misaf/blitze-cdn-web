@@ -1,6 +1,6 @@
 export default {
   index: 'Operator runbook',
-  lifecycle: 'Install, upgrade, and remove',
+  lifecycle: 'Install, rebuild, and remove',
   'first-deployment': 'First deployment',
   'go-live': 'Take a site live',
   deploy: 'Deploy and roll back',

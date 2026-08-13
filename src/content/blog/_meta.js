@@ -29,10 +29,6 @@ export default {
     title: 'All posts',
     theme: { ...withoutDocsChrome, toc: false, pagination: false },
   },
-  'a-version-is-an-interface': {
-    title: 'A version is an interface',
-    theme: withoutDocsChrome,
-  },
   'one-lock-two-halves': {
     title: 'One lock, two halves',
     theme: withoutDocsChrome,

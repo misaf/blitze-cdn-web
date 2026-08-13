@@ -88,7 +88,7 @@ configured output limit. A controller restart marks unfinished records
 `abandoned`.
 
 The CLI waits for this sequence to finish. The API returns `202` with a queued
-record and runs convergence on a worker thread. Before that worker starts, the
+record and runs convergence in a Dramatiq worker. Before that worker starts, the
 controller commits the record and snapshot. A restart therefore leaves visible
 `abandoned` work instead of silently losing it. Requests that can already be
 rejected—such as a missing rollback target or a conflicting deployment—fail
@@ -101,20 +101,8 @@ silently overwritten.
 
 ## The control plane / edge contract
 
-The control plane and the edge roles ship as separate repositories, so the
-desired-state document they exchange is a versioned interface rather than an
-internal detail.
-
-`_write_desired_state` emits `blitzecdn_desired_state_version` alongside
-`blitzecdn_nginx_sites`. The Nginx role declares
-`blitzecdn_nginx_supported_state_versions` and refuses to run against anything
-else, so a version-skewed pair fails before the first host is touched instead
-of midway through a 25%-at-a-time rollout. An absent version is caught earlier
-still, by the role's `argument_specs`.
-
-Bump `DESIRED_STATE_VERSION` when the shape changes in a way an older role
-cannot honour — a new required key, a renamed key, or new semantics for an
-existing one. Adding a key older roles can safely ignore does not need a bump.
+The control plane and edge roles ship together. The desired-state document is
+an internal interface validated against the role's `argument_specs.yml`.
 
 `tests/test_contract.py` guards the boundary from the control-plane side: it
 renders desired state from real `CdnSite` values and asserts that every emitted
@@ -170,9 +158,9 @@ distributed-state design, and it is still not here.
 
 Typer provides nested CLI commands, validation-friendly annotations, and stable
 automation help without maintaining a parser framework. Pydantic owns
-configuration and domain-boundary validation. SQLAlchemy and Alembic own SQLite
-persistence and migrations, while `pathlib`, `tomllib`, and `subprocess` keep
-filesystem, configuration, and process controls explicit.
+configuration and domain-boundary validation. SQLModel owns mapped persistence,
+and Alembic alone creates and verifies the SQLite schema. `pathlib`, `tomllib`,
+and `subprocess` keep filesystem, configuration, and process controls explicit.
 `ansible-runner` was not selected because BlitzeCDN needs one local playbook
 process and explicit command, timeout, output, and lock semantics; its event and
 container features would add state without replacing the distributed job queue

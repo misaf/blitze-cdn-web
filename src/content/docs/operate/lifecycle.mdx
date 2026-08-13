@@ -1,12 +1,11 @@
 ---
-title: Install, upgrade, rebuild, and remove
-description: Every way to install, update, and remove BlitzeCDN, and which one to choose.
+title: Install, rebuild, and remove
+description: Every supported way to install and remove BlitzeCDN, and which one to choose.
 ---
 
-# Install, upgrade, rebuild, and remove
+# Install, rebuild, and remove
 
-Use this guide to put BlitzeCDN on a machine, move it to a newer release, or take
-it off again. Which commands apply depends on one decision, so make that first.
+Use this guide to put BlitzeCDN on a machine or take it off again.
 For the condensed end-to-end sequence, return to
 [operator runbook](/docs/operate).
 
@@ -16,7 +15,6 @@ For the condensed end-to-end sequence, return to
 | -------------------------- | ----------------------------- | ---------------------------------------------------------------- |
 | Fresh install              | `install.sh standalone`       | Creates state                                                    |
 | Repair/re-provision        | Rerun `install.sh standalone` | Preserves database, credentials, certificates, and desired state |
-| Upgrade                    | `install.sh update`           | Backs up and preserves state; never deploys edges                |
 | Fresh rebuild              | `install.sh --fresh`          | Deletes all owned state, then reinstalls the same release        |
 | State-preserving uninstall | Not implemented               | Back up externally before purging                                |
 | Complete purge             | `install.sh --uninstall`      | Deletes all owned controller and local-edge state                |
@@ -70,9 +68,7 @@ installer cannot invent them. Add `--public-address` for a host behind NAT, and
 </Callout>
 
 `/opt/blitzecdn` is not a preference. The installer refuses to provision from
-anywhere else, because the hardened systemd units use that path — and `update`
-and `--fresh` check for a clone with the expected origin, so an unpacked
-tarball will not do.
+anywhere else because the hardened systemd units use that path.
 
 The result is a host with a `blitzecdn` command on `PATH`, the API on loopback,
 an edge named `edge-local` in the inventory, and no edge configuration deployed
@@ -108,7 +104,7 @@ sudo /opt/blitzecdn/install.sh standalone \
 ```
 
 This rebuilds the locked virtual environment, installs pinned Ansible
-dependencies, runs setup and schema migrations, and reconverges the controller.
+dependencies, verifies the current schema, and reconverges the controller.
 It preserves API keys, the database, desired state, edges, certificates, and
 history. It does not deploy unless `--deploy` is supplied. There is no separate
 standalone “reinstall software only” command; this is the supported repair.
@@ -116,28 +112,6 @@ standalone “reinstall software only” command; this is the supported repair.
 The control-plane role rewrites `/var/lib/blitzecdn/.ssh/known_hosts` with the
 standalone host's loopback keys. If this controller manages remote edges,
 re-verify and record their fingerprints before running a plan or deployment.
-
-## Update
-
-```bash
-sudo /opt/blitzecdn/install.sh update
-```
-
-Use `--check` to report the installed and available versions without changing
-anything, `--version vX.Y.Z` to move to a specific release, and `--yes` to skip
-the confirmation. The updater backs up persistent state and `/etc/blitzecdn`,
-refuses to run over local changes to tracked files, converges the controller
-against the new release, restarts the services, and runs `doctor`.
-
-<Callout type="warning">
-  An update never touches edges. After it finishes, review `blitzecdn plan` and
-  run `blitzecdn deploy` separately. See [version
-  discipline](/docs/operate/production#version-discipline) for release policy
-  and canary sequencing.
-</Callout>
-
-A controller-only checkout has no updater. Check out a newer tag and run
-`./install.sh` again.
 
 ## Complete purge
 
@@ -150,7 +124,7 @@ standalone uninstall and it is a complete purge; there is no mode that keeps
 local BlitzeCDN state. It removes `/opt/blitzecdn` and everything in it — source,
 `.venv`, database, certificates, Certbot state, SSH key, locks, logs, and
 collections — plus services and units, `/etc/blitzecdn`, API keys, the CLI
-wrapper, sudo rule, service accounts and expected homes, update backups, and the
+wrapper, sudo rule, service accounts and expected homes, and the
 Nginx sites, TLS files, cache, access log, registry, and managed drop-ins this
 host converged as an edge. Run `install.sh --uninstall --help` for the exact list.
 
@@ -161,8 +135,8 @@ outside the listed paths changes, and running it twice is safe.
 <Callout type="warning">
   This irreversibly deletes desired state, inventory, deployment/workflow
   history, audit events, API keys, SSH key material, managed certificates, and
-  update backups. Copy a tested backup outside `/opt/blitzecdn`,
-  `/etc/blitzecdn`, and `/var/backups/blitzecdn` first.
+  local state. Copy a tested backup outside `/opt/blitzecdn` and
+  `/etc/blitzecdn` first.
 </Callout>
 
 If an account cannot be removed — usually because a process is still running as
@@ -204,12 +178,11 @@ running and installs it exactly as a new server. An exact release tag remains
 on that tag, a `2.x` installation remains attached to that branch, and any
 other development checkout remains pinned to its exact commit. The checkout
 must be the upstream Git repository. The standalone options pass through
-unchanged. The rebuilt system has empty state; update backups are not restored
-because the purge deletes them.
+unchanged. The rebuilt system has empty state.
 
 ## Verify
 
-After any install or update:
+After any install:
 
 ```bash
 blitzecdn --version

@@ -13,7 +13,7 @@ Reference roles by their directory name, for example `blitzecdn_nginx`. They
 ship with the control plane and are not a separately versioned collection. Set
 variables with [`blitzecdn config`](/docs/reference/cli#blitzecdn-config),
 which records them in the control-plane database and publishes them to every
-edge — not in `defaults.yml`, which is tracked and replaced on upgrade. Ansible
+edge — not in `defaults.yml`, which is part of the installed release. Ansible
 only auto-loads `group_vars` adjacent to the inventory file, so the shipped
 defaults have to stay where they are; a `group_vars/` directory anywhere else
 is silently ignored.
@@ -26,9 +26,6 @@ is silently ignored.
   interrupt management or serving traffic. Plan with a canary inventory first.
 - Never set a required variable to an empty value unless its description
   explicitly permits it; the firewall source list intentionally fails closed.
-- A role rejecting `blitzecdn_desired_state_version` means the edge was last
-  converged by a control plane too old for the state this one emits. Deploy
-  again from the current control plane to bring it forward.
 - Verify role changes with Nginx configuration tests and external traffic/TLS
   probes, not only an Ansible `changed=0` result.
 
@@ -43,8 +40,8 @@ Configure baseline edge packages and timezone.
 
 ## `blitzecdn_controlplane`
 
-Converge the standalone controller host. `install.sh standalone` and
-`install.sh update` call this role locally; it is not part of `edge.yml`, and
+Converge the standalone controller host. `install.sh standalone` calls this
+role locally; it is not part of `edge.yml`, and
 its variables are installer inputs rather than fleet settings for
 `blitzecdn config`.
 
@@ -295,7 +292,6 @@ so masking the exit status would only hide a database quietly ageing out.
 
 | Variable                                    | Type   | Required | Default                                                                        | Choices |
 | ------------------------------------------- | ------ | -------- | ------------------------------------------------------------------------------ | ------- |
-| `blitzecdn_desired_state_version`           | `int`  | `true`   | —                                                                              | —       |
 | `blitzecdn_nginx_access_log_enabled`        | `bool` | `true`   | `true`                                                                         | —       |
 | `blitzecdn_nginx_access_log_path`           | `path` | `true`   | `/var/log/nginx/blitzecdn-access.log`                                          | —       |
 | `blitzecdn_nginx_acme_root`                 | `path` | `true`   | `/var/lib/blitzecdn/acme`                                                      | —       |
@@ -341,7 +337,6 @@ so masking the exit status would only hide a database quietly ageing out.
 | `blitzecdn_nginx_status_file`               | `path` | `true`   | `/etc/nginx/conf.d/blitzecdn-status.conf`                                      | —       |
 | `blitzecdn_nginx_status_path`               | `str`  | `true`   | `/stub_status`                                                                 | —       |
 | `blitzecdn_nginx_status_port`               | `int`  | `true`   | `8090`                                                                         | —       |
-| `blitzecdn_nginx_supported_state_versions`  | `list` | `true`   | `1`, `2`                                                                       | —       |
 
 ### `blitzecdn_nginx_sites` element keys
 

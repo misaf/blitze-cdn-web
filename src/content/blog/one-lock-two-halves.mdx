@@ -56,7 +56,7 @@ guide says rather bluntly — you should never delete a live lock file.
 
 Locks handle contention. They do not handle a controller that dies.
 
-API deployments run on a worker thread and return `202` immediately, because a
+API deployments run in a Dramatiq worker and return `202` immediately, because a
 convergence outlives any HTTP client. The record and its snapshot are committed
 _before_ the worker starts, so a crash cannot lose queued work the way the
 original system did. On restart, `abandon_running` settles anything the worker

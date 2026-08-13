@@ -262,13 +262,6 @@ for (const file of walk(resolve(site, 'src/content/docs')).filter((path) =>
       )
     }
   }
-  for (const claim of content.matchAll(/desired-state schema (\d+)/g)) {
-    if (Number(claim[1]) !== surface.schemaVersion) {
-      failures.push(
-        `${relativePath}: names desired-state schema ${claim[1]}, but it is ${surface.schemaVersion}`,
-      )
-    }
-  }
 }
 
 if (failures.length) {

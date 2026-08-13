@@ -18,19 +18,26 @@ from __future__ import annotations
 
 import json
 import sys
+from functools import cache
 from pathlib import Path
 
 
-def _routes() -> list[dict[str, object]]:
-    """Every path/method pair the API serves, plus its response codes.
-
-    `create_app` is called with no settings so the dump does not depend on a
-    configured environment; the OpenAPI document is built from the decorators
-    either way.
-    """
+@cache
+def _openapi() -> dict[str, object]:
+    """Build OpenAPI without starting the application's I/O lifespan."""
+    import blitzecdn
     from blitzecdn.api import create_app
+    from blitzecdn.config import Settings
 
-    schema = create_app().openapi()
+    settings = Settings.from_environment(
+        project_dir=Path(blitzecdn.__file__).parents[2]
+    )
+    return create_app(settings).openapi()
+
+
+def _routes() -> list[dict[str, object]]:
+    """Every path/method pair the API serves, plus its response codes."""
+    schema = _openapi()
     routes: list[dict[str, object]] = []
     for path, operations in schema.get("paths", {}).items():
         for method, operation in operations.items():
@@ -62,9 +69,7 @@ def _schemas() -> list[str]:
     client sees, and excluding them would leave a hole in the page that nothing
     checks.
     """
-    from blitzecdn.api import create_app
-
-    schema = create_app().openapi()
+    schema = _openapi()
     return sorted(schema.get("components", {}).get("schemas", {}))
 
 
@@ -162,12 +167,10 @@ def _environment_variables() -> list[str]:
 
 def main() -> int:
     from blitzecdn import __version__
-    from blitzecdn.domain.sites import DESIRED_STATE_VERSION
 
     json.dump(
         {
             "version": __version__,
-            "schemaVersion": DESIRED_STATE_VERSION,
             "routes": _routes(),
             "schemas": _schemas(),
             **_command_tree(),

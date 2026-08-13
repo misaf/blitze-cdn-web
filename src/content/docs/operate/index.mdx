@@ -1,6 +1,6 @@
 ---
 title: Operator runbook
-description: One ordered, copy-paste runbook for installing, verifying, operating, upgrading, repairing, rebuilding, and completely removing BlitzeCDN.
+description: One ordered, copy-paste runbook for installing, verifying, operating, repairing, rebuilding, and completely removing BlitzeCDN.
 ---
 
 # Operate BlitzeCDN
@@ -11,24 +11,23 @@ control plane and an edge. Links go to deeper procedures only where a decision
 or recovery path needs more explanation.
 
 <Callout type="info">
-  **Upgrade preserves state. Repair preserves state. Fresh rebuild and complete
-  purge destroy it.** BlitzeCDN has no state-preserving uninstall command.
+  **Repair preserves state. Fresh rebuild and complete purge destroy it.**
+  BlitzeCDN has no state-preserving uninstall command.
 </Callout>
 
 ## Choose the operation
 
-| Intent                         | Command                       | Controller state       | Local edge state                              | Result                                         |
-| ------------------------------ | ----------------------------- | ---------------------- | --------------------------------------------- | ---------------------------------------------- |
-| Fresh install                  | `install.sh standalone`       | Creates                | Prepares; does not deploy by default          | Running controller and registered `edge-local` |
-| Repair/re-provision            | rerun `install.sh standalone` | Preserves              | Converges controller; deploy remains explicit | Same release and state                         |
-| Upgrade                        | `install.sh update`           | Preserves and backs up | Does not deploy                               | New controller release; edges unchanged        |
-| Reinstall software only        | No standalone command         | —                      | —                                             | Rerun standalone for repair, or use update     |
-| Fresh rebuild                  | `install.sh --fresh`          | Deletes                | Deletes BlitzeCDN-owned local-edge state      | Same release installed with empty state        |
-| Uninstall but keep local state | Not supported                 | —                      | —                                             | Back up externally, then purge                 |
-| Complete purge                 | `install.sh --uninstall`      | Deletes                | Deletes BlitzeCDN-owned local-edge state      | BlitzeCDN removed; OS packages remain          |
+| Intent                         | Command                       | Controller state | Local edge state                              | Result                                         |
+| ------------------------------ | ----------------------------- | ---------------- | --------------------------------------------- | ---------------------------------------------- |
+| Fresh install                  | `install.sh standalone`       | Creates          | Prepares; does not deploy by default          | Running controller and registered `edge-local` |
+| Repair/re-provision            | rerun `install.sh standalone` | Preserves        | Converges controller; deploy remains explicit | Same release and state                         |
+| Reinstall software only        | No standalone command         | —                | —                                             | Rerun standalone for repair                    |
+| Fresh rebuild                  | `install.sh --fresh`          | Deletes          | Deletes BlitzeCDN-owned local-edge state      | Same release installed with empty state        |
+| Uninstall but keep local state | Not supported                 | —                | —                                             | Back up externally, then purge                 |
+| Complete purge                 | `install.sh --uninstall`      | Deletes          | Deletes BlitzeCDN-owned local-edge state      | BlitzeCDN removed; OS packages remain          |
 
 For controller-only checkouts and the exact ownership boundary, see
-[Install, upgrade, rebuild, and remove](/docs/operate/lifecycle).
+[Install, rebuild, and remove](/docs/operate/lifecycle).
 
 ## 1. Check prerequisites
 
@@ -201,29 +200,7 @@ and certificate private keys. Restore only while services are stopped and the
 replacement controller cannot reach production edges. Follow the complete
 [backup and restore procedure](/docs/operate/backup-restore).
 
-## 8. Upgrade without rebuilding
-
-```bash
-sudo /opt/blitzecdn/install.sh update --check
-sudo /opt/blitzecdn/install.sh update
-blitzecdn --version
-blitzecdn doctor --json
-blitzecdn plan
-```
-
-The updater confirms a stable release tag, refuses tracked local changes,
-stops controller services, and creates a mode-0600 archive under
-`/var/backups/blitzecdn`. It preserves `.state`, `.env`, and `/etc/blitzecdn`,
-checks out the new release, migrates the database during setup, reconverges the
-controller, restarts services, and runs `doctor`. On failure it restores the
-previous checkout and prints the backup path.
-
-An upgrade never deploys edge configuration. Review the plan, canary the new
-role behavior, then run the fleet deployment separately. Pin with
-`--version vX.Y.Z`; use `--yes` only in automation that already approved the
-target.
-
-## 9. Repair without deleting state
+## 8. Repair without deleting state
 
 Rerun the standalone installer from the installed release with the original
 administration CIDR, email, and public addresses:
@@ -250,10 +227,10 @@ explicitly passed.
 </Callout>
 
 There is no separate supported command that removes and reinstalls standalone
-software while preserving local state in place. Use this repair path, an
-upgrade, or an externally tested backup/restore.
+software while preserving local state in place. Use this repair path or an
+externally tested backup/restore.
 
-## 10. Troubleshoot and recover
+## 9. Troubleshoot and recover
 
 Preserve evidence before retrying. Never delete `deployment.lock` merely because
 a run is slow, never disable SSH host-key checking, and never use a deploy as a
@@ -267,20 +244,20 @@ blitzecdn audit --limit 20
 journalctl -u blitzecdn-api.service --since '30 minutes ago' --no-pager
 ```
 
-- Install or update failure: [lifecycle troubleshooting](/docs/operate/lifecycle#troubleshooting)
+- Install failure: [lifecycle troubleshooting](/docs/operate/lifecycle#troubleshooting)
 - SSH, inventory, origin, storage, deployment, or certificate failure: [Troubleshoot and repair](/docs/operate/troubleshooting)
 - Unknown or partial serving state: [Respond to incidents](/docs/operate/incident-response)
 - Incorrect successful deployment: [Rollback](/docs/operate/deploy#rollback)
 - Lost controller: [Back up and restore](/docs/operate/backup-restore#restore-offline)
 
-## 11. Fresh rebuild
+## 10. Fresh rebuild
 
 <Callout type="error">
   `--fresh` is irreversible without an external backup. It deletes the database,
   desired state, deployment history, audit records, API keys, controller and
-  local-edge certificates, caches, logs, accounts, units, and update backups. It
-  then reinstalls the same release branch, tag, or development commit with empty
-  state. It is not an upgrade or repair command.
+  local-edge certificates, caches, logs, accounts, and units. It then reinstalls
+  the same release branch, tag, or development commit with empty state. It is
+  not a repair command.
 </Callout>
 
 ```bash

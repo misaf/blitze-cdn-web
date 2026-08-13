@@ -50,12 +50,8 @@ See [HTTP API](/docs/reference/http-api) for the full model, or
 ## Desired state vs. what runs
 
 The controller keeps a **desired state** — what you want — and deploys it to
-every edge. The two halves make a contract out of the exchange:
-
-- The control plane emits `blitzecdn_desired_state_version` alongside the sites.
-- The Nginx role declares which state versions it supports and refuses to run
-  against anything else. A version-skewed pair fails before the first host is
-  touched, not midway through a rollout.
+every edge. The control plane and roles ship together, and contract tests check
+the rendered site keys against the role argument specification.
 
 Site mutations are validated and committed transactionally to SQLite before
 anything touches a host. They produce an audit record and do not reach the

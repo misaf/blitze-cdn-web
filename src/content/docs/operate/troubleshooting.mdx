@@ -10,7 +10,7 @@ Work from the controller outward: local configuration, inventory, SSH, then edge
 state.
 
 For the short diagnostic command set and recovery routing, return to
-[Operate BlitzeCDN](/docs/operate#10-troubleshoot-and-recover).
+[Operate BlitzeCDN](/docs/operate#9-troubleshoot-and-recover).
 
 ## Before you begin
 
@@ -115,7 +115,7 @@ or raw inventory to an incident report.
   process group (`SIGTERM`, then `SIGKILL` after five seconds), so per-host
   workers stop rather than converging edges after the run is recorded as timed
   out.
-- **Stuck `queued`/`running`:** API deployments run on a worker thread, so the
+- **Stuck `queued`/`running`:** API deployments run in a Dramatiq worker, so the
   record only settles when Ansible finishes. If the controller was restarted
   mid-run, startup marks the record `abandoned`; rerun plan before retrying.
 

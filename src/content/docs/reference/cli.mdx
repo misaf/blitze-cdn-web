@@ -17,9 +17,7 @@ Verified against the Typer command tree in `src/blitzecdn/cli/`.
 | `edge remove`                                                     | Decommissions the host by default, then removes controller state | No                           | Drain traffic first; `--no-decommission` can leave keys and configuration behind. |
 | `dns export`                                                      | None                                                             | Yes                          | Feed to the system that publishes DNS.                                            |
 | `config set/unset`                                                | Controller state only                                            | No                           | Applies on the next `deploy`, to every edge.                                      |
-| `db current`                                                      | None                                                             | Yes                          | Reports the schema revision.                                                      |
 | `db backup`                                                       | None                                                             | Yes                          | Consistent copy, safe while the API is serving.                                   |
-| `db upgrade`                                                      | None                                                             | Yes                          | Rewrites local tables. Run `db backup` first.                                      |
 | `drift`                                                           | Ansible check mode; converges nothing                            | Yes                          | Exits `6` when an edge has moved. Schedule it.                                    |
 | `origin check`                                                    | Connects to each origin; sends no request data                   | Yes                          | Exits `3` when an origin fails. Run before `deploy`.                              |
 | `cert list`                                                       | None                                                             | Yes                          | Exits `4` when a certificate has already expired.                                 |
@@ -48,19 +46,13 @@ logs remain separate; do not parse human output for automation.
 | --------------------------- | --------- | -------- | ------- | -------------------------------------------------------------------------------- |
 | `--verbose, -v`             | `boolean` | `false`  | —       | Enable diagnostic logging.                                                       |
 | `--log-json, --no-log-json` | `boolean` | `false`  | —       | Write logs as JSON.                                                              |
-| `--version`                 | `boolean` | `false`  | —       | Show the control-plane and desired-state schema versions.                        |
+| `--version`                 | `boolean` | `false`  | —       | Show the installed BlitzeCDN version.                                             |
 | `--install-completion`      | `boolean` | `false`  | —       | Install completion for the current shell.                                        |
 | `--show-completion`         | `boolean` | `false`  | —       | Show completion for the current shell, to copy it or customize the installation. |
-
-The Ansible roles ship with the control plane, so one release covers both.
-The desired-state schema is reported separately because an edge converged by an
-older release can refuse `blitzecdn_desired_state_version`, and that failure
-names this number:
 
 ```console
 $ blitzecdn --version
 blitzecdn 2.0.1
-desired-state schema 2
 ```
 
 ## `blitzecdn audit`
@@ -366,30 +358,16 @@ Removes an override so the shipped default in the role applies again.
 
 ## `blitzecdn db`
 
-Migrate the control-plane database schema. The schema is owned by Alembic
-migrations that ship inside the package, so these commands need no arguments
-and no configuration beyond the database path this installation already uses.
-
-A new database is created at the newest revision on first use, so a fresh
-install never needs these. They exist for an installation that a later release
-has moved the schema ahead of.
+Create a consistent backup of the control-plane database. BlitzeCDN supports
+fresh installations only: `setup` creates the current Alembic baseline and
+there is no runtime schema upgrade command.
 
 ```bash
-blitzecdn db current
 blitzecdn db backup            # timestamped file beside the database
-blitzecdn db backup /var/backups/blitzecdn/before-upgrade.db
-blitzecdn db upgrade
+blitzecdn db backup /var/backups/blitzecdn/control-plane.db
 ```
 
-`blitzecdn setup` runs the same upgrade, and `install.sh update` runs
-`setup` — so an operator following the documented upgrade path never has to
-run these by hand.
-
 <Callout type="warning">
-  Run `blitzecdn db backup` before upgrading. SQLite cannot alter most columns in
-  place, so a migration rewrites the table and copies the rows; an interrupted
-  run is far easier to recover from a copy than from the original.
-
   Use that command rather than `cp`. The database runs in WAL mode, so recent
   commits live in the `-wal` file beside it and copying the `.db` alone captures
   some earlier moment without saying so. `db backup` asks SQLite to write a
@@ -397,18 +375,8 @@ run these by hand.
   serving.
 </Callout>
 
-Nothing schedules backups. `install.sh update` takes one before it migrates, so
-an installation that only ever changes at release time is covered — anything
-else wants `blitzecdn db backup` on a timer of your own.
-
-A controller whose database is older than its code refuses to start, naming the
-columns that are missing and the command to run, rather than failing one
-confusing query at a time during a deploy.
-
-### `blitzecdn db current`
-
-Prints the revision the database is stamped with and the revision this release
-expects, and says what to run when they differ.
+Nothing schedules backups. Run `blitzecdn db backup` from your backup system at
+the retention interval your recovery policy requires.
 
 ### `blitzecdn db backup`
 
@@ -420,12 +388,6 @@ Write a consistent copy of the database, safely, while the API is serving.
 
 Refuses to overwrite an existing file, and writes the copy `0600` — it carries
 the audit trail and every operator name, so it is as sensitive as the original.
-
-### `blitzecdn db upgrade`
-
-| Flag         | Type     | Required | Default | Description                                                                                     |
-| ------------ | -------- | -------- | ------- | ----------------------------------------------------------------------------------------------- |
-| `--revision` | `string` | `false`  | `head`  | Target revision. `head` is the newest; an explicit revision is for rolling back to a known one. |
 
 ## `blitzecdn doctor`
 

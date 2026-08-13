@@ -10,13 +10,6 @@ const posts = [
       'Rollback is easy to get almost right. The hard part is deciding when canonical state is allowed to change.',
     date: '2026-06-23',
   },
-  {
-    slug: 'a-version-is-an-interface',
-    title: 'A version is an interface',
-    description:
-      'The control plane and edge roles ship separately, so their desired-state document is a public contract.',
-    date: '2026-05-19',
-  },
 ]
 
 function escapeXml(value) {
