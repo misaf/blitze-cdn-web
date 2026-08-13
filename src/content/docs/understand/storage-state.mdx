@@ -20,7 +20,7 @@ backup and deletion requirements.
 | `/opt/blitzecdn/.state/logs/`            | Complete per-run Ansible logs                                                   | According to evidence policy                  |
 | `/opt/blitzecdn/.state/ansible-runner/`  | Transient Ansible Runner artifacts; each run directory is removed after capture | No                                            |
 | `/opt/blitzecdn/.state/collections/`     | Installed Ansible dependencies                                                  | No; reproducible from the release             |
-| `/opt/blitzecdn/.state/runs/`            | Per-invocation variables and fallback callback results                          | No; temporary                                 |
+| `/opt/blitzecdn/.state/runs/`            | Per-invocation generated variable files                                         | No; temporary                                 |
 | `/opt/blitzecdn/.state/deployment.lock`  | Cross-process deployment lock                                                   | No; never delete merely because a run is slow |
 | `/opt/blitzecdn/.state/id_ed25519`       | Standalone controller-to-edge private SSH key                                   | Yes for an exact restore                      |
 | `/etc/blitzecdn/blitzecdn.env`           | API keys and service environment                                                | Yes; secret                                   |

@@ -151,10 +151,8 @@ def _settings_environment_names() -> dict[str, str]:
 def _environment_variables() -> list[str]:
     """Every `BLITZE_*` name the control plane *reads* from its environment.
 
-    Restricted to lookups. The control plane also *sets* variables for the
-    processes it spawns — `BLITZE_RESULT_PATH` tells the Ansible callback
-    plugin where to write — and those are an internal contract between the two
-    halves, not something an operator configures.
+    Restricted to lookups. The control plane also sets internal variables for
+    processes it spawns; those are not operator configuration.
     """
     import re
 

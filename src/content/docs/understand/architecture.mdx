@@ -164,7 +164,6 @@ configuration and domain-boundary validation. SQLModel owns mapped persistence,
 and Alembic alone creates and verifies the SQLite schema. `pathlib`, `tomllib`,
 and `subprocess` keep filesystem, configuration, and Certbot process controls
 explicit. `ansible-runner` is the runtime playbook adapter: it owns local
-Ansible process lifecycle, timeout, artifacts, and structured event stream. The
-custom callback document remains a compatibility fallback. Runner operates in
+Ansible process lifecycle, timeout, artifacts, and structured event stream. Runner operates in
 subprocess mode rather than an execution environment, and does not change the
 single-controller availability boundary.
