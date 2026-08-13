@@ -46,8 +46,8 @@ changes desired state and converges hosts; it is not in the serving path.
 - `infrastructure.ansible` invokes Ansible Runner's Python interface in
   subprocess mode with an explicit project, inventory, limit, environment, and
   timeout. It disables environment-file persistence, captures Runner's stdout
-  artifact as the retained run log, translates Runner status at the boundary,
-  and keeps the cross-process deployment lock.
+  artifact as the retained run log, translates Runner events and status at the
+  boundary, and keeps the cross-process deployment lock.
 - `infrastructure.process` provides explicit subprocess and timeout controls for
   controller-side tools such as Certbot. Ansible process lifecycle belongs to
   Runner.
@@ -164,7 +164,7 @@ configuration and domain-boundary validation. SQLModel owns mapped persistence,
 and Alembic alone creates and verifies the SQLite schema. `pathlib`, `tomllib`,
 and `subprocess` keep filesystem, configuration, and Certbot process controls
 explicit. `ansible-runner` is the runtime playbook adapter: it owns local
-Ansible process lifecycle, timeout, and artifacts, while the custom callback
-preserves BlitzeCDN's structured per-host result contract. It runs in subprocess
-mode rather than an execution environment, and does not change the
+Ansible process lifecycle, timeout, artifacts, and structured event stream. The
+custom callback document remains a compatibility fallback. Runner operates in
+subprocess mode rather than an execution environment, and does not change the
 single-controller availability boundary.

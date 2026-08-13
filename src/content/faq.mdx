@@ -44,9 +44,9 @@ available.
 ### What does `ansible-runner` do?
 
 BlitzeCDN uses Ansible Runner's Python interface in subprocess mode for runtime
-playbook execution. Runner owns the local process lifecycle, timeout, and
-artifacts; the `blitzecdn_result` callback remains the structured per-host result
-contract, and the roles still implement all hardening. The controller does not
+playbook execution. Runner owns the local process lifecycle, timeout, artifacts,
+and structured per-host event stream; the `blitzecdn_result` callback document
+is a compatibility fallback, and the roles still implement all hardening. The controller does not
 currently use Runner execution environments, and Runner does not make the
 single-controller architecture active/active.
 

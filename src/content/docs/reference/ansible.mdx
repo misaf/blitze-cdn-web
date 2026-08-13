@@ -115,8 +115,8 @@ Read-only — it changes nothing, so it is safe during a deploy.
 | `blitzecdn_stats_status_path`     | `str`  | `true`   | `/stub_status`                        | —       |
 | `blitzecdn_stats_max_lines`       | `int`  | `true`   | `200000`                              | —       |
 
-The role publishes each host's report as a structured callback fact; it writes
-no controller-side report file. The four Nginx-facing variables must match
+The role publishes each host's report as a fact in Runner's structured event
+stream; it writes no controller-side report file. The four Nginx-facing variables must match
 `blitzecdn_nginx`; pointed at the wrong log the role reports a hit ratio of zero,
 which looks like a broken cache rather than a misconfigured reader.
 

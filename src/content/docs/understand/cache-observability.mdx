@@ -37,8 +37,9 @@ results to your monitoring system if history is required.
 
 ## Deployment evidence
 
-Every Ansible invocation produces a structured per-host result through the
-`blitzecdn_result` callback. Deployment and drift records persist the fields the
+Every Ansible invocation produces a structured per-host result from Runner's
+event stream, with the `blitzecdn_result` document as a compatibility fallback.
+Deployment and drift records persist the fields the
 control plane reasons from: reachability, failures, and changed tasks. Raw
 combined stdout/stderr is written to `.state/logs/<run-id>.log` and retained up
 to `BLITZE_RUN_LOG_RETENTION` files. Losing an old raw log removes diagnostic
