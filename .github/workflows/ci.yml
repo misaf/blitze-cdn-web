@@ -127,7 +127,7 @@ jobs:
       - name: Install site dependencies
         run: npm ci
       - id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       # Both of these are read at BUILD time — they are inlined into the output,
       # and canonical tags, sitemap.xml and feed.xml are generated here. Setting
       # either at runtime would have no effect on a static export, which is why
@@ -167,8 +167,8 @@ jobs:
       - name: Add CNAME
         if: vars.SITE_DOMAIN != ''
         run: echo "${{ vars.SITE_DOMAIN }}" > out/CNAME
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: out
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
