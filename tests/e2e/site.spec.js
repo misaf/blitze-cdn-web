@@ -17,7 +17,7 @@ const routes = [
   ['/faq', 'Frequently asked questions'],
   ['/blog', 'Blog'],
   ['/docs/operate', 'Operate BlitzeCDN'],
-  ['/docs/operate/lifecycle', 'Install, upgrade, rebuild, and remove'],
+  ['/docs/operate/lifecycle', 'Install, rebuild, and remove'],
   ['/docs/operate/first-deployment', 'First deployment'],
   ['/docs/operate/deploy', 'Deploying'],
   ['/docs/operate/edges', 'Manage edge servers'],
