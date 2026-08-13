@@ -18,7 +18,8 @@ Verified against the Typer command tree in `src/blitzecdn/cli/`.
 | `dns export`                                                      | None                                                             | Yes                          | Feed to the system that publishes DNS.                                            |
 | `config set/unset`                                                | Controller state only                                            | No                           | Applies on the next `deploy`, to every edge.                                      |
 | `db current`                                                      | None                                                             | Yes                          | Reports the schema revision.                                                      |
-| `db upgrade`                                                      | None                                                             | Yes                          | Rewrites local tables. Copy the database first.                                   |
+| `db backup`                                                       | None                                                             | Yes                          | Consistent copy, safe while the API is serving.                                   |
+| `db upgrade`                                                      | None                                                             | Yes                          | Rewrites local tables. Run `db backup` first.                                      |
 | `drift`                                                           | Ansible check mode; converges nothing                            | Yes                          | Exits `6` when an edge has moved. Schedule it.                                    |
 | `origin check`                                                    | Connects to each origin; sends no request data                   | Yes                          | Exits `3` when an origin fails. Run before `deploy`.                              |
 | `cert list`                                                       | None                                                             | Yes                          | Exits `4` when a certificate has already expired.                                 |
@@ -375,6 +376,8 @@ has moved the schema ahead of.
 
 ```bash
 blitzecdn db current
+blitzecdn db backup            # timestamped file beside the database
+blitzecdn db backup /var/backups/blitzecdn/before-upgrade.db
 blitzecdn db upgrade
 ```
 
@@ -383,10 +386,20 @@ blitzecdn db upgrade
 run these by hand.
 
 <Callout type="warning">
-  Take a copy of the database before upgrading. SQLite cannot alter most columns
-  in place, so a migration rewrites the table and copies the rows; an
-  interrupted run is far easier to recover from a copy than from the original.
+  Run `blitzecdn db backup` before upgrading. SQLite cannot alter most columns in
+  place, so a migration rewrites the table and copies the rows; an interrupted
+  run is far easier to recover from a copy than from the original.
+
+  Use that command rather than `cp`. The database runs in WAL mode, so recent
+  commits live in the `-wal` file beside it and copying the `.db` alone captures
+  some earlier moment without saying so. `db backup` asks SQLite to write a
+  complete database, which is why it is safe to run against a controller that is
+  serving.
 </Callout>
+
+Nothing schedules backups. `install.sh update` takes one before it migrates, so
+an installation that only ever changes at release time is covered — anything
+else wants `blitzecdn db backup` on a timer of your own.
 
 A controller whose database is older than its code refuses to start, naming the
 columns that are missing and the command to run, rather than failing one
@@ -396,6 +409,17 @@ confusing query at a time during a deploy.
 
 Prints the revision the database is stamped with and the revision this release
 expects, and says what to run when they differ.
+
+### `blitzecdn db backup`
+
+Write a consistent copy of the database, safely, while the API is serving.
+
+| Argument        | Type   | Required | Default                        | Description                     |
+| --------------- | ------ | -------- | ------------------------------ | ------------------------------- |
+| `DESTINATION`   | `path` | `false`  | timestamped file beside the db | Where to write the copy.        |
+
+Refuses to overwrite an existing file, and writes the copy `0600` — it carries
+the audit trail and every operator name, so it is as sensitive as the original.
 
 ### `blitzecdn db upgrade`
 

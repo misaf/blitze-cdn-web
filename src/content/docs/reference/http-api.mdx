@@ -680,9 +680,67 @@ automated caller cannot read a typo as "nothing was due". An empty list is a
 
 | Status | Description                                 | Body                  |
 | ------ | ------------------------------------------- | --------------------- |
-| `200`  | Successful Response                         | `object`              |
+| `200`  | Successful Response                         | [`RenewalResult`](#renewalresult) |
 | `404`  | No managed certificate for a requested site | `object`              |
 | `422`  | Validation Error                            | [`HTTPValidationError`](#httpvalidationerror) |
+
+## `POST /v1/certificates/reconcile`
+
+Issue first certificates for every proxied site that is ready for one, then
+deploy once to install them. The same operation the scheduler runs on
+`BLITZE_CERTIFICATE_RECONCILE_INTERVAL_SECONDS`, exposed so it can also be asked
+for after fixing whatever was blocking preflight.
+
+Eligibility is re-checked under the deployment lock, so this is safe to call
+while the scheduler is running: only one of them can still see a site as
+unissued and contact the CA. A site whose preflight blocks appears under
+`skipped` and never reaches the CA; one whose issuance failed appears under
+`failed` and does not stop the others.
+
+`deployment` is `null` when nothing was issued — reconciliation converges the
+fleet only when it has something new to install.
+
+**Parameters**
+
+| Name        | In       | Required | Type     | Description                   |
+| ----------- | -------- | -------- | -------- | ----------------------------- |
+| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
+
+**Responses**
+
+| Status | Description         | Body            |
+| ------ | ------------------- | --------------- |
+| `200`  | Successful Response | [`ReconciliationResult`](#reconciliationresult) |
+
+## `GET /metrics`
+
+Prometheus text format. Gauges read out of the database at scrape time rather
+than counters held in memory, so there is nothing to reset on restart and no
+second source of truth about what happened.
+
+Authenticated like every other data route: the fleet size and which certificates
+are close to expiry are not public.
+
+| Metric | Meaning |
+| ------ | ------- |
+| `blitzecdn_edges` | Registered edge servers. |
+| `blitzecdn_sites` | Derived virtual hosts. |
+| `blitzecdn_certificates_expiring` | Managed certificates near expiry. |
+| `blitzecdn_certificates_unrenewable` | Of those, the ones BlitzeCDN cannot reissue — uploaded rather than issued, so somebody has to be asked for a replacement. |
+| `blitzecdn_deployments{status}` | Recent deployments by status. |
+| `blitzecdn_outbox_undelivered` | Domain events awaiting delivery to a configured integration. |
+
+**Parameters**
+
+| Name        | In       | Required | Type     | Description                   |
+| ----------- | -------- | -------- | -------- | ----------------------------- |
+| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
+
+**Responses**
+
+| Status | Description         | Body     |
+| ------ | ------------------- | -------- |
+| `200`  | Successful Response | `text/plain` |
 
 ## `GET /v1/edges`
 
@@ -1091,6 +1149,38 @@ looks like.
 | Field    | Type                | Required | Default |
 | -------- | ------------------- | -------- | ------- |
 | `detail` | [`ValidationError[]`](#validationerror) | `false`  | —       |
+
+### `RenewalResult`
+
+The outcome of one renewal sweep, per site.
+
+| Field     | Type       | Required | Default |
+| --------- | ---------- | -------- | ------- |
+| `failed`  | `string[]` | `false`  | `[]`    |
+| `renewed` | `string[]` | `false`  | `[]`    |
+| `skipped` | `string[]` | `false`  | `[]`    |
+
+Three buckets rather than two, because "not renewed" has two very different
+causes and only one needs a person. `failed` is a site the CA or preflight
+refused. `skipped` is a site this run did not get to — the budget ran out, a
+deployment held the lock, or the certificate was uploaded rather than issued and
+cannot be reissued here. A skipped site is picked up by the next run, so a sweep
+full of them is slower renewal rather than missed renewal.
+
+### `ReconciliationResult`
+
+First certificates issued for sites that were ready, and the deploy that
+installed them.
+
+| Field        | Type                          | Required | Default |
+| ------------ | ----------------------------- | -------- | ------- |
+| `deployment` | [`Deployment`](#deployment) \| `null` | `false` | — |
+| `failed`     | `object`                      | `false`  | `{}`    |
+| `issued`     | `string[]`                    | `false`  | `[]`    |
+| `skipped`    | `object`                      | `false`  | `{}`    |
+
+`skipped` and `failed` map a site name to the reason. `deployment` is `null`
+when nothing was issued.
 
 ### `OriginCheckRequest`
 
