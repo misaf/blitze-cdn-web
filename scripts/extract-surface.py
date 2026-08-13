@@ -126,10 +126,17 @@ def _settings_environment_names() -> dict[str, str]:
     import blitzecdn.config
 
     source = Path(blitzecdn.config.__file__).read_text("utf8")
-    pairs = re.findall(
+    inline_pairs = re.findall(
         r'\(\s*"(BLITZE_[A-Z0-9_]+)",\s*"([a-z][a-z0-9_]*)"', source
     )
-    mapping = {key: variable for variable, key in pairs}
+    declared_pairs = re.findall(
+        r'\(\s*"[a-z][a-z0-9_]*",\s*"(BLITZE_[A-Z0-9_]+)",'
+        r'\s*"([a-z][a-z0-9_]*)"',
+        source,
+    )
+    mapping = {
+        key: variable for variable, key in (*inline_pairs, *declared_pairs)
+    }
 
     from blitzecdn.config import Settings
 
@@ -160,8 +167,14 @@ def _environment_variables() -> list[str]:
     )
     names: set[str] = set()
     for path in source_root.rglob("*.py"):
-        for match in lookup.finditer(path.read_text("utf8")):
+        source = path.read_text("utf8")
+        for match in lookup.finditer(source):
             names.add(match.group(1) or match.group(2))
+        # Configuration sources are declarative tuples, not lookup calls. This
+        # module contains only operator-facing BLITZE_* inputs; variables sent
+        # to child processes live in infrastructure adapters instead.
+        if path.name == "config.py":
+            names.update(re.findall(r'"(BLITZE_[A-Z0-9_]+)"', source))
     return sorted(names)
 
 
