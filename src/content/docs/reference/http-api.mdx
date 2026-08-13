@@ -776,12 +776,16 @@ that distinction survives.
 | `502`  | Teardown failed and the edge was kept; retry, or pass `force=true` | —                     |
 | `422`  | Validation Error                                                   | [`HTTPValidationError`](#httpvalidationerror) |
 
-## `GET /v1/origins/check`
+## `POST /v1/origins/check`
 
-Connect to every enabled site's origin the way the edge will: resolve, connect,
-and for an HTTPS origin complete a verified TLS handshake with the same SNI. The
-probe runs from the control plane, not from an edge, and is bounded by
-`BLITZE_ORIGIN_CHECK_TIMEOUT_SECONDS` per origin.
+Ask the edges to connect to the origins they proxy to: resolve, connect, and for
+an HTTPS origin complete a verified TLS handshake with the same SNI the edge
+sends. Each edge answers for itself, so the response is per edge and per site.
+
+A `POST` despite changing nothing, following `POST /v1/cache/stats`: it runs a
+playbook across the fleet, which is neither cacheable nor safe to retry blindly
+the way `GET` promises. Answers inline, bounded by
+`BLITZE_DEPLOYMENT_TIMEOUT_SECONDS`, so set a matching client timeout.
 
 **Parameters**
 
@@ -789,11 +793,14 @@ probe runs from the control plane, not from an edge, and is bounded by
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
+**Body** — [`OriginCheckRequest`](#origincheckrequest)
+
 **Responses**
 
 | Status | Description         | Body            |
 | ------ | ------------------- | --------------- |
-| `200`  | Successful Response | [`OriginCheck[]`](#origincheck) |
+| `200`  | Successful Response | [`OriginReport`](#originreport) |
+| `422`  | Validation Error    | [`HTTPValidationError`](#httpvalidationerror) |
 
 ## `GET /v1/sites/{name}/certificate`
 
@@ -1085,25 +1092,69 @@ looks like.
 | -------- | ------------------- | -------- | ------- |
 | `detail` | [`ValidationError[]`](#validationerror) | `false`  | —       |
 
+### `OriginCheckRequest`
+
+Which edges should answer. All of them, unless narrowed.
+
+| Field        | Type             | Required | Default |
+| ------------ | ---------------- | -------- | ------- |
+| `host_limit` | `string \| null` | `false`  | —       |
+
+### `OriginReport`
+
+What the fleet says about the origins it proxies to.
+
+| Field        | Type                | Required | Default |
+| ------------ | ------------------- | -------- | ------- |
+| `checked_at` | `string` (date-time) | `true`   | —       |
+| `edges`      | [`EdgeOriginChecks[]`](#edgeoriginchecks) | `false` | `[]` |
+| `host_limit` | `string \| null`    | `false`  | —       |
+
+Read per site rather than per edge when deciding whether something is wrong: an
+origin every edge can reach is healthy, one no edge can reach is down, and one
+some edges can reach is a routing or allow-list problem that a single vantage
+point could never have told apart.
+
+### `EdgeOriginChecks`
+
+One edge's answer about every origin it was asked to reach.
+
+| Field        | Type                | Required | Default |
+| ------------ | ------------------- | -------- | ------- |
+| `checked_at` | `string \| null` (date-time) | `false` | — |
+| `checks`     | [`OriginCheck[]`](#origincheck) | `false` | `[]` |
+| `error`      | `string \| null`    | `false`  | —       |
+| `host`       | `string`            | `true`   | —       |
+
+`error` is set when this edge said nothing usable — unreachable, the role
+failed, or it published no report. A silent edge is not a passing edge.
+
 ### `OriginCheck`
 
-The result of connecting to one site's origin the way the edge will.
+One edge's answer about one site's origin.
 
 | Field          | Type              | Required | Default |
 | -------------- | ----------------- | -------- | ------- |
 | `detail`       | `string \| null`  | `false`  | —       |
 | `origin`       | `string`          | `true`   | —       |
 | `reachable`    | `boolean`         | `false`  | `false` |
-| `resolved`     | `boolean`         | `false`  | `false` |
 | `scheme`       | [`HttpScheme`](#httpscheme)      | `true`   | —       |
 | `site`         | `string`          | `true`   | —       |
 | `sni`          | `string \| null`  | `false`  | —       |
+| `status`       | `integer \| null` | `false`  | —       |
 | `tls_verified` | `boolean \| null` | `false`  | —       |
 
-Three separate answers because the fixes differ. `resolved` false means DNS;
-`reachable` false means routing, a firewall, or the wrong port; `tls_verified`
-false means the origin's certificate does not match the SNI the edge sends. It
-is `null` for an HTTP origin, where the question does not arise.
+Two separate answers because the fixes differ. `reachable` false means DNS,
+routing, a firewall, or the wrong port — the edge got nothing back at all.
+`tls_verified` false with `reachable` true means the origin answered but
+presented a certificate that is not valid for the SNI this edge sends, which is
+the site's `origin_sni` or the origin's own certificate and nothing to do with
+the network. `tls_verified` is `null` for an HTTP origin, where the question
+does not arise.
+
+`status` is whatever the origin answered a `HEAD /` with, and is not judged: a
+404 or a 403 still proves the origin is up and talking, which is the whole of
+what this check claims to know.
 
 ### `HttpScheme`
 
