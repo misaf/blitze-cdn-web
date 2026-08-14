@@ -42,9 +42,11 @@ application command/service
                     └── origin probe → configured origins
 ```
 
-The event bus writes audit entries only after a service announces a
-domain event. Callers cannot manufacture an audit record independently of the
-operation it claims to describe.
+Application services write domain events through a narrow durable event-recorder
+port. State and audit changes share the same SQLite transaction, so callers
+cannot manufacture an audit record independently of the operation it claims to
+describe. This is deliberately not an in-process observer bus or a
+cross-process event stream.
 
 ## CLI and API execution
 
@@ -63,8 +65,12 @@ checks, cache purges, stats, and certificate preflight answer inline. See
 Deployment rows and workflow journals make ambiguous work visible after a
 restart:
 
-- queued or running deployments from a dead process become `abandoned`;
-- unfinished workflows become `needs_review` and retain completed checkpoints;
+- queued deployments are republished to Dramatiq, where duplicate delivery is
+  harmless;
+- running deployments from a dead process become `abandoned`;
+- unfinished workflows become `needs_review` and retain completed checkpoints,
+  but only after startup acquires the deployment lock and proves no live process
+  owns the external work;
 - per-run structured host results remain in SQLite;
 - complete Ansible output remains in `.state/logs` until retention removes it.
 
