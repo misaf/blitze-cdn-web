@@ -3,7 +3,7 @@ title: Domains, records, and sites
 description: Domain delegation, DNS record fields, proxy behavior, validation, and derived CDN sites.
 ---
 
-# Domains and DNS records
+# Domains, records, and sites
 
 A **domain** is a zone a customer has delegated to BlitzeCDN. A **record** is one
 name in that zone. Each record carries a `proxied` flag, which is the CDN on/off
@@ -27,50 +27,17 @@ virtual host any other way — see [`blitzecdn site`](/docs/reference/cli).
   connection, not your origin. Flip the record, deploy, and confirm DNS.
 </Callout>
 
-## Add a domain and its subdomains
+## Command relationships
 
-```bash
-blitzecdn domain add example.com
+| Intent                    | CLI reference                                                        | Operating procedure                         |
+| ------------------------- | -------------------------------------------------------------------- | ------------------------------------------- |
+| Add or remove a domain    | [`blitzecdn domain`](/docs/reference/cli#blitzecdn-domain)           | [Create desired state](/docs/operate#4-create-and-deploy-desired-state) |
+| Add or remove a record    | [`blitzecdn record`](/docs/reference/cli#blitzecdn-record)           | [Create desired state](/docs/operate#4-create-and-deploy-desired-state) |
+| Enable or bypass the CDN  | [`blitzecdn record proxy`](/docs/reference/cli#blitzecdn-record-proxy) | [Publish DNS](/docs/operate/dns)             |
+| Inspect derived sites     | [`blitzecdn site`](/docs/reference/cli#blitzecdn-site)               | [Deploy and roll back](/docs/operate/deploy) |
 
-blitzecdn record add example.com api --value 198.51.100.20 --proxied
-blitzecdn record add example.com img --value 198.51.100.21 --proxied
-blitzecdn record add example.com db  --value 198.51.100.22
-```
-
-Each record points at its own address, so `api` and `img` are proxied through
-the edge to different origins while `db` bypasses the CDN entirely.
-
-These records are what the edges serve, not what resolvers answer with. For
-publishing the public DNS a proxied hostname needs, see
-[DNS hand-off](/docs/operate/dns).
-
-Use `@` for the zone apex and `*` for a wildcard:
-
-```bash
-blitzecdn record add example.com @ --value 198.51.100.5 --proxied
-blitzecdn record add example.com '*' --value 198.51.100.6 --proxied
-```
-
-## Turn the CDN on or off
-
-```bash
-blitzecdn record proxy example.com api --off   # bypass the edge
-blitzecdn record proxy example.com api --on    # route through the edge
-blitzecdn deploy
-```
-
-## Verify
-
-`site list` shows what the edge will serve. Only proxied records appear:
-
-```bash
-blitzecdn record proxy example.com api --off
-blitzecdn validate
-blitzecdn site list --json
-```
-
-`api.example.com` is absent from the output. Turn it back on, run `validate`
-again, and it returns.
+The apex record name is `@`; a wildcard record name is `*`. Records describe
+what edges should serve, not what public resolvers currently answer.
 
 ## Fields
 

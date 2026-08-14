@@ -32,13 +32,13 @@ common source of confusion when starting out.
 
 ## The five steps to a working hostname
 
-| #   | Step                                | What it establishes                                            | Where                                          |
-| --- | ----------------------------------- | -------------------------------------------------------------- | ---------------------------------------------- |
-| 1   | Add a zone and a proxied record     | Which hostname the edges serve, and the origin they fetch from | [Domains and records](/docs/reference/records) |
-| 2   | Deploy                              | Edges now serve that hostname over HTTP                        | [Deploying](/docs/operate/deploy)              |
-| 3   | Publish public DNS at your DNS host | Visitors and certificate authorities reach an edge             | [DNS hand-off](/docs/operate/dns)              |
-| 4   | Request a certificate               | TLS, validated over HTTP-01 through those same edges           | [Certificates](/docs/operate/certificates)     |
-| 5   | Deploy again                        | Edges install and serve the certificate                        | [Deploying](/docs/operate/deploy)              |
+| #   | Step                                | What it establishes                                            | Where                                                  |
+| --- | ----------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
+| 1   | Add a zone and a proxied record     | Which hostname the edges serve, and the origin they fetch from | [Domains, records, and sites](/docs/reference/records) |
+| 2   | Deploy                              | Edges now serve that hostname over HTTP                        | [Deploy and roll back](/docs/operate/deploy)           |
+| 3   | Publish public DNS at your DNS host | Visitors and certificate authorities reach an edge             | [Publish DNS](/docs/operate/dns)                       |
+| 4   | Request a certificate               | TLS, validated over HTTP-01 through those same edges           | [Certificates](/docs/operate/certificates)             |
+| 5   | Deploy again                        | Edges install and serve the certificate                        | [Deploy and roll back](/docs/operate/deploy)           |
 
 The order is not a preference. Step 4 needs steps 2 and 3 to have happened: the
 certificate authority resolves the hostname in public DNS and fetches a challenge

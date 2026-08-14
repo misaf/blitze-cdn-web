@@ -1,19 +1,19 @@
 ---
-title: Desired state and deployments
+title: Deployment lifecycle
 description: What a site is, and how desired state, snapshots, and rollback work.
 ---
 
 # Deployment lifecycle
 
-Use this guide to understand site desired state, inspect deployment snapshots,
-and select a safe rollback target. For the step-by-step operational checklist,
-use [Deploying](/docs/operate/deploy#deployment-checklist).
+This page explains site desired state, deployment snapshots, and rollback
+selection. The ordered operational checklist lives in
+[Deploy and roll back](/docs/operate/deploy#deployment-checklist).
 
-## Before you begin
+## Operational boundary
 
-- Identify the site owner, origin, served hostnames, and certificate mode.
-- Confirm a current backup and a known successful deployment snapshot.
-- Verify no deployment or rollback is running before changing canonical state.
+Deployment and rollback serialize changes to canonical state. Operators protect
+that boundary by identifying the site owner and intended state, retaining a
+current backup, and avoiding competing deployment work.
 
 ## What a site is
 
@@ -72,14 +72,10 @@ transaction. Selection, convergence, and that replacement all happen under one
 hold of the deployment lock, so a concurrent site edit cannot be silently
 discarded.
 
-```bash
-blitzecdn rollback                    # latest successful state different from current
-blitzecdn rollback --check            # preview without replacing state
-blitzecdn rollback DEPLOYMENT_ID      # a specific successful deployment
-```
-
-Applied rollback prompts interactively; automation must pass `--yes` after it
-has selected and reviewed the intended target.
+The CLI can select the latest different successful snapshot or an explicit
+deployment ID, and it can preview either choice. Applied rollback requires
+confirmation. See the [`rollback` reference](/docs/reference/cli#blitzecdn-rollback)
+for the exact forms.
 
 ## The lock
 
@@ -87,23 +83,18 @@ A deployment acquires an OS-level lock on an open file for the whole run. The
 worker releases it on the way out — a timed-out run still releases it, because it
 is a filesystem lock tied to the process. A controller restart marks unfinished
 records `abandoned` and your next plan reflects that. See
-[Deploying](/docs/operate/deploy) for the practical implications.
+[Deploy and roll back](/docs/operate/deploy) for the practical implications.
 
-## Verify site state
+## Evidence of site state
 
-```bash
-blitzecdn site list
-blitzecdn validate
-```
+The site list exposes hostnames, origin, cache policy, and certificate mode.
+Validation checks the complete desired state and Ansible syntax without
+changing an edge. The commands and exit behavior are defined by
+[`site list`](/docs/reference/cli#blitzecdn-site-list) and
+[`validate`](/docs/reference/cli#blitzecdn-validate).
 
-Confirm that the listed site fields match your intended hostnames, origin, cache
-policy, and certificate mode. `validate` checks the complete desired state and
-Ansible syntax without changing an edge.
+## Incorrect site state
 
-## Recover from an incorrect site change
-
-If the change has not been deployed, correct desired state and validate again.
-If it was deployed successfully, preview a known snapshot with
-`blitzecdn rollback DEPLOYMENT_ID --check`, review the result, and then apply the
-rollback. See [Rollback](/docs/operate/deploy#rollback) for confirmation and
-failure behavior.
+An incorrect change is recovered either by applying corrected desired state or
+by selecting a known successful snapshot. Confirmation, preview, and failure
+behavior belong to the [rollback procedure](/docs/operate/deploy#rollback).
