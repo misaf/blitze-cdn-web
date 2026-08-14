@@ -30,6 +30,7 @@ function walk(directory) {
 
 for (const file of walk(root).filter((path) => extname(path) === '.mdx')) {
   const content = readFileSync(file, 'utf8')
+  const relativeFile = relative(root, file)
   const frontmatter = content.match(/^---\n([\s\S]*?)\n---(?:\n|$)/)
   if (!frontmatter) {
     failures.push(`${relative(root, file)} has no frontmatter`)
@@ -76,6 +77,41 @@ for (const file of walk(root).filter((path) => extname(path) === '.mdx')) {
         `${relative(root, file)} contains a malformed Markdown table`,
       )
     }
+  }
+
+  if (relativeFile.startsWith('docs/')) {
+    const title = frontmatter?.[1]
+      .split('\n')
+      .find((line) => line.startsWith('title: '))
+      ?.slice('title: '.length)
+    const h1 = content.match(/^# (.+)$/m)?.[1]
+    if (title && h1 && title !== h1) {
+      failures.push(
+        `${relativeFile} uses title \`${title}\` but its H1 is \`${h1}\``,
+      )
+    }
+  }
+
+  if (
+    relativeFile.startsWith('docs/understand/') &&
+    /^## (Before you begin|Steps|Verify|Recover|Roll back)(?:\s|$)/m.test(
+      content,
+    )
+  ) {
+    failures.push(
+      `${relativeFile} contains a procedural heading inside understand/`,
+    )
+  }
+
+  if (
+    relativeFile.startsWith('docs/reference/') &&
+    /^## (Before you begin|Steps|Verify|Recover|Roll back)(?:\s|$)/m.test(
+      content,
+    )
+  ) {
+    failures.push(
+      `${relativeFile} contains a procedural heading inside reference/`,
+    )
   }
 
   // Reference pages carried `verifiedAgainst` and `lastVerified` frontmatter
