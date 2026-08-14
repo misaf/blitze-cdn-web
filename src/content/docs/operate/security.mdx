@@ -1,0 +1,39 @@
+---
+title: Verify security controls
+description: Verify controller access, edge hardening, API exposure, and recovery ownership before production traffic.
+---
+
+# Verify security controls
+
+Use this checklist before allowing production traffic or exposing the API. The
+[security boundaries](/docs/understand/security) page explains why each control
+exists.
+
+## Before you begin
+
+- Identify the owners of controller access, edge sudo, DNS, and secret rotation.
+- Keep a tested encrypted backup and an independent break-glass API operator.
+- Verify management networks and SSH fingerprints before applying firewall work.
+
+## Verify the security posture
+
+- Run `blitzecdn validate` and confirm there are no configuration errors.
+- From an allowed management network, verify SSH and HTTPS access.
+- From a disallowed network, verify that SSH is blocked.
+- Confirm `GET /health` is the only unauthenticated API route you expose.
+- Inspect certificate and API-key file ownership on the controller.
+- Review `blitzecdn audit` for unexpected operators or mutations.
+
+Repeat these checks after inventory, firewall, proxy, certificate, or secret
+changes.
+
+## Recover from failure
+
+- For authentication symptoms, follow
+  [authentication troubleshooting](/docs/operate/troubleshooting#authentication).
+- For inventory or SSH symptoms, follow
+  [inventory and SSH troubleshooting](/docs/operate/troubleshooting#inventory-and-ssh).
+- For a disclosed API key, follow
+  [Rotate API keys](/docs/operate/api-key-rotation).
+- For unexpected SSH identity, suspected controller compromise, or uncertain
+  firewall state, follow [Respond to incidents](/docs/operate/incident-response).

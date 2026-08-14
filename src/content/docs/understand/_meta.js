@@ -1,5 +1,5 @@
 export default {
-  index: 'System overview',
+  index: 'Understand BlitzeCDN',
   architecture: 'Architecture',
   'control-plane': 'Control plane',
   'domain-model': 'Domain and data model',
@@ -9,6 +9,5 @@ export default {
   'cache-observability': 'Cache and observability',
   'storage-state': 'Storage and state',
   security: 'Security boundaries',
-  'http-api-usage': 'HTTP API behavior',
   glossary: 'Glossary',
 }

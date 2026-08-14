@@ -1,19 +1,20 @@
 ---
-title: Security
+title: Security boundaries
 description: Hardening the control plane and the edges.
 ---
 
-# Security
+# Security boundaries
 
-Use this checklist before allowing production traffic or exposing the API.
-BlitzeCDN validates both sides of the deployment contract, but you still own
-identity, network policy, host trust, and secret handling.
+BlitzeCDN validates both sides of the deployment contract, but ownership of
+identity, network policy, host trust, and secret handling remains outside that
+contract.
 
-## Before you begin
+## Operator-owned controls
 
-- Identify the owners of controller access, edge sudo, DNS, and secret rotation.
-- Keep a tested encrypted backup and an independent break-glass API operator.
-- Verify management networks and SSH fingerprints before applying firewall work.
+Controller access, edge sudo, DNS, secret rotation, backups, and break-glass
+access all require an operator-owned policy. BlitzeCDN consumes those decisions;
+it cannot determine the right owners, trusted management networks, or verified
+SSH fingerprints.
 
 ## Trust boundaries
 
@@ -80,28 +81,11 @@ cannot point a deploy at arbitrary paths. Never relax this.
 segmentation. The tooling makes the safe path easy, but cannot verify your
 out-of-band trust decisions for you.
 
-## Verify the security posture
+## Operational ownership
 
-- Run `blitzecdn validate` and confirm there are no configuration errors.
-- From an allowed management network, verify SSH and HTTPS access.
-- From a disallowed network, verify that SSH is blocked.
-- Confirm `GET /health` is the only unauthenticated API route you expose.
-- Inspect certificate and API-key file ownership on the controller.
-- Review `blitzecdn audit` for unexpected operators or mutations.
-
-Repeat these checks after inventory, firewall, proxy, certificate, or secret
-changes. See [Authentication troubleshooting](/docs/operate/troubleshooting#authentication)
-and [Inventory and SSH troubleshooting](/docs/operate/troubleshooting#inventory-and-ssh)
-for recovery steps.
-
-## Recover from a security failure
-
-- For a disclosed API key, follow [API key rotation](/docs/operate/api-key-rotation)
-  and review audit events covering the exposure window.
-- For an unexpected SSH fingerprint, stop deployment work and validate the host
-  through an independent channel; do not accept the replacement automatically.
-- For suspected private-key or controller compromise, isolate the controller,
-  preserve evidence, revoke or re-issue affected credentials, restore from a
-  known state, and follow the [incident runbook](/docs/operate/incident-response).
-- For firewall lockout, use the provider console or another pre-authorized
-  management path. Do not open SSH globally as a recovery shortcut.
+Verification and recovery are operational procedures, not properties the
+architecture can prove. Use [Verify security controls](/docs/operate/security)
+before production traffic. A disclosed API key follows
+[Rotate API keys](/docs/operate/api-key-rotation); uncertain identity,
+controller compromise, or firewall state follows
+[Respond to incidents](/docs/operate/incident-response).

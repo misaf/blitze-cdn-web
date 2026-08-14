@@ -10,8 +10,9 @@ CI checks. To write or edit a page, read
 
 Documentation has two deliberate entry points:
 
-- **Operate BlitzeCDN:** `/docs/operate` is the complete copy-paste lifecycle
-  runbook. It links outward to focused procedures.
+- **Operate BlitzeCDN:** `/docs/operate` is the canonical standalone lifecycle
+  overview and primary command path. It links to focused procedures for
+  rollback, isolated restore, and detailed recovery.
 - **Understand BlitzeCDN:** `/docs/understand` starts the conceptual path and
   drills through subsystem explanations into exact technical reference.
 

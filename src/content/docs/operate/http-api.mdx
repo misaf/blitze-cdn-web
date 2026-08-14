@@ -1,9 +1,9 @@
 ---
-title: HTTP API usage
-description: Authenticating operators and driving the control plane over HTTP.
+title: Automate with the HTTP API
+description: Authenticate operators and drive the control plane safely over HTTP.
 ---
 
-# API usage
+# Automate with the HTTP API
 
 Use the HTTP API to automate site changes, deployments, certificates, and audit
 reads. Every route except `GET /health` requires an `X-API-Key` header. See the
@@ -76,19 +76,27 @@ curl --fail-with-body -H "X-API-Key: $API_KEY" \
   "$BASE_URL/v1/audit-events"
 ```
 
-Create a site:
+After creating the domain, publish a proxied record. Sites are derived from
+proxied records; there is no site-creation route:
 
 ```bash
-curl --fail-with-body -H "X-API-Key: $API_KEY" \
+curl --fail-with-body -X POST -H "X-API-Key: $API_KEY" \
   -H "Content-Type: application/json" \
-  -d @site.json \
-  "$BASE_URL/v1/sites"
+  -d '{
+    "domain": "example.com",
+    "name": "cdn",
+    "value": "198.51.100.20",
+    "proxied": true
+  }' \
+  "$BASE_URL/v1/domains/example.com/records"
 ```
 
 Queue a convergence, then poll it:
 
 ```bash
 curl --fail-with-body -X POST -H "X-API-Key: $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"check": false}' \
   "$BASE_URL/v1/deployments"
 ```
 
@@ -104,15 +112,15 @@ curl --fail-with-body -H "X-API-Key: $API_KEY" \
 
 ## Verify API access
 
-Check the public health route, then an authenticated route:
+The public health route demonstrates process health. An authenticated read also
+demonstrates authentication and database access:
 
 ```bash
 curl --fail-with-body "$BASE_URL/health"
 curl --fail-with-body -H "X-API-Key: $API_KEY" "$BASE_URL/v1/sites"
 ```
 
-The first request confirms process health. The second confirms authentication
-and database access. A health response alone does not prove the key works.
+The health response alone does not prove that an operator key works.
 
 ## Recover from an API failure
 
@@ -120,4 +128,4 @@ and database access. A health response alone does not prove the key works.
 - For `429`, stop the failing client and wait for the one-minute window to
   clear. Behind a proxy, all clients may share the same source address.
 - For a queued deployment that later fails, inspect its deployment record and
-  follow [Deployment lifecycle troubleshooting](/docs/operate/troubleshooting#deployment-lifecycle).
+  follow [deployment troubleshooting](/docs/operate/troubleshooting#deployment-lifecycle).

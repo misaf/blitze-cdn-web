@@ -9,7 +9,9 @@ export default {
   certificates: 'Manage certificates',
   'backup-restore': 'Back up and restore',
   production: 'Production maintenance',
+  security: 'Verify security controls',
   'api-key-rotation': 'Rotate API keys',
+  'http-api': 'Automate with the HTTP API',
   troubleshooting: 'Troubleshoot and repair',
   'incident-response': 'Respond to incidents',
 }

@@ -1,5 +1,5 @@
 ---
-title: Documentation home
+title: BlitzeCDN documentation
 description: Choose the operational runbook or the subsystem documentation for BlitzeCDN.
 ---
 
@@ -31,8 +31,10 @@ implementation history.
 
 ## Operate BlitzeCDN
 
-The [operator runbook](/docs/operate) is the canonical command path. It keeps the
-complete standalone lifecycle on one page and explicitly separates:
+The [operator runbook](/docs/operate) is the canonical standalone lifecycle
+overview and primary command path. It explicitly separates the following
+operations and links to focused procedures where the full workflow requires
+more detail:
 
 - fresh installation;
 - state-preserving repair;
@@ -54,8 +56,10 @@ Use a focused procedure when the runbook links you there:
 | Publish DNS                                 | [Publish DNS](/docs/operate/dns)                         |
 | Issue, upload, renew, or inspect TLS        | [Manage certificates](/docs/operate/certificates)        |
 | Protect or recover controller state         | [Back up and restore](/docs/operate/backup-restore)      |
+| Verify production security controls         | [Verify security controls](/docs/operate/security)       |
+| Automate through HTTP                       | [Automate with the HTTP API](/docs/operate/http-api)     |
 | Collect evidence and repair a failure       | [Troubleshoot and repair](/docs/operate/troubleshooting) |
-| Handle uncertain serving state              | [Incident response](/docs/operate/incident-response)     |
+| Handle uncertain serving state              | [Respond to incidents](/docs/operate/incident-response)  |
 
 ## Understand BlitzeCDN
 
@@ -79,7 +83,8 @@ whose boundary you are investigating:
 Use reference pages to look up facts after you understand the workflow:
 
 - [CLI](/docs/reference/cli) — commands, flags, confirmation, and exit codes.
-- [HTTP API](/docs/reference/http-api) — authentication, routes, schemas, and status codes.
+- [HTTP API](/docs/reference/http-api) — authentication, routes, and status codes.
+- [HTTP API models](/docs/reference/http-api-models) — request and response schemas.
 - [Configuration](/docs/reference/configuration) — every controller environment variable and TOML key.
 - [Domains, records, and sites](/docs/reference/records) — exact data fields and validation.
 - [Ansible roles and variables](/docs/reference/ansible) — defaults, effects, and defensive checks.
