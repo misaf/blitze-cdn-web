@@ -13,9 +13,10 @@ this section when you need the exact meaning of a command, field, setting, or
 role variable.
 
 - [CLI](/docs/reference/cli) — every command, flag, and exit code.
-- [Domains and records](/docs/reference/records) — zones, A records, and the
-  per-record CDN proxy toggle.
-- [HTTP API](/docs/reference/http-api) — every route, model, and status code.
+- [Domains, records, and sites](/docs/reference/records) — fields, validation,
+  derivation, and the per-record CDN proxy toggle.
+- [HTTP API](/docs/reference/http-api) — every route and status code.
+- [HTTP API models](/docs/reference/http-api-models) — every request and response schema.
 - [Configuration](/docs/reference/configuration) — every `BLITZE_*` variable and
   its TOML equivalent.
 - [Ansible roles](/docs/reference/ansible) — every role variable, typed, with
@@ -27,10 +28,10 @@ role variable.
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Control plane and edges        | [How it works](/docs/understand), [Managing edges](/docs/operate/edges)                                                         | [Architecture](/docs/understand/architecture), [Ansible roles](/docs/reference/ansible)             |
 | Installation and removal       | [Lifecycle](/docs/operate/lifecycle)                                                                                            | [Configuration](/docs/reference/configuration)                                                      |
-| Domains and DNS                | [DNS hand-off](/docs/operate/dns)                                                                                               | [Domains and records](/docs/reference/records)                                                      |
-| Certificates and TLS           | [Certificates](/docs/operate/certificates)                                                                                      | [CLI](/docs/reference/cli), [HTTP API](/docs/reference/http-api)                         |
-| Deployment, cache, monitoring  | [Deploying](/docs/operate/deploy), [Production](/docs/operate/production)                                                       | [CLI](/docs/reference/cli), [HTTP API](/docs/reference/http-api)                         |
-| Security and recovery          | [Security](/docs/understand/security), [Backup](/docs/operate/backup-restore), [Troubleshooting](/docs/operate/troubleshooting) | [Configuration](/docs/reference/configuration), [Ansible roles](/docs/reference/ansible) |
+| Domains and DNS                | [Publish DNS](/docs/operate/dns)                                                                                                | [Domains, records, and sites](/docs/reference/records)                                   |
+| Certificates and TLS           | [Manage certificates](/docs/operate/certificates)                                                                               | [CLI](/docs/reference/cli), [HTTP API](/docs/reference/http-api)                         |
+| Deployment, cache, monitoring  | [Deploy and roll back](/docs/operate/deploy), [Production maintenance](/docs/operate/production)                                | [CLI](/docs/reference/cli), [HTTP API](/docs/reference/http-api)                         |
+| Security and recovery          | [Security boundaries](/docs/understand/security), [Back up and restore](/docs/operate/backup-restore), [Respond to incidents](/docs/operate/incident-response) | [Configuration](/docs/reference/configuration), [Ansible roles](/docs/reference/ansible) |
 
 The roles ship with the control plane in `ansible/roles/`, so one release
 covers both and they cannot drift. The versioned desired-state contract still

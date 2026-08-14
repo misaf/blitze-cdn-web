@@ -1,0 +1,523 @@
+---
+title: HTTP API models
+description: Request and response schemas used by the BlitzeCDN HTTP API.
+---
+
+# HTTP API models
+
+These schemas define the request and response objects linked from the
+[HTTP API route reference](/docs/reference/http-api).
+
+## Models
+
+### `AuditEvent`
+
+| Field           | Type       | Required | Default |
+| --------------- | ---------- | -------- | ------- | --- |
+| `action`        | `string`   | `true`   | —       |
+| `created_at`    | `string`   | `true`   | —       |
+| `details`       | `object`   | `false`  | —       |
+| `id`            | `integer`  | `true`   | —       |
+| `operator`      | `string`   | `true`   | —       |
+| `resource_id`   | `string \\ | null`    | `false` | —   |
+| `resource_type` | `string`   | `true`   | —       |
+
+### `Body_upload_certificate_v1_sites__name__certificate_upload_post`
+
+| Field         | Type     | Required | Default |
+| ------------- | -------- | -------- | ------- |
+| `certificate` | `string` | `true`   | —       |
+| `private_key` | `string` | `true`   | —       |
+
+### `CdnSite`
+
+Validated, provider-independent desired state for one CDN virtual host.
+
+| Field                   | Type              | Required | Default    |
+| ----------------------- | ----------------- | -------- | ---------- | --- |
+| `cache_enabled`         | `boolean`         | `false`  | `true`     |
+| `cache_valid_not_found` | `string`          | `false`  | `1m`       |
+| `cache_valid_success`   | `string`          | `false`  | `10m`      |
+| `certificate_key_path`  | `string \\        | null`    | `false`    | —   |
+| `certificate_mode`      | [`CertificateMode`](#certificatemode) | `false`  | `disabled` |
+| `certificate_path`      | `string \\        | null`    | `false`    | —   |
+| `enabled`               | `boolean`         | `false`  | `true`     |
+| `firewall`              | [`SiteFirewall`](#sitefirewall)    | `false`  | `{}`       |
+| `name`                  | `string`          | `true`   | —          |
+| `origin_host`           | `string`          | `true`   | —          |
+| `origin_port`           | `integer \\       | null`    | `false`    | —   |
+| `origin_request_host`   | `string \\        | null`    | `false`    | —   |
+| `origin_scheme`         | [`HttpScheme`](#httpscheme)      | `false`  | `https`    |
+| `origin_sni`            | `string \\        | null`    | `false`    | —   |
+| `server_names`          | `string[]`        | `true`   | —          |
+
+### `CertificateInfo`
+
+| Field                | Type                | Required | Default |
+| -------------------- | ------------------- | -------- | ------- | --- |
+| `domains`            | `string[]`          | `true`   | —       |
+| `email`              | `string \\          | null`    | `false` | —   |
+| `fingerprint_sha256` | `string`            | `true`   | —       |
+| `not_after`          | `string`            | `true`   | —       |
+| `not_before`         | `string`            | `true`   | —       |
+| `site`               | `string`            | `true`   | —       |
+| `source`             | [`CertificateSource`](#certificatesource) | `true`   | —       |
+
+### `CertificateMode`
+
+_None._
+
+### `CertificateRequest`
+
+| Field   | Type       | Required | Default |
+| ------- | ---------- | -------- | ------- | --- |
+| `email` | `string \\ | null`    | `false` | —   |
+
+### `CertificateSource`
+
+_None._
+
+### `CertificateStatus`
+
+A stored certificate seen against the clock. Derived on request rather than
+stored, so `days_remaining` is always current.
+
+| Field                | Type                | Required | Default |
+| -------------------- | ------------------- | -------- | ------- |
+| `days_remaining`     | `integer`           | `true`   | —       |
+| `domains`            | `string[]`          | `true`   | —       |
+| `expired`            | `boolean`           | `true`   | —       |
+| `fingerprint_sha256` | `string`            | `true`   | —       |
+| `not_after`          | `string`            | `true`   | —       |
+| `renewable`          | `boolean`           | `true`   | —       |
+| `site`               | `string`            | `true`   | —       |
+| `source`             | [`CertificateSource`](#certificatesource) | `true`   | —       |
+
+`renewable` is `true` only for an ACME certificate. An uploaded one must be
+replaced by whoever supplied it.
+
+### `DeployRequest`
+
+| Field        | Type             | Required | Default |
+| ------------ | ---------------- | -------- | ------- |
+| `check`      | `boolean`        | `false`  | `false` |
+| `host_limit` | `string \| null` | `false`  | —       |
+
+`host_limit` narrows the run to some edges — a canary. Names or globs, comma
+separated, matching `^[A-Za-z0-9_.*-]+(?:,[A-Za-z0-9_.*-]+)*$` and at most 512
+characters. Anything else is a `422`. The value is resolved against the
+inventory, so it can only narrow the fleet.
+
+### `Deployment`
+
+| Field         | Type               | Required | Default |
+| ------------- | ------------------ | -------- | ------- | --- |
+| `check_mode`  | `boolean`          | `true`   | —       |
+| `created_at`  | `string`           | `true`   | —       |
+| `finished_at` | `string \\         | null`    | `false` | —   |
+| `id`          | `string`           | `true`   | —       |
+| `operator`    | `string`           | `true`   | —       |
+| `return_code` | `integer \\        | null`    | `false` | —   |
+| `rollback_of` | `string \\         | null`    | `false` | —   |
+| `started_at`  | `string \\         | null`    | `false` | —   |
+| `status`      | [`DeploymentStatus`](#deploymentstatus) | `true`   | —       |
+| `stderr`      | `string`           | `false`  | —       |
+| `stdout`      | `string`           | `false`  | —       |
+
+### `DeploymentStatus`
+
+_None._
+
+### `DriftReport`
+
+Whether the fleet still matches the state the control plane declares.
+
+| Field           | Type             | Required | Default |
+| --------------- | ---------------- | -------- | ------- |
+| `checked_at`    | `string`         | `true`   | —       |
+| `deployment_id` | `string`         | `true`   | —       |
+| `host_limit`    | `string \| null` | `false`  | —       |
+| `hosts`         | [`HostRun[]`](#hostrun)      | `false`  | `[]`    |
+
+A task the roles skip under check mode cannot be counted, so the report floors
+rather than exactly measures the difference. An unreachable host is reported as
+unreachable, not as drift.
+
+### `DriftRequest`
+
+| Field        | Type             | Required | Default |
+| ------------ | ---------------- | -------- | ------- |
+| `host_limit` | `string \| null` | `false`  | —       |
+
+Same constraints as `DeployRequest.host_limit`.
+
+### `Edge`
+
+One edge server: how the controller reaches it, and what the world reaches. The
+Ansible inventory is derived from these, so a field here is a field the
+`blitzecdn` inventory plugin publishes.
+
+| Field              | Type             | Required | Default  |
+| ------------------ | ---------------- | -------- | -------- |
+| `host`             | `string`         | `true`   | —        |
+| `name`             | `string`         | `true`   | —        |
+| `port`             | `integer`        | `false`  | `22`     |
+| `private_key_file` | `string \| null` | `false`  | —        |
+| `public_addresses` | `string[]`       | `false`  | `[]`     |
+| `ssh_sources`      | `string[]`       | `false`  | `[]`     |
+| `user`             | `string`         | `false`  | `deploy` |
+
+`host` becomes `ansible_host`, `user` becomes `ansible_user`, `port` becomes
+both `ansible_port` and `blitzecdn_firewall_ssh_port` — published from one field
+so the firewall cannot close the port Ansible connects on.
+
+`public_addresses` is what the world reaches, and is empty for the ordinary
+single-homed case, where it falls back to `host`. Certificate preflight checks a
+customer's hostname against these, so on a NAT'd edge they must be set.
+
+`ssh_sources` are management CIDRs. Every edge is published the union of every
+edge's sources, as a host variable — narrowing them per host would let an edge
+registered before a second office existed refuse the operator sitting in it.
+
+### `EdgePatch`
+
+A partial update to an edge. Every field optional; unset means untouched. No
+`name` field, deliberately — see `PATCH /v1/edges/{name}`.
+
+| Field              | Type               | Required | Default |
+| ------------------ | ------------------ | -------- | ------- |
+| `host`             | `string \| null`   | `false`  | —       |
+| `port`             | `integer \| null`  | `false`  | —       |
+| `private_key_file` | `string \| null`   | `false`  | —       |
+| `public_addresses` | `string[] \| null` | `false`  | —       |
+| `ssh_sources`      | `string[] \| null` | `false`  | —       |
+| `user`             | `string \| null`   | `false`  | —       |
+
+### `EdgeRemoval`
+
+What `DELETE /v1/edges/{name}` did. The teardown and the deregistration fail
+independently, so the outcome of the first is reported rather than implied.
+
+| Field            | Type        | Required | Default |
+| ---------------- | ----------- | -------- | ------- |
+| `decommissioned` | `boolean`   | `true`   | —       |
+| `hosts`          | [`HostRun[]`](#hostrun) | `false`  | `[]`    |
+| `name`           | `string`    | `true`   | —       |
+
+`hosts` carries the same per-host shape `PurgeResult.hosts` does: the counters,
+the tasks that changed, and the tasks that failed. It is empty when no edge
+reported at all — which is what a forced removal of a host that no longer exists
+looks like.
+
+### `HTTPValidationError`
+
+| Field    | Type                | Required | Default |
+| -------- | ------------------- | -------- | ------- |
+| `detail` | [`ValidationError[]`](#validationerror) | `false`  | —       |
+
+### `RenewalResult`
+
+The outcome of one renewal sweep, per site.
+
+| Field     | Type       | Required | Default |
+| --------- | ---------- | -------- | ------- |
+| `failed`  | `string[]` | `false`  | `[]`    |
+| `renewed` | `string[]` | `false`  | `[]`    |
+| `skipped` | `string[]` | `false`  | `[]`    |
+
+Three buckets rather than two, because "not renewed" has two very different
+causes and only one needs a person. `failed` is a site the CA or preflight
+refused. `skipped` is a site this run did not get to — the budget ran out, a
+deployment held the lock, or the certificate was uploaded rather than issued and
+cannot be reissued here. A skipped site is picked up by the next run, so a sweep
+full of them is slower renewal rather than missed renewal.
+
+### `ReconciliationResult`
+
+First certificates issued for sites that were ready, and the deploy that
+installed them.
+
+| Field        | Type                          | Required | Default |
+| ------------ | ----------------------------- | -------- | ------- |
+| `deployment` | [`Deployment`](#deployment) \| `null` | `false` | — |
+| `failed`     | `object`                      | `false`  | `{}`    |
+| `issued`     | `string[]`                    | `false`  | `[]`    |
+| `skipped`    | `object`                      | `false`  | `{}`    |
+
+`skipped` and `failed` map a site name to the reason. `deployment` is `null`
+when nothing was issued.
+
+### `OriginCheckRequest`
+
+Which edges should answer. All of them, unless narrowed.
+
+| Field        | Type             | Required | Default |
+| ------------ | ---------------- | -------- | ------- |
+| `host_limit` | `string \| null` | `false`  | —       |
+
+### `OriginReport`
+
+What the fleet says about the origins it proxies to.
+
+| Field        | Type                | Required | Default |
+| ------------ | ------------------- | -------- | ------- |
+| `checked_at` | `string` (date-time) | `true`   | —       |
+| `edges`      | [`EdgeOriginChecks[]`](#edgeoriginchecks) | `false` | `[]` |
+| `host_limit` | `string \| null`    | `false`  | —       |
+
+Read per site rather than per edge when deciding whether something is wrong: an
+origin every edge can reach is healthy, one no edge can reach is down, and one
+some edges can reach is a routing or allow-list problem that a single vantage
+point could never have told apart.
+
+### `EdgeOriginChecks`
+
+One edge's answer about every origin it was asked to reach.
+
+| Field        | Type                | Required | Default |
+| ------------ | ------------------- | -------- | ------- |
+| `checked_at` | `string \| null` (date-time) | `false` | — |
+| `checks`     | [`OriginCheck[]`](#origincheck) | `false` | `[]` |
+| `error`      | `string \| null`    | `false`  | —       |
+| `host`       | `string`            | `true`   | —       |
+
+`error` is set when this edge said nothing usable — unreachable, the role
+failed, or it published no report. A silent edge is not a passing edge.
+
+### `OriginCheck`
+
+One edge's answer about one site's origin.
+
+| Field          | Type              | Required | Default |
+| -------------- | ----------------- | -------- | ------- |
+| `detail`       | `string \| null`  | `false`  | —       |
+| `origin`       | `string`          | `true`   | —       |
+| `reachable`    | `boolean`         | `false`  | `false` |
+| `scheme`       | [`HttpScheme`](#httpscheme)      | `true`   | —       |
+| `site`         | `string`          | `true`   | —       |
+| `sni`          | `string \| null`  | `false`  | —       |
+| `status`       | `integer \| null` | `false`  | —       |
+| `tls_verified` | `boolean \| null` | `false`  | —       |
+
+Two separate answers because the fixes differ. `reachable` false means DNS,
+routing, a firewall, or the wrong port — the edge got nothing back at all.
+`tls_verified` false with `reachable` true means the origin answered but
+presented a certificate that is not valid for the SNI this edge sends, which is
+the site's `origin_sni` or the origin's own certificate and nothing to do with
+the network. `tls_verified` is `null` for an HTTP origin, where the question
+does not arise.
+
+`status` is whatever the origin answered a `HEAD /` with, and is not judged: a
+404 or a 403 still proves the origin is up and talking, which is the whole of
+what this check claims to know.
+
+### `HttpScheme`
+
+_None._
+
+### `RenewRequest`
+
+| Field         | Type      | Required | Default |
+| ------------- | --------- | -------- | ------- |
+| `force`       | `boolean` | `false`  | `false` |
+| `within_days` | `integer` | `false`  | `30`    |
+
+`within_days` accepts `0`–`3650`. `force` renews every ACME certificate
+regardless of age.
+
+### `RollbackRequest`
+
+| Field           | Type       | Required | Default |
+| --------------- | ---------- | -------- | ------- | --- |
+| `check`         | `boolean`  | `false`  | `false` |
+| `deployment_id` | `string \\ | null`    | `false` | —   |
+
+### `Domain`
+
+| Field  | Type     | Required | Default |
+| ------ | -------- | -------- | ------- |
+| `name` | `string` | `true`   | —       |
+
+### `DnsRecord`
+
+| Field                   | Type              | Required | Default    |
+| ----------------------- | ----------------- | -------- | ---------- |
+| `cache_enabled`         | `boolean`         | `false`  | `true`     |
+| `cache_valid_not_found` | `string`          | `false`  | `1m`       |
+| `cache_valid_success`   | `string`          | `false`  | `10m`      |
+| `certificate_key_path`  | `string \| null`  | `false`  | —          |
+| `certificate_mode`      | [`CertificateMode`](#certificatemode) | `false`  | `disabled` |
+| `certificate_path`      | `string \| null`  | `false`  | —          |
+| `domain`                | `string`          | `true`   | —          |
+| `enabled`               | `boolean`         | `false`  | `true`     |
+| `firewall`              | [`SiteFirewall`](#sitefirewall)    | `false`  | `{}`       |
+| `name`                  | `string`          | `true`   | —          |
+| `origin_port`           | `integer \| null` | `false`  | —          |
+| `origin_request_host`   | `string \| null`  | `false`  | —          |
+| `origin_scheme`         | [`HttpScheme`](#httpscheme)      | `false`  | `https`    |
+| `origin_sni`            | `string \| null`  | `false`  | —          |
+| `proxied`               | `boolean`         | `false`  | `false`    |
+| `ttl`                   | `integer`         | `false`  | `300`      |
+| `type`                  | [`RecordType`](#recordtype)      | `false`  | `A`        |
+| `value`                 | `string`          | `true`   | —          |
+
+### `RecordPatch`
+
+| Field                   | Type                      | Required | Default |
+| ----------------------- | ------------------------- | -------- | ------- |
+| `cache_enabled`         | `boolean \| null`         | `false`  | —       |
+| `cache_valid_not_found` | `string \| null`          | `false`  | —       |
+| `cache_valid_success`   | `string \| null`          | `false`  | —       |
+| `certificate_key_path`  | `string \| null`          | `false`  | —       |
+| `certificate_mode`      | `CertificateMode \| null` | `false`  | —       |
+| `certificate_path`      | `string \| null`          | `false`  | —       |
+| `enabled`               | `boolean \| null`         | `false`  | —       |
+| `firewall`              | `SiteFirewall \| null`    | `false`  | —       |
+| `origin_port`           | `integer \| null`         | `false`  | —       |
+| `origin_request_host`   | `string \| null`          | `false`  | —       |
+| `origin_scheme`         | `HttpScheme \| null`      | `false`  | —       |
+| `origin_sni`            | `string \| null`          | `false`  | —       |
+| `proxied`               | `boolean \| null`         | `false`  | —       |
+| `ttl`                   | `integer \| null`         | `false`  | —       |
+| `value`                 | `string \| null`          | `false`  | —       |
+
+### `SiteFirewall`
+
+Per-hostname request filtering applied at the edge. The posture is open: an
+empty object serves everyone, and each list subtracts from that.
+
+| Field               | Type       | Required | Default |
+| ------------------- | ---------- | -------- | ------- |
+| `allow_sources`     | `string[]` | `false`  | `[]`    |
+| `allowed_countries` | `string[]` | `false`  | `[]`    |
+| `denied_countries`  | `string[]` | `false`  | `[]`    |
+| `denied_methods`    | `string[]` | `false`  | `[]`    |
+| `denied_paths`      | `string[]` | `false`  | `[]`    |
+| `deny_sources`      | `string[]` | `false`  | `[]`    |
+
+`PATCH` replaces the whole object, so send every list you want to keep. Send
+`{"firewall": {}}` to remove all rules. The `blitzecdn record firewall` CLI
+command merges instead, keeping the lists you do not name.
+
+Sources are IP addresses or CIDR networks with their host bits clear;
+`203.0.113.5/24` returns `422`. Countries are ISO 3166-1 alpha-2 and require
+GeoIP on the edge. See [the firewall
+reference](/docs/reference/records) for how the rules compose and why
+`/.well-known/acme-challenge/` is never filtered.
+
+### `RecordType`
+
+`A`, `AAAA`
+
+### `ValidationError`
+
+| Field   | Type       | Required   | Default |
+| ------- | ---------- | ---------- | ------- | --- |
+| `ctx`   | `object`   | `false`    | —       |
+| `input` | `object`   | `false`    | —       |
+| `loc`   | `string \\ | integer[]` | `true`  | —   |
+| `msg`   | `string`   | `true`     | —       |
+| `type`  | `string`   | `true`     | —       |
+
+### `AnsibleRun`
+
+One Ansible invocation. Required fields are `id`, `playbook`, `status`,
+`started_at`, and `finished_at`. Optional fields are `return_code`, `log_path`,
+and `error`; `hosts` defaults to `[]` and contains [`HostRun`](#hostrun) objects.
+
+### `HostRun`
+
+One edge's structured run result. `host` is required. The `ok`, `changed`,
+`failed`, `unreachable`, `skipped`, `rescued`, and `ignored` counters default to
+zero. `changes` and `failures` contain [`TaskResult`](#taskresult) objects; `report` carries an
+operation-specific structured fact such as cache statistics.
+
+### `RunStatus`
+
+`succeeded`, `failed`, `timed_out`, `unstarted`
+
+### `TaskResult`
+
+| Field     | Type             | Required | Default |
+| --------- | ---------------- | -------- | ------- |
+| `task`    | `string`         | `true`   | —       |
+| `action`  | `string`         | `false`  | `""`    |
+| `outcome` | [`TaskOutcome`](#taskoutcome)    | `true`   | —       |
+| `message` | `string \| null` | `false`  | —       |
+| `role`    | `string \| null` | `false`  | —       |
+
+### `TaskOutcome`
+
+`ok`, `changed`, `failed`, `unreachable`, `skipped`
+
+### `PurgeEntry`
+
+| Field    | Type         | Required | Default |
+| -------- | ------------ | -------- | ------- |
+| `host`   | `string`     | `true`   | —       |
+| `uri`    | `string`     | `true`   | —       |
+| `scheme` | [`HttpScheme`](#httpscheme) | `false`  | `https` |
+
+### `PurgeRequest`
+
+`entries` is an array of at most 500 [`PurgeEntry`](#purgeentry) objects. `purge_all` defaults
+to `false`; `host_limit` is an optional comma-separated edge pattern. Supply
+entries or `purge_all`, never both or neither.
+
+### `PurgeResult`
+
+Contains `purged_at`, the requested `entries`, `purge_all`, `host_limit`, and
+per-edge `hosts`. Read-only `complete` is true only when every edge in scope
+purged; read-only `failed_hosts` names edges that may still serve the object.
+
+### `StatsRequest`
+
+`host_limit` is the only field and is optional.
+
+### `CacheStatsReport`
+
+Contains required `collected_at`, optional `host_limit`, and an `edges` array of
+[`EdgeStats`](#edgestats) objects.
+
+### `EdgeStats`
+
+`host` is required. `collected_at`, `nginx_reachable`, connection counters,
+per-site `sites`, and `error` describe one edge. A missing timestamp and an
+error indicate that edge did not return a report.
+
+### `SiteCacheStats`
+
+Contains required `site` and an `outcomes` mapping of Nginx cache-status labels
+to request counts.
+
+### `PreflightReport`
+
+Contains required `site` and a `checks` array of [`PreflightCheck`](#preflightcheck) objects.
+
+### `PreflightCheck`
+
+Contains required `name`, `passed`, `severity`, and human-readable `detail`.
+
+### `PreflightSeverity`
+
+`blocking`, `advisory`. A blocking failure prevents an ACME request; an
+advisory is reported but does not make issuance impossible.
+
+### `Workflow`
+
+Crash-visible progress for work that crosses transaction systems. Required
+fields are `id`, `kind`, `status`, `operator`, `created_at`, and `updated_at`.
+`resource_id` and `error` are optional; `steps` defaults to `[]`.
+
+### `WorkflowKind`
+
+`deployment`, `rollback`, `certificate`
+
+### `WorkflowStatus`
+
+`pending`, `running`, `succeeded`, `failed`, `needs_review`
+
+### `WorkflowStep`
+
+Contains required `name` and `completed_at`, plus an operation-specific
+`details` object.

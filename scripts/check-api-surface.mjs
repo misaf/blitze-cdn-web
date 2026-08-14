@@ -102,6 +102,7 @@ function compare({ label, file, expected, documented, tolerated = [] }) {
 
 // Routes are documented as `## `METHOD /path`` headings.
 const apiPage = page('http-api')
+const apiModelsPage = page('http-api-models')
 compare({
   label: 'route',
   file: 'reference/http-api.mdx',
@@ -114,11 +115,11 @@ compare({
 // Schemas are documented as `### `Name`` headings under the models section.
 compare({
   label: 'schema',
-  file: 'reference/http-api.mdx',
+  file: 'reference/http-api-models.mdx',
   expected: surface.schemas,
-  documented: [...apiPage.matchAll(/^### `([A-Za-z][A-Za-z0-9_]*)`/gm)].map(
-    (match) => match[1],
-  ),
+  documented: [
+    ...apiModelsPage.matchAll(/^### `([A-Za-z][A-Za-z0-9_]*)`/gm),
+  ].map((match) => match[1]),
 })
 
 // The page is long enough that a schema name six hundred lines from its
