@@ -226,6 +226,17 @@ for (const file of walk(resolve('src')).filter((path) =>
   }
 }
 
+for (const workflow of walk(resolve('.github/workflows'))) {
+  const content = readFileSync(workflow, 'utf8')
+  for (const match of content.matchAll(/uses:\s*([^\s#]+)/g)) {
+    if (!/^[^@]+@[0-9a-f]{40}$/.test(match[1])) {
+      failures.push(
+        `${relative(resolve('.'), workflow)} uses a movable action reference ${match[1]}`,
+      )
+    }
+  }
+}
+
 if (failures.length) {
   console.error('Documentation policy check failed:')
   for (const failure of failures) console.error(`- ${failure}`)
