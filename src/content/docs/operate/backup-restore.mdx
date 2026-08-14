@@ -13,8 +13,9 @@ of controller truth.
 <Callout type="error">
   The backup contains API keys, SSH private material, ACME account state, and
   certificate private keys. Encrypt it, restrict access, and keep it outside
-  `/opt/blitzecdn`, `/etc/blitzecdn`, and `/var/backups/blitzecdn`; complete
-  purge deletes all three locations.
+  `/opt/blitzecdn` and `/etc/blitzecdn`; complete purge deletes both locations.
+  An operator-created `/var/backups/blitzecdn` is outside the installation and
+  is deliberately retained by uninstall.
 </Callout>
 
 ## Before you begin

@@ -181,8 +181,8 @@ default. `--no-decommission` and `--force` can leave private keys behind; read
 ## 7. Back up and restore
 
 Wait for deployments and certificate operations to finish. Create the target
-on storage that is not under `/opt/blitzecdn` or `/var/backups/blitzecdn`, because
-both are deleted by a complete purge.
+outside `/opt/blitzecdn` and `/etc/blitzecdn`, because both are deleted by a
+complete purge. An operator-created `/var/backups/blitzecdn` is retained.
 
 ```bash
 sudo install -d -m 0700 /secure/backup/blitzecdn
@@ -293,7 +293,6 @@ The confirmation and deletion include:
 - `/etc/blitzecdn` and API credentials;
 - BlitzeCDN services, timers, unit files, CLI wrapper, and sudo rule;
 - `blitzecdn` and `deploy` accounts and their expected homes;
-- `/var/backups/blitzecdn` update archives;
 - BlitzeCDN-marked Nginx sites, local-edge TLS material, cache, access log,
   managed-site registry, resolver/SSH/Fail2Ban/sysctl drop-ins, GeoIP config,
   and BlitzeCDN GeoIP units.
@@ -307,7 +306,6 @@ Verify the purge:
 ```bash
 test ! -e /opt/blitzecdn
 test ! -e /etc/blitzecdn
-test ! -e /var/backups/blitzecdn
 ! getent passwd blitzecdn
 ! getent passwd deploy
 systemctl list-unit-files 'blitzecdn-*'

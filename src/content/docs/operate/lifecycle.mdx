@@ -173,12 +173,14 @@ sudo /opt/blitzecdn/install.sh --fresh \
   --admin-cidr 203.0.113.8/32 --email ops@example.com
 ```
 
-Performs the complete purge above, then restores the source line that was
-running and installs it exactly as a new server. An exact release tag remains
-on that tag, a `2.x` installation remains attached to that branch, and any
-other development checkout remains pinned to its exact commit. The checkout
-must be the upstream Git repository. The standalone options pass through
-unchanged. The rebuilt system has empty state.
+Resolves and stages the exact replacement checkout before it removes the
+working installation, so a missing ref or network failure leaves the current
+controller untouched. It then performs the complete purge above, moves the
+staged source into place, and installs it exactly as a new server. An exact
+release tag remains on that tag, a `2.x` installation remains attached to that
+branch, and any other development checkout remains pinned to its exact commit.
+The checkout must be the upstream Git repository. The standalone options pass
+through unchanged. The rebuilt system has empty state.
 
 ## Verify
 
@@ -202,7 +204,6 @@ After an uninstall, confirm nothing survived:
 ```bash
 test ! -e /opt/blitzecdn
 test ! -e /etc/blitzecdn
-test ! -e /var/backups/blitzecdn
 ! getent passwd blitzecdn
 ! getent passwd deploy
 systemctl list-unit-files 'blitzecdn-*'
@@ -214,8 +215,8 @@ systemctl list-unit-files 'blitzecdn-*'
   distribution's interpreter is too old — Debian 12 is the usual case. See
   [Before you begin](#before-you-begin).
 - `refusing unexpected origin URL` means the checkout's `origin` is not the
-  upstream repository. `update` and `--fresh` fetch code and run it as root, so
-  they accept only that remote.
+  upstream repository. `--fresh` fetches code and runs it as root, so it accepts
+  only that remote.
 - `clone or copy this release to /opt/blitzecdn` means `standalone` was run from
   another directory. Move the checkout and run it again.
 - For symptoms after a deployment rather than an installation, see

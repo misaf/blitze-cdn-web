@@ -179,7 +179,10 @@ file from `sites-available`, and then removes its managed TLS directory under
 those certificates are gone, and only names shaped like a site name select a
 directory, so a hand-edited registry line cannot aim the deletion elsewhere.
 Certificates outside `/etc/blitzecdn/tls/` are never named for a site and are
-never removed.
+never removed. Active managed bundles use fingerprinted filenames. The role
+copies a complete new pair before the site configuration refers to it, then
+removes superseded PEM files only after the assembled configuration passes
+`nginx -t`.
 
 `blitzecdn_nginx_allow_empty_sites` governs the one case that empties an edge
 completely. When desired state carries no sites at all and the registry still

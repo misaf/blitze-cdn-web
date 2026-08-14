@@ -36,6 +36,11 @@ hostname/origin defaults defined by the site model. `blitzecdn origin check`
 runs from the controller and separately reports resolution, reachability, and
 TLS verification.
 
+The same identity policy is enforced on edge traffic: Nginx sends the selected
+SNI name and verifies the origin certificate against the host CA trust store.
+An origin that only passes when certificate verification is disabled is not a
+supported HTTPS origin.
+
 ## Certificate sources
 
 Each hostname has one certificate. Supported modes are:
@@ -47,7 +52,9 @@ Each hostname has one certificate. Supported modes are:
 
 Uploaded and requested private keys live only in the controller certificate
 store and under `/etc/blitzecdn/tls/<site>/` on edges. They are never returned by
-the API or rendered in plans.
+the API or rendered in plans. Both locations use immutable, fingerprinted chain
+and key files; an atomic metadata or Nginx-configuration update switches the
+active pair only after both files are durable.
 
 ## ACME coordination
 

@@ -76,7 +76,12 @@ re-checks the same rules so a hand-edited desired-state file cannot bypass them.
 
 The upload and request endpoints select `uploaded` and `requested` mode and own
 their on-edge paths. You cannot set those modes directly through the site create
-or update endpoints.
+or update endpoints. Managed files are named with the certificate fingerprint.
+An edge copies the complete immutable pair, validates Nginx with a site config
+that references both new names, and only then removes the superseded pair. A
+process interruption therefore leaves either the old complete bundle active or
+the new complete bundle active, never a live certificate paired with the wrong
+private key.
 
 ## Choose a managed certificate source
 
