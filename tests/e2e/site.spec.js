@@ -1,5 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
+import { readdirSync } from 'node:fs'
+import { relative, resolve, sep } from 'node:path'
 
 /*
  * Every route is listed with the `h1` it must render. This list had drifted
@@ -16,30 +18,59 @@ const routes = [
   ['/contact', 'Where to send what'],
   ['/faq', 'Frequently asked questions'],
   ['/blog', 'Blog'],
+  ['/blog/one-lock-two-halves', 'One lock, two halves'],
   ['/docs/operate', 'Operate BlitzeCDN'],
   ['/docs/operate/lifecycle', 'Install, rebuild, and remove'],
+  ['/docs/operate/api-key-rotation', 'API key rotation'],
+  ['/docs/operate/certificates', 'Certificates'],
   ['/docs/operate/first-deployment', 'First deployment'],
   ['/docs/operate/deploy', 'Deploying'],
   ['/docs/operate/edges', 'Manage edge servers'],
   ['/docs/operate/backup-restore', 'Back up and restore'],
   ['/docs/operate/troubleshooting', 'Troubleshooting'],
+  ['/docs/operate/production', 'Production'],
   ['/docs/understand', 'Understand BlitzeCDN'],
   ['/docs/understand/architecture', 'Architecture'],
   ['/docs/understand/control-plane', 'Control plane'],
+  ['/docs/understand/deployment-model', 'Deployment lifecycle'],
   ['/docs/understand/domain-model', 'Domain and data model'],
   ['/docs/understand/edge-infrastructure', 'Edges and Ansible'],
   ['/docs/understand/dns-tls', 'DNS and TLS'],
   ['/docs/understand/cache-observability', 'Cache and observability'],
   ['/docs/understand/storage-state', 'Storage and state'],
   ['/docs/understand/glossary', 'Glossary'],
+  ['/docs/understand/http-api-usage', 'API usage'],
+  ['/docs/understand/security', 'Security'],
   ['/docs/reference', 'Reference'],
   ['/docs/reference/cli', 'CLI'],
+  ['/docs/reference/configuration', 'Configuration'],
   ['/docs/reference/records', 'Domains'],
   ['/docs/reference/ansible', 'Ansible roles and variables'],
+  ['/docs/reference/http-api', 'HTTP API'],
   ['/docs/operate/go-live', 'Take a real site live'],
   ['/docs/operate/dns', 'DNS hand-off'],
   ['/docs/operate/incident-response', 'Incident response'],
 ]
+
+const CONTENT_ROOT = resolve('src/content')
+const contentRoutes = readdirSync(CONTENT_ROOT, { recursive: true })
+  .filter((path) => path.endsWith('.mdx'))
+  .map((path) => {
+    const route = `/${relative(CONTENT_ROOT, resolve(CONTENT_ROOT, path))}`
+      .split(sep)
+      .join('/')
+      .replace(/\.mdx$/, '')
+      .replace(/\/index$/, '')
+    return route || '/'
+  })
+  .sort()
+
+test('the browser route manifest covers every content page', () => {
+  const exercised = routes
+    .map(([route]) => route)
+    .filter((route) => !['/', '/about', '/contact'].includes(route))
+  expect([...exercised].sort()).toEqual(contentRoutes)
+})
 
 /* Routes written by hand in `src/app/`, bypassing the Nextra docs layout. */
 const HAND_BUILT_ROUTES = [
