@@ -29,13 +29,14 @@ around that:
   a second host, and use the same `.env` (or a reconciled copy). See
   [Backup & recovery](/docs/operate/backup-restore).
 
-The standalone installer installs and enables the bundled service so the API,
-deployment worker, and first-certificate reconciler have a supervised
-production lifetime. Do not copy the unit by hand: its paths and service
-account are created by the standalone workflow. The unit binds the API to loopback, loads secrets from
-`/etc/blitzecdn/blitzecdn.env`, and puts `/opt/blitzecdn/.venv/bin` on `PATH` so
-Ansible and Certbot hooks use the installed project environment. Put an
-authenticated TLS reverse proxy in front of it before allowing remote clients.
+The standalone installer installs and enables the bundled API and worker units,
+so the API, scheduler, deployment worker, and certificate jobs have a
+supervised production lifetime. Do not copy the units by hand: their paths and
+service account are created by the standalone workflow. The API unit binds to
+loopback; both units load `/etc/blitzecdn/blitzecdn.env` and put
+`/opt/blitzecdn/.venv/bin` on `PATH` so Ansible and Certbot hooks use the
+installed project environment. Put an authenticated TLS reverse proxy in front
+of the API before allowing remote clients.
 
 ## Sizing the controller
 

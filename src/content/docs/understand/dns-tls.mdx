@@ -68,10 +68,10 @@ publishes the same challenge token to every edge, so validation succeeds
 regardless of which edge public DNS selects. On success the controller stores
 the certificate; a later deploy distributes it.
 
-The API service periodically reconciles first certificates for sites that have
-become ready. The renewal timer runs `cert renew --deploy` twice daily. Renewal
-leaves certificates outside the 30-day window untouched and deploys only after
-at least one succeeds.
+The API scheduler periodically publishes first-certificate reconciliation and
+renewal jobs to the Dramatiq worker. Renewal runs twice daily by default, leaves
+certificates outside the 30-day window untouched, and queues a deployment only
+after at least one certificate changes.
 
 Use [Publish DNS](/docs/operate/dns) and
 [Manage certificates](/docs/operate/certificates) for procedures.
