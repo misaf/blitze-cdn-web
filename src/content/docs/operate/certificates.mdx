@@ -1,9 +1,9 @@
 ---
-title: Certificates
+title: Manage certificates
 description: ACME HTTP-01 issuance, certificate uploads, and renewal.
 ---
 
-# Certificates
+# Manage certificates
 
 Use this guide to enable TLS with an existing, uploaded, or ACME-issued
 certificate. The controller stores managed key material and distributes it to
@@ -13,11 +13,11 @@ every edge during deployment.
 
 - Deploy the site in `disabled` mode before requesting an ACME certificate.
 - Publish public DNS for the hostname first. See
-  [DNS hand-off](/docs/operate/dns).
+  [Publish DNS](/docs/operate/dns).
 - Confirm every hostname and the certificate source you intend to use.
 - Back up `.state/certificates` and `.state/letsencrypt`.
 - For API examples, set `API_KEY` and `BASE_URL` as shown in
-  [Common API workflows](/docs/understand/http-api-usage#common-workflows).
+  [Common API workflows](/docs/operate/http-api#common-workflows).
 
 <Callout type="error">
   Private keys are never returned by the API. Protect controller state and use

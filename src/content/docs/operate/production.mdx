@@ -1,9 +1,9 @@
 ---
-title: Production
+title: Production maintenance
 description: Sizing, scaling, and the operational caveats that bite in production.
 ---
 
-# Production
+# Production maintenance
 
 Use this checklist to move a working BlitzeCDN installation from a lab into
 production. Complete the [deployment checklist](/docs/operate/deploy#deployment-checklist)
@@ -90,7 +90,7 @@ at the proxy, and monitor `429`s.
 
 - ACME HTTP-01 requires each requested hostname to resolve to the edge addresses
   with port 80 public. Changing DNS is outside the tool's scope; coordinate it
-  before requesting certificates. See [DNS hand-off](/docs/operate/dns).
+  before requesting certificates. See [Publish DNS](/docs/operate/dns).
 - There is no DNS management and no wildcard issuance in this release. Both are
   explicit non-goals. Budget one certificate per hostname; see
   [certificate scope](/docs/operate/certificates#scope-one-certificate-per-hostname).

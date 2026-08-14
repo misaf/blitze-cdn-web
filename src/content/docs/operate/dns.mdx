@@ -3,7 +3,7 @@ title: Publish DNS
 description: Publish the DNS records a proxied hostname needs, using the addresses BlitzeCDN deliberately leaves to you.
 ---
 
-# DNS hand-off
+# Publish DNS
 
 Use this guide to take a hostname live on the CDN. BlitzeCDN decides which
 hostnames the [edges](/docs/understand/glossary#edge) serve; it does not answer DNS
@@ -135,7 +135,7 @@ the hostname, and the catch-all answers those requests with a `444`.
   was published in a zone that is not authoritative. Check the TTL of the answer
   you get back.
 - Resolves to an edge but requests fail: the hostname is not deployed. See
-  [Deploying](/docs/operate/deploy).
+  [Deploy and roll back](/docs/operate/deploy).
 - Requests get a `444`: the edge has no vhost for that hostname. Confirm the
   record is proxied and that the last deployment succeeded.
 - Issuance fails after DNS looks right: see

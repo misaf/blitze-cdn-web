@@ -1,14 +1,14 @@
 ---
-title: Operator runbook
-description: One ordered, copy-paste runbook for installing, verifying, operating, repairing, rebuilding, and completely removing BlitzeCDN.
+title: Operate BlitzeCDN
+description: The primary command path and lifecycle map for a standalone BlitzeCDN installation.
 ---
 
 # Operate BlitzeCDN
 
-Use this page when you need the next safe command. It covers the complete
-lifecycle of a standalone installation: one Debian or Ubuntu host runs both the
-control plane and an edge. Links go to deeper procedures only where a decision
-or recovery path needs more explanation.
+Use this page to choose the next safe operation for a standalone installation:
+one Debian or Ubuntu host runs both the control plane and an edge. It provides
+the primary command path and links to the canonical focused procedure whenever
+an operation needs additional safety, verification, or recovery steps.
 
 <Callout type="info">
   **Repair preserves state. Fresh rebuild and complete purge destroy it.**
@@ -180,25 +180,15 @@ default. `--no-decommission` and `--force` can leave private keys behind; read
 
 ## 7. Back up and restore
 
-Wait for deployments and certificate operations to finish. Create the target
-outside `/opt/blitzecdn` and `/etc/blitzecdn`, because both are deleted by a
-complete purge. An operator-created `/var/backups/blitzecdn` is retained.
+Follow the canonical [backup and restore procedure](/docs/operate/backup-restore)
+from beginning to end. It creates a consistent database copy and preserves the
+independent certificate, API credential, configuration, SSH identity, and SSH
+trust state needed for recovery.
 
-```bash
-sudo install -d -m 0700 /secure/backup/blitzecdn
-sudo -u blitzecdn /opt/blitzecdn/.venv/bin/python -c \
-  'import sqlite3; s=sqlite3.connect("/opt/blitzecdn/.state/control-plane.db"); d=sqlite3.connect("/secure/backup/blitzecdn/control-plane.db"); s.backup(d); d.close(); s.close()'
-sudo cp -a /opt/blitzecdn/.state/certificates \
-  /opt/blitzecdn/.state/letsencrypt \
-  /opt/blitzecdn/.state/id_ed25519 \
-  /etc/blitzecdn \
-  /secure/backup/blitzecdn/
-```
-
-Encrypt and restrict the backup: it contains API keys, SSH private material,
-and certificate private keys. Restore only while services are stopped and the
-replacement controller cannot reach production edges. Follow the complete
-[backup and restore procedure](/docs/operate/backup-restore).
+Keep the recovery set encrypted and outside `/opt/blitzecdn` and
+`/etc/blitzecdn`, because a complete purge deletes both locations. Restore only
+while control-plane services are stopped and the replacement controller cannot
+reach production edges.
 
 ## 8. Repair without deleting state
 
@@ -274,7 +264,7 @@ installer. It asks for confirmation;
 `--yes` suppresses it. Restore desired state only through the isolated recovery
 procedure, then validate and plan before reaching production edges.
 
-## 12. Complete purge
+## 11. Complete purge
 
 <Callout type="error">
   The supported uninstaller is a complete purge. There is no “uninstall but

@@ -96,7 +96,7 @@ hostnames need publishing.
 
 A proxied record exports no address on purpose — the edge addresses are a fact
 about your fleet, not about the record. The full explanation and the rollback
-order are in [DNS hand-off](/docs/operate/dns).
+order are in [Publish DNS](/docs/operate/dns).
 
 Wait for the change to propagate, then confirm what the world now sees:
 
@@ -139,7 +139,7 @@ curl --fail-with-body -X POST \
 ```
 
 Set `API_KEY` and `BASE_URL` as shown in
-[Common API workflows](/docs/understand/http-api-usage#common-workflows). The request runs the
+[Common API workflows](/docs/operate/http-api#common-workflows). The request runs the
 same checks and returns `409` without contacting the authority if one blocks, so
 a rate-limited request is never spent on an attempt that would fail.
 
