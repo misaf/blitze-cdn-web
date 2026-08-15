@@ -69,6 +69,13 @@ BASE_URL='http://127.0.0.1:8000'
 `curl --fail-with-body` makes HTTP errors fail automation while preserving the
 response body that explains the problem.
 
+Both values stay outside the OpenAPI schema. It declares no `servers` block —
+paths are relative, so the base URL is wherever you reached the API — and it
+never contains a key. A client generated or imported from `/openapi.json`
+therefore asks for both: supply them as a Postman environment, as the shell
+variables above, or as whatever your automation uses for per-deployment
+configuration.
+
 List audit events:
 
 ```bash
