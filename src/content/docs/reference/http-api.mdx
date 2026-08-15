@@ -16,6 +16,14 @@ Ten failed authentications from one client address within a minute return
 `429`. Deployment and rollback routes return `202 Accepted` with a queued
 record; poll `GET /v1/deployments/{deployment_id}` for the outcome.
 
+The key is described in the schema as the security scheme `ApiKeyAuth`
+(`type: apiKey`, `in: header`, `name: x-api-key`), which every protected
+operation references. It is therefore absent from the parameter tables below:
+a generated client, Swagger UI's _Authorize_ button, and an imported Postman
+collection all treat it as a credential configured once rather than a header
+to attach per request. Handwritten requests still send the same header, as the
+examples on this page do.
+
 ## Request and retry rules
 
 - Send `X-API-Key` on every `/v1/*` request. A missing or invalid key returns
@@ -272,7 +280,6 @@ Audit Events
 | Name        | In       | Required | Type      | Description                   |
 | ----------- | -------- | -------- | --------- | ----------------------------- |
 | `limit`     | `query`  | `false`  | `integer` | —                             |
-| `x-api-key` | `header` | `true`   | `string`  | Required operator credential. |
 
 **Responses**
 
@@ -290,7 +297,6 @@ inspect its completed steps before retrying.
 | Name        | In       | Required | Type      | Description                   |
 | ----------- | -------- | -------- | --------- | ----------------------------- |
 | `limit`     | `query`  | `false`  | `integer` | Maximum workflows to return.  |
-| `x-api-key` | `header` | `true`   | `string`  | Required operator credential. |
 
 ## `GET /v1/workflows/{workflow_id}`
 
@@ -299,7 +305,6 @@ Returns one durable workflow and its idempotent checkpoints.
 | Name          | In       | Required | Type     | Description                   |
 | ------------- | -------- | -------- | -------- | ----------------------------- |
 | `workflow_id` | `path`   | `true`   | `string` | Workflow identifier.          |
-| `x-api-key`   | `header` | `true`   | `string` | Required operator credential. |
 
 ## `GET /v1/deployments`
 
@@ -310,7 +315,6 @@ Deployments
 | Name        | In       | Required | Type      | Description                   |
 | ----------- | -------- | -------- | --------- | ----------------------------- |
 | `limit`     | `query`  | `false`  | `integer` | —                             |
-| `x-api-key` | `header` | `true`   | `string`  | Required operator credential. |
 
 **Responses**
 
@@ -323,11 +327,6 @@ Deployments
 
 Queue a convergence; poll `GET /v1/deployments/{deployment_id}` for the outcome.
 
-**Parameters**
-
-| Name        | In       | Required | Type     | Description                   |
-| ----------- | -------- | -------- | -------- | ----------------------------- |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Request body** (required): `application/json` → [`DeployRequest`](/docs/reference/http-api-models#deployrequest)
 
@@ -347,7 +346,6 @@ Deployment
 | Name            | In       | Required | Type     | Description                   |
 | --------------- | -------- | -------- | -------- | ----------------------------- |
 | `deployment_id` | `path`   | `true`   | `string` | —                             |
-| `x-api-key`     | `header` | `true`   | `string` | Required operator credential. |
 
 **Responses**
 
@@ -361,11 +359,6 @@ Deployment
 Queue a check-mode run and read the answer from
 `GET /v1/deployments/{deployment_id}/drift`. Converges nothing.
 
-**Parameters**
-
-| Name        | In       | Required | Type     | Description                   |
-| ----------- | -------- | -------- | -------- | ----------------------------- |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Request body** (required): `application/json` → [`DriftRequest`](/docs/reference/http-api-models#driftrequest)
 
@@ -387,7 +380,6 @@ drifted.
 | Name            | In       | Required | Type     | Description                   |
 | --------------- | -------- | -------- | -------- | ----------------------------- |
 | `deployment_id` | `path`   | `true`   | `string` | —                             |
-| `x-api-key`     | `header` | `true`   | `string` | Required operator credential. |
 
 **Responses**
 
@@ -401,11 +393,6 @@ drifted.
 
 Queue a rollback; poll `GET /v1/deployments/{deployment_id}` for the outcome.
 
-**Parameters**
-
-| Name        | In       | Required | Type     | Description                   |
-| ----------- | -------- | -------- | -------- | ----------------------------- |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Request body** (required): `application/json` → [`RollbackRequest`](/docs/reference/http-api-models#rollbackrequest)
 
@@ -421,11 +408,6 @@ Queue a rollback; poll `GET /v1/deployments/{deployment_id}` for the outcome.
 List Sites. Sites are derived from proxied DNS records and are read-only —
 there is no `POST`, `PATCH`, or `DELETE`. Change the record instead.
 
-**Parameters**
-
-| Name        | In       | Required | Type     | Description                   |
-| ----------- | -------- | -------- | -------- | ----------------------------- |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Responses**
 
@@ -444,7 +426,6 @@ including the defaults its record never mentioned.
 | Name        | In       | Required | Type     | Description                        |
 | ----------- | -------- | -------- | -------- | ---------------------------------- |
 | `name`      | `path`   | `true`   | `string` | Site name, e.g. `cdn-example-com`. |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential.      |
 
 **Responses**
 
@@ -458,11 +439,6 @@ including the defaults its record never mentioned.
 
 List Domains
 
-**Parameters**
-
-| Name        | In       | Required | Type     | Description                   |
-| ----------- | -------- | -------- | -------- | ----------------------------- |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Responses**
 
@@ -531,7 +507,6 @@ Update Record. This is the CDN on/off switch: send `{"proxied": true}` or
 | Name        | In       | Required | Type          | Description                   |
 | ----------- | -------- | -------- | ------------- | ----------------------------- |
 | `type`      | `query`  | `false`  | `A` \| `AAAA` | Record type; defaults to `A`. |
-| `x-api-key` | `header` | `true`   | `string`      | Required operator credential. |
 
 **Request body** (required): `application/json` → [`RecordPatch`](/docs/reference/http-api-models#recordpatch)
 
@@ -573,7 +548,6 @@ Managed certificates against the clock, soonest expiry first.
 | Name          | In       | Required | Type              | Description                                                            |
 | ------------- | -------- | -------- | ----------------- | ---------------------------------------------------------------------- |
 | `expiring_in` | `query`  | `false`  | `integer \| null` | Return only certificates with at most this many days left. `0`–`3650`. |
-| `x-api-key`   | `header` | `true`   | `string`          | Required operator credential.                                          |
 
 **Responses**
 
@@ -595,11 +569,6 @@ one ran. Sending neither is a `409` rather than a successful purge of nothing.
 Every variant of a URL is removed: nginx keys entries by request method and by
 normalized content encoding, so one URL is several entries.
 
-**Parameters**
-
-| Name        | In       | Required | Type     | Description                   |
-| ----------- | -------- | -------- | -------- | ----------------------------- |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Request body** (required): `application/json` → [`PurgeRequest`](/docs/reference/http-api-models#purgerequest)
 
@@ -633,11 +602,6 @@ safe to retry blindly the way `GET` promises.
 Edges that reported nothing appear in `edges` with an `error` rather than being
 omitted, so a fleet-wide number is never quietly computed from a subset.
 
-**Parameters**
-
-| Name        | In       | Required | Type     | Description                   |
-| ----------- | -------- | -------- | -------- | ----------------------------- |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Request body** (required): `application/json` → [`StatsRequest`](/docs/reference/http-api-models#statsrequest)
 
@@ -672,11 +636,6 @@ managed certificate behind it answers `404` rather than an empty success, so an
 automated caller cannot read a typo as "nothing was due". An empty list is a
 `422`: it would otherwise mean "renew nothing" while reading as a filter.
 
-**Parameters**
-
-| Name        | In       | Required | Type     | Description                   |
-| ----------- | -------- | -------- | -------- | ----------------------------- |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Request body** (required): `application/json` → [`RenewRequest`](/docs/reference/http-api-models#renewrequest)
 
@@ -704,11 +663,6 @@ unissued and contact the CA. A site whose preflight blocks appears under
 `deployment` is `null` when nothing was issued — reconciliation converges the
 fleet only when it has something new to install.
 
-**Parameters**
-
-| Name        | In       | Required | Type     | Description                   |
-| ----------- | -------- | -------- | -------- | ----------------------------- |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Responses**
 
@@ -733,11 +687,6 @@ are close to expiry are not public.
 | `blitzecdn_certificates_unrenewable` | Of those, the ones BlitzeCDN cannot reissue — uploaded rather than issued, so somebody has to be asked for a replacement. |
 | `blitzecdn_deployments{status}` | Recent deployments by status. |
 
-**Parameters**
-
-| Name        | In       | Required | Type     | Description                   |
-| ----------- | -------- | -------- | -------- | ----------------------------- |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Responses**
 
@@ -848,11 +797,6 @@ playbook across the fleet, which is neither cacheable nor safe to retry blindly
 the way `GET` promises. Answers inline, bounded by
 `BLITZE_DEPLOYMENT_TIMEOUT_SECONDS`, so set a matching client timeout.
 
-**Parameters**
-
-| Name        | In       | Required | Type     | Description                   |
-| ----------- | -------- | -------- | -------- | ----------------------------- |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Body** — [`OriginCheckRequest`](/docs/reference/http-api-models#origincheckrequest)
 
@@ -872,7 +816,6 @@ Certificate
 | Name        | In       | Required | Type     | Description                   |
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `name`      | `path`   | `true`   | `string` | —                             |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Responses**
 
@@ -890,7 +833,6 @@ Request Certificate
 | Name        | In       | Required | Type     | Description                   |
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `name`      | `path`   | `true`   | `string` | —                             |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Request body** (required): `application/json` → [`CertificateRequest`](/docs/reference/http-api-models#certificaterequest)
 
@@ -916,7 +858,6 @@ and changes nothing. The check names and severities are listed under
 | Name        | In       | Required | Type     | Description                   |
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `name`      | `path`   | `true`   | `string` | —                             |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Responses**
 
@@ -935,7 +876,6 @@ Upload Certificate
 | Name        | In       | Required | Type     | Description                   |
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `name`      | `path`   | `true`   | `string` | —                             |
-| `x-api-key` | `header` | `true`   | `string` | Required operator credential. |
 
 **Request body** (required): `multipart/form-data` → [`Body_upload_certificate_v1_sites__name__certificate_upload_post`](/docs/reference/http-api-models#body_upload_certificate_v1_sites__name__certificate_upload_post)
 
