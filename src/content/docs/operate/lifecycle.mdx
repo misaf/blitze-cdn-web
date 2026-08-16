@@ -15,9 +15,14 @@ For the condensed end-to-end sequence, return to
 | -------------------------- | ----------------------------- | ---------------------------------------------------------------- |
 | Fresh install              | `install.sh standalone`       | Creates state                                                    |
 | Repair/re-provision        | Rerun `install.sh standalone` | Preserves database, credentials, certificates, and desired state |
+| Upgrade to a newer release | `install.sh update`           | Preserves database, credentials, certificates, and desired state |
 | Fresh rebuild              | `install.sh --fresh`          | Deletes all owned state, then reinstalls the same release        |
 | State-preserving uninstall | Not implemented               | Back up externally before purging                                |
 | Complete purge             | `install.sh --uninstall`      | Deletes all owned controller and local-edge state                |
+
+Repair and upgrade both preserve state; the difference is the release they leave
+you on. Repair reconverges the release already installed. Upgrade moves to a
+different one.
 
 ## Before you begin
 
@@ -106,12 +111,90 @@ sudo /opt/blitzecdn/install.sh standalone \
 This rebuilds the locked virtual environment, installs pinned Ansible
 dependencies, verifies the current schema, and reconverges the controller.
 It preserves API keys, the database, desired state, edges, certificates, and
-history. It does not deploy unless `--deploy` is supplied. There is no separate
-standalone “reinstall software only” command; this is the supported repair.
+history. It does not deploy unless `--deploy` is supplied. This is the supported
+repair for the installed release; to move to a different one, use
+[Upgrade to a newer release](#upgrade-to-a-newer-release).
 
 The control-plane role rewrites `/var/lib/blitzecdn/.ssh/known_hosts` with the
 standalone host's loopback keys. If this controller manages remote edges,
 re-verify and record their fingerprints before running a plan or deployment.
+
+## Upgrade to a newer release
+
+Move the server to a newer release and keep everything it holds:
+
+```bash
+sudo /opt/blitzecdn/install.sh update --ref RELEASE_TAG
+```
+
+Replace `RELEASE_TAG` with the release you are moving to, such as the newest tag
+in the repository. `--ref` accepts a tag or a branch. Omit it to follow the
+branch the checkout already tracks; a server installed from a release tag is not
+on a branch and must name its target.
+
+### Before you begin
+
+- The checkout must be `/opt/blitzecdn`, must have the upstream repository as
+  `origin`, and must have no local modifications. Each is refused before
+  anything stops, so a refused upgrade leaves a serving host serving.
+- Read the release notes for the target. An upgrade migrates the database, and
+  a migration is not reversible.
+- The API and the deployment worker are stopped for the duration. Plan the
+  window: convergence time depends on how far behind the host is.
+
+<Callout type="warning">
+  The upgrade takes a database backup into `/opt/blitzecdn/.state` before it
+  changes anything, and a complete purge later deletes that directory. Copy a
+  tested backup outside `/opt/blitzecdn` and `/etc/blitzecdn` first — see [Back
+  up and restore](/docs/operate/backup-restore).
+</Callout>
+
+### What it does
+
+In order, stopping at the first failure:
+
+1. Fetches from `origin` and resolves the target.
+2. Backs up the database while the controller is still serving. `--no-backup`
+   skips this.
+3. Stops `blitzecdn-api.service` and `blitzecdn-worker.service`. Downtime
+   starts here and not before.
+4. Fast-forwards the checkout, or checks out the named ref.
+5. Rebuilds the virtual environment from the new lockfile.
+6. Converges the host: installs new or changed units, migrates the schema, and
+   starts the services again.
+
+It asks for confirmation, naming both releases and the number of commits
+between them; `--yes` suppresses the prompt. Nothing an operator owns is
+rewritten — the database, certificates, inventory, and the API credentials in
+`/etc/blitzecdn` all survive.
+
+### Verify
+
+```bash
+blitzecdn --version
+systemctl is-active blitzecdn-api.service blitzecdn-worker.service
+blitzecdn doctor --json
+```
+
+The reported version must be the release you asked for. A service that is not
+`active` means the new release failed to start; the upgrade prints which one and
+exits non-zero rather than claiming success.
+
+### Recover
+
+The checkout is a Git clone, so the previous release is still reachable. Return
+to it and converge again:
+
+```bash
+sudo git -C /opt/blitzecdn checkout PREVIOUS_REF
+sudo /opt/blitzecdn/install.sh standalone \
+  --admin-cidr 203.0.113.8/32 --email ops@example.com
+```
+
+This restores the software. It does not undo a schema migration: if the upgrade
+migrated the database, restore the backup the upgrade took, or an external one,
+before starting the older release against it. See
+[Back up and restore](/docs/operate/backup-restore#restore-offline).
 
 ## Complete purge
 
@@ -215,8 +298,17 @@ systemctl list-unit-files 'blitzecdn-*'
   distribution's interpreter is too old — Debian 12 is the usual case. See
   [Before you begin](#before-you-begin).
 - `refusing unexpected origin URL` means the checkout's `origin` is not the
-  upstream repository. `--fresh` fetches code and runs it as root, so it accepts
-  only that remote.
+  upstream repository. `--fresh` and `update` fetch code and run it as root, so
+  they accept only that remote.
+- `has local modifications` means `update` found edits in `/opt/blitzecdn` that
+  the upgrade would discard. Commit or discard them, or rebuild from origin with
+  `--fresh`.
+- `cannot fast-forward` means the checkout has commits `origin` does not. An
+  upgrade never merges or rewrites history on a server; rebuild from origin with
+  `--fresh` instead.
+- `is not on a branch` means `update` was run on a server installed from a
+  release tag, which has no tracked branch to follow. Pass `--ref` to say what
+  to move to.
 - `clone or copy this release to /opt/blitzecdn` means `standalone` was run from
   another directory. Move the checkout and run it again.
 - For symptoms after a deployment rather than an installation, see

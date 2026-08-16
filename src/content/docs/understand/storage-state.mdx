@@ -50,6 +50,9 @@ never reached the registry.
 
 - rerunning `install.sh standalone` converges the host and preserves existing
   credentials and state.
+- `install.sh update` moves the checkout to another release and preserves the
+  same set. It writes a database backup into `.state` before it changes
+  anything, which a later purge deletes along with the rest of that directory.
 - `install.sh --fresh` deletes all BlitzeCDN-owned controller and local-edge
   state, then installs the same release from scratch.
 - `install.sh --uninstall` performs the same deletion and does not reinstall.

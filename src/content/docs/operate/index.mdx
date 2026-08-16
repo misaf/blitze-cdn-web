@@ -11,8 +11,8 @@ the primary command path and links to the canonical focused procedure whenever
 an operation needs additional safety, verification, or recovery steps.
 
 <Callout type="info">
-  **Repair preserves state. Fresh rebuild and complete purge destroy it.**
-  BlitzeCDN has no state-preserving uninstall command.
+  **Repair and upgrade preserve state. Fresh rebuild and complete purge destroy
+  it.** BlitzeCDN has no state-preserving uninstall command.
 </Callout>
 
 ## Choose the operation
@@ -21,7 +21,7 @@ an operation needs additional safety, verification, or recovery steps.
 | ------------------------------ | ----------------------------- | ---------------- | --------------------------------------------- | ---------------------------------------------- |
 | Fresh install                  | `install.sh standalone`       | Creates          | Prepares; does not deploy by default          | Running controller and registered `edge-local` |
 | Repair/re-provision            | rerun `install.sh standalone` | Preserves        | Converges controller; deploy remains explicit | Same release and state                         |
-| Reinstall software only        | No standalone command         | —                | —                                             | Rerun standalone for repair                    |
+| Upgrade to a newer release     | `install.sh update`           | Preserves        | Converges controller; deploy remains explicit | Newer release, same state                      |
 | Fresh rebuild                  | `install.sh --fresh`          | Deletes          | Deletes BlitzeCDN-owned local-edge state      | Same release installed with empty state        |
 | Uninstall but keep local state | Not supported                 | —                | —                                             | Back up externally, then purge                 |
 | Complete purge                 | `install.sh --uninstall`      | Deletes          | Deletes BlitzeCDN-owned local-edge state      | BlitzeCDN removed; OS packages remain          |
@@ -190,7 +190,7 @@ Keep the recovery set encrypted and outside `/opt/blitzecdn` and
 while control-plane services are stopped and the replacement controller cannot
 reach production edges.
 
-## 8. Repair without deleting state
+## 8. Repair or upgrade without deleting state
 
 Rerun the standalone installer from the installed release with the original
 administration CIDR, email, and public addresses:
@@ -216,9 +216,38 @@ explicitly passed.
   verify and add every remote fingerprint again before `plan` or `deploy`.
 </Callout>
 
-There is no separate supported command that removes and reinstalls standalone
-software while preserving local state in place. Use this repair path or an
-externally tested backup/restore.
+### Upgrade to a newer release
+
+Repair reconverges the release already installed. To move to a different one
+while keeping the same state:
+
+```bash
+sudo /opt/blitzecdn/install.sh update --ref RELEASE_TAG
+blitzecdn --version
+blitzecdn doctor --json
+```
+
+Replace `RELEASE_TAG` with the release you are moving to. `--ref` accepts a tag
+or a branch; omit it to follow the branch the checkout already tracks — a server
+installed from a release tag is not on a branch and must name its target. The
+upgrade backs up the database, stops the API and worker, moves the
+checkout, rebuilds the virtual environment, migrates the schema, and starts the
+services on the new release. Every precondition it refuses — local
+modifications, a non-upstream `origin`, a checkout that cannot fast-forward — is
+checked before anything stops.
+
+<Callout type="warning">
+  An upgrade migrates the database and a migration is not reversible. Returning
+  to the previous release restores the software, not the schema. Copy a tested
+  backup outside `/opt/blitzecdn` and `/etc/blitzecdn` before starting.
+</Callout>
+
+For the full sequence, the verification, and the recovery path, see
+[Upgrade to a newer release](/docs/operate/lifecycle#upgrade-to-a-newer-release).
+
+There is no supported command that removes and reinstalls standalone software
+while preserving local state in place. Use repair, upgrade, or an externally
+tested backup/restore.
 
 ## 9. Troubleshoot and recover
 
