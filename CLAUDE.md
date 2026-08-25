@@ -27,6 +27,12 @@ npm run test:e2e   # needs a build first; serves out/ on 127.0.0.1:4173
 Run both before finishing a change. `test:e2e` is separate because it needs a
 browser (`npx playwright install --with-deps chromium`).
 
+`npm run build:book` is separate for the same reason and is **not** part of
+`npm run check`. It typesets `out/print.html` into `out/blitzecdn-manual.pdf`
+with Vivliostyle, which downloads its own browser on first run. Nothing the site
+serves depends on the result, so a missing book cannot fail a deploy — but the
+PDF is therefore not published unless CI is taught to build it.
+
 `check:surface` compares the reference pages against the real control plane at
 `../blitze-cdn-cp` (override with `BLITZE_CP_PATH`, and `BLITZE_CP_PYTHON` for an
 interpreter outside that checkout's `.venv`). Without the checkout it **skips
@@ -68,3 +74,20 @@ there.
 - Pagefind indexes into `public/` during `postbuild`, _after_ the static export
   has already copied `public/`; `scripts/copy-search-index.mjs` is what gets the
   index into `out/`. CI fails if `out/_pagefind/pagefind.js` is missing.
+- **`/print` is the one hand-designed page that must NOT carry
+  `data-pagefind-body`**, and it carries `data-pagefind-ignore` instead. It is a
+  second copy of all 34 docs pages; indexing it would return it alongside every
+  real result with the wrong link. It is dropped from `sitemap.js` and declares
+  `robots: { index: false }` for the same reason.
+- **`/print` must stay renderable with no JavaScript.** It is the source
+  `build:book` typesets, and a paged-media formatter runs no scripts — so its
+  collapsible sections override Nextra's `Details` with a plain always-open
+  `<details>`. Anything added there that needs hydration to become visible is
+  simply missing from the book, silently.
+- **Vivliostyle implements neither cascade layers nor CSS nesting**, both of
+  which Tailwind v4 emits. `build-book.mjs` flattens `@layer` before typesetting
+  — without it the whole stylesheet is dropped and the book renders in Times New
+  Roman while still reporting success. Nesting is not flattened, so a few theme
+  utilities (paragraph spacing among them) are restated in `scripts/book.css`
+  with `!important`. Verify book changes by rebuilding and looking at the PDF;
+  a rule that silently does nothing looks identical to one that was never added.

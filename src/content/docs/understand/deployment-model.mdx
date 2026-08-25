@@ -36,7 +36,8 @@ The core fields:
 | `name`                                          | Unique identifier for the site.                                                   |
 | `server_names`                                  | The hostnames Nginx will serve.                                                   |
 | `origin_host` / `origin_port`                   | Where requests are proxied.                                                       |
-| `origin_scheme`                                 | `http` or `https`.                                                                |
+| `ssl_mode`                                      | `off`, `flexible`, `full`, or `full_strict`.                                      |
+| `always_use_https`                              | Whether visitor HTTP requests redirect to HTTPS while TLS is active.              |
 | `origin_request_host` / `origin_sni`            | The `Host` header / SNI Nginx sends to the origin. SNI defaults to `origin_host`. |
 | `cache_enabled`                                 | Whether responses are cached.                                                     |
 | `cache_valid_success` / `cache_valid_not_found` | Cache durations for success and not-found responses.                              |

@@ -1,0 +1,316 @@
+/*
+ * The book.
+ *
+ * This is NOT part of the site. It is a user stylesheet handed to Vivliostyle
+ * by `scripts/build-book.mjs`, applied on top of everything the exported
+ * `/print` page already carries — including the whole `@media print` block in
+ * `src/app/globals.css`, because a paged-media formatter renders at print
+ * media. So the tone, the ruling, the code panels and the table treatment all
+ * arrive here already done; what is added below is only the part a browser
+ * cannot do at all.
+ *
+ * That part is CSS Paged Media: named pages, margin boxes, running headers
+ * taken from the running text, and a contents list whose page numbers are
+ * resolved from where the target actually landed. Chrome implements none of
+ * it, which is the whole reason this build exists — see the note in
+ * `build-book.mjs`.
+ *
+ * Sizes are in points and millimetres rather than rem. There is no viewport
+ * here and nothing is responsive; a sheet of A4 is a fixed thing, and the
+ * measure is set by the page margins rather than by a `max-width`.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Page geometry and the margin boxes.
+ *
+ * The outer margin is wider than the inner one — this is a long document, and
+ * a reader's thumb goes on the outer edge. `:left` and `:right` are what make
+ * that alternate correctly when it is printed double-sided.
+ * ------------------------------------------------------------------------ */
+
+@page {
+  size: A4;
+  margin: 20mm 18mm 20mm;
+
+  /* The folio. Centred at the foot, in the mono face every other number in
+     this book is set in. */
+  @bottom-center {
+    content: counter(page);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 8pt;
+    color: #5c6462;
+    padding-top: 6mm;
+  }
+}
+
+@page :left {
+  margin-left: 20mm;
+  margin-right: 16mm;
+
+  /* Running head: the section the reader is currently in, set from the
+     `string-set` on the page titles below. On verso pages it sits outside,
+     which is the edge a reader thumbs through. */
+  @top-left {
+    content: string(section);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 7.5pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #5c6462;
+    padding-bottom: 6mm;
+  }
+}
+
+@page :right {
+  margin-left: 16mm;
+  margin-right: 20mm;
+
+  @top-right {
+    content: string(section);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 7.5pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #5c6462;
+    padding-bottom: 6mm;
+  }
+}
+
+/*
+ * The cover and the contents carry no running head and no folio — a running
+ * head naming the section is a lie on a page that precedes every section, and
+ * front matter is not counted in a book.
+ */
+@page cover {
+  margin: 55mm 18mm 20mm;
+
+  @top-left {
+    content: none;
+  }
+  @top-right {
+    content: none;
+  }
+  @bottom-center {
+    content: none;
+  }
+}
+
+@page contents {
+  @top-left {
+    content: none;
+  }
+  @top-right {
+    content: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * The site chrome, hidden again.
+ *
+ * This looks redundant against the `@media print` block in `globals.css`, and
+ * it is not. Nextra hides its navbar, sidebar, table of contents and
+ * pagination with Tailwind's `print:hidden` utility, which Tailwind v4 emits
+ * as a NESTED rule — `.x\:print\:hidden{@media print{display:none}}`.
+ * Vivliostyle implements no CSS nesting, so it drops every one of them and the
+ * navbar rendered at the top of the document: a full sheet of masthead, search
+ * box and hamburger in front of the title page, which is what the missing
+ * first page turned out to be.
+ *
+ * Our own rules in `globals.css` survive because they are written as a plain
+ * top-level `@media print` block. Anything the THEME hides for print has to be
+ * repeated here, unnested.
+ * ------------------------------------------------------------------------ */
+
+.nextra-navbar,
+.nextra-sidebar,
+.nextra-toc,
+.nextra-mobile-nav,
+.nextra-banner,
+.nextra-breadcrumb,
+.nextra-code button,
+.nextra-skip-nav,
+body footer,
+[data-print-hide] {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * The three parts: cover, contents, body.
+ * ------------------------------------------------------------------------ */
+
+/* The site's own column is a `max-width` centred in a viewport. In a book the
+   measure IS the page, set by the margins above, so the wrapper is dissolved
+   and the padding it carried for the screen is dropped. */
+main > div {
+  max-width: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  /*
+   * The document STARTS on the cover page, and this is where that is said.
+   *
+   * Naming the page on the header alone is not enough: the first sheet is
+   * opened before the header is reached, so it belongs to the unnamed page,
+   * and switching to `cover` forces a break to change page context. The book
+   * came out with a blank sheet in front of the title and a contents list
+   * numbered from 3. Naming the wrapper means the very first sheet is already
+   * the cover, and `article` below names its own page so the switch happens
+   * where a break was wanted anyway.
+   */
+  page: cover;
+}
+
+main > div > header {
+  break-after: page;
+  border-bottom: 0 !important;
+}
+
+main > div > nav {
+  page: contents;
+  break-after: page;
+  margin-top: 0 !important;
+}
+
+/*
+ * Each page of the manual opens a sheet, and names itself as the running head
+ * for every sheet it covers. `string-set` is read at the point the element is
+ * laid out, so the head on a continuation sheet is still the title of the
+ * document being continued, which is exactly the behaviour wanted and the
+ * thing no `position: fixed` header could imitate.
+ */
+main article {
+  /* `chapter` is deliberately not styled: the bare `@page` above applies to
+     every page whatever its name, so a chapter sheet gets the standard
+     margins and folio, and `:left` / `:right` add the running head. Naming it
+     only takes it back out of `cover`, which it inherits from the wrapper. */
+  page: chapter;
+  break-before: page;
+  border-top: 0 !important;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+main article > h2:first-of-type {
+  string-set: section content(text);
+  margin-top: 0 !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * The contents list, with real page numbers.
+ *
+ * `target-counter()` resolves the `page` counter at the element the href
+ * points at — the number is where the section actually fell after pagination,
+ * not a guess. This is the single feature that most distinguishes a typeset
+ * book from a printed web page, and it is why the build does not just call
+ * Chrome's PDF export.
+ *
+ * The leader fills the space between the title and the number with dots. It
+ * is set on the `::after` together with the number so the two cannot separate
+ * across a line.
+ * ------------------------------------------------------------------------ */
+
+main > div > nav ol {
+  display: block;
+}
+
+main > div > nav li {
+  display: block;
+  margin-bottom: 2mm;
+}
+
+main > div > nav li a {
+  display: inline;
+  text-decoration: none;
+  color: #151a1b;
+}
+
+main > div > nav li a::after {
+  content: leader('.') ' ' target-counter(attr(href url), page);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 9pt;
+  color: #5c6462;
+}
+
+/* ---------------------------------------------------------------------------
+ * Body typography, reset for paper.
+ *
+ * The site sets its type in rem against a root the browser owns. Here the
+ * measure is roughly 100 characters at the screen size, which is far past
+ * comfortable, so the whole body steps down to a book size and the headings
+ * come down with it.
+ * ------------------------------------------------------------------------ */
+
+main {
+  font-size: 10pt;
+  line-height: 1.5;
+}
+
+main article > h2:first-of-type {
+  font-size: 20pt;
+  line-height: 1.15;
+}
+
+main h3 {
+  font-size: 13pt;
+  margin-top: 7mm !important;
+}
+
+main h4 {
+  font-size: 11pt;
+  margin-top: 5mm !important;
+}
+
+main h5,
+main h6 {
+  font-size: 10pt;
+}
+
+main pre,
+main code {
+  font-size: 8.5pt;
+}
+
+main table {
+  font-size: 8.5pt;
+}
+
+/*
+ * Paragraph spacing, stated outright.
+ *
+ * The theme sets it with a `not-first:mt-[1.25em]` utility, which Tailwind v4
+ * emits using native CSS nesting — `.x\:not-first\:mt-\[1.25em\]{&:not(:first-child)
+ * {margin-top:1.25em}}`. Vivliostyle does not implement nesting, so the rule
+ * is dropped and consecutive paragraphs came out with no gap at all: a wall of
+ * text broken only by the headings.
+ *
+ * `!important` is not decoration here and should not be removed. Something in
+ * the flattened theme CSS still wins against a plain `main p`, and it wins
+ * silently — a 15mm margin set without `!important` changed the page count by
+ * exactly nothing, which is how this was finally pinned down. Every rule below
+ * was verified by rebuilding the book and looking at the result.
+ */
+
+main p {
+  margin-top: 1.15em !important;
+}
+
+main p:first-child,
+main li > p:first-child {
+  margin-top: 0 !important;
+}
+
+main ul,
+main ol {
+  margin-top: 1.15em !important;
+}
+
+main li {
+  margin-top: 0.35em !important;
+}
+
+/* Widow and orphan control is worth more in a paged formatter than in a
+   browser, because this one honours it. */
+main p,
+main li {
+  orphans: 3;
+  widows: 3;
+}

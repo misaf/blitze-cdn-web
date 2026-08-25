@@ -146,15 +146,16 @@ a rate-limited request is never spent on an attempt that would fail.
 ### Deploy again to install it
 
 ```bash
+blitzecdn record always-use-https example.com www --on
 blitzecdn deploy
 ```
 
-Issuance stored the certificate on the controller. Only this deploy places it on
-the edges. Until it runs, the hostname is still served over plain HTTP.
-
-Once TLS is on for a site, its port 80 answers `/` with a `308` redirect to HTTPS
-automatically — there is nothing to configure. The ACME challenge path keeps
-being served over HTTP so renewals continue to work.
+Issuance stored the certificate on the controller. The setting enables the
+port-80 `308` redirect, and the deploy applies both changes to the edges. Until
+it runs, the hostname is still served over plain HTTP. Use `--off` and deploy
+again if the hostname must remain available over both schemes; HTTPS stays
+available. The ACME challenge path remains served over HTTP in either mode so
+renewals continue to work.
 
 </Steps>
 

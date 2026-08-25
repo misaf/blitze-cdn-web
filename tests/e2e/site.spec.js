@@ -16,6 +16,7 @@ const routes = [
   ['/docs', 'BlitzeCDN'],
   ['/about', 'Two people, one narrow tool'],
   ['/contact', 'Where to send what'],
+  ['/print', 'Documentation'],
   ['/faq', 'Frequently asked questions'],
   ['/blog', 'Blog'],
   ['/blog/one-lock-two-halves', 'One lock, two halves'],
@@ -70,7 +71,7 @@ const contentRoutes = readdirSync(CONTENT_ROOT, { recursive: true })
 test('the browser route manifest covers every content page', () => {
   const exercised = routes
     .map(([route]) => route)
-    .filter((route) => !['/', '/about', '/contact'].includes(route))
+    .filter((route) => !['/', '/about', '/contact', '/print'].includes(route))
   expect([...exercised].sort()).toEqual(contentRoutes)
 })
 
@@ -79,13 +80,24 @@ const HAND_BUILT_ROUTES = [
   '/',
   '/about',
   '/contact',
+  '/print',
   '/this-page-does-not-exist',
 ]
+
+/*
+ * `/print` is the whole manual on one page — 34 documents, around 3MB of HTML.
+ * An axe scan of it takes roughly 40s where every other page takes two or
+ * three, which is a property of the page rather than a fault in it, so the two
+ * scanning tests get their own budget instead of the suite's 30s default being
+ * raised for all 111.
+ */
+const SLOW_ROUTES = { '/print': 180_000 }
 
 for (const [route, heading] of routes) {
   test(`${route} renders and has no detectable accessibility violations`, async ({
     page,
   }) => {
+    if (SLOW_ROUTES[route]) test.setTimeout(SLOW_ROUTES[route])
     await page.goto(route)
 
     await expect(page.locator('h1').first()).toContainText(heading)
@@ -114,6 +126,7 @@ for (const [route, heading] of routes) {
  */
 for (const route of HAND_BUILT_ROUTES) {
   test(`${route} keeps all content inside landmarks`, async ({ page }) => {
+    if (SLOW_ROUTES[route]) test.setTimeout(SLOW_ROUTES[route])
     await page.goto(route)
 
     const results = await new AxeBuilder({ page })

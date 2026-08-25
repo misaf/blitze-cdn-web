@@ -1,6 +1,6 @@
 {
   "name": "blitzecdn-web",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "license": "MIT",
   "engines": {
@@ -11,6 +11,7 @@
     "build": "next build --webpack",
     "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind && node scripts/copy-search-index.mjs",
     "preview": "node scripts/serve-static.mjs out 4173",
+    "build:book": "node scripts/build-book.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -32,6 +33,7 @@
     "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.3.3",
+    "@vivliostyle/cli": "^11.1.0",
     "eslint": "9.39.5",
     "eslint-config-next": "^16.3.0",
     "pagefind": "^1.5.2",

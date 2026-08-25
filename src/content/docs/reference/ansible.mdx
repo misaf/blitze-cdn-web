@@ -345,6 +345,7 @@ so masking the exit status would only hide a database quietly ageing out.
 
 | Key                           | Type   | Required | Default    | Choices                                         |
 | ----------------------------- | ------ | -------- | ---------- | ----------------------------------------------- |
+| `always_use_https`            | `bool` | `true`   | —          | —                                               |
 | `cache_enabled`               | `bool` | `false`  | `true`     | —                                               |
 | `cache_valid_not_found`       | `str`  | `false`  | `1m`       | —                                               |
 | `cache_valid_success`         | `str`  | `false`  | `10m`      | —                                               |
@@ -359,9 +360,9 @@ so masking the exit status would only hide a database quietly ageing out.
 | `origin_host`                 | `str`  | `true`   | —          | —                                               |
 | `origin_port`                 | `int`  | `false`  | —          | —                                               |
 | `origin_request_host`         | `str`  | `false`  | —          | —                                               |
-| `origin_scheme`               | `str`  | `false`  | `https`    | `http`, `https`                                 |
 | `origin_sni`                  | `str`  | `false`  | —          | —                                               |
 | `server_names`                | `list` | `true`   | —          | —                                               |
+| `ssl_mode`                    | `str`  | `true`   | —          | `off`, `flexible`, `full`, `full_strict`        |
 
 #### `firewall` suboptions
 

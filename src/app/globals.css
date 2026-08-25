@@ -913,3 +913,271 @@ main :is(h1, h2, h3, h4) code.nextra-code:not([class*='twoslash-']) {
 body:not(:has([data-docs-route])) .nextra-banner {
   display: none;
 }
+
+/* ==========================================================================
+ * Print.
+ *
+ * The book, actually printed. Three separate jobs here, and it is worth
+ * knowing which is which before editing:
+ *
+ * 1. What the theme already does. Nextra ships `print:hidden` on the navbar,
+ *    the sidebar, the table of contents and the prev/next pagination, so none
+ *    of those are repeated below. The feedback and "Edit this page" links go
+ *    with the TOC — they are rendered inside it.
+ * 2. What is ours to hide: the colophon (a full-bleed ink cover, which is
+ *    several pages of solid toner), the banner, the breadcrumb filing line,
+ *    and anything marked `data-print-hide` — the print control itself, and
+ *    the per-page controls on `/print`.
+ * 3. What has to be undone: the theme is bound to a `.dark` CLASS, not to
+ *    `prefers-color-scheme`, so a reader printing while in dark mode gets
+ *    paper-white ink on a background the printer drops. Nothing in the
+ *    cascade corrects for that on its own, which is the single most important
+ *    rule in this block.
+ * ========================================================================== */
+
+@media print {
+  /*
+   * Force the light palette regardless of the class on `<html>`. Both
+   * selectors are set, not just `.dark`, because the print tones are not the
+   * screen's paper tones either: `--surface` is the ledger stock `#e4e8e4`,
+   * which a printer renders as a grey wash across every page.
+   */
+  :root,
+  .dark {
+    --surface: #ffffff;
+    --panel: #ffffff;
+    --fg: #000000;
+    --muted: #3a4140;
+    --line: #b9bfbc;
+    /* Oxblood one step darker than the screen's, which measures thin at the
+       small dot sizes a laser printer resolves a 1px rule at. */
+    --rule-ink: #7f2c22;
+    --attest-ink: #12442f;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000;
+  }
+
+  .nextra-banner,
+  .nextra-breadcrumb,
+  .nextra-mobile-nav,
+  body footer,
+  [data-print-hide],
+  /*
+   * The code block's own controls — copy, and the word-wrap toggle. The
+   * toggle is `md:hidden`, so it stays out of the way of anything printing at
+   * a normal page width and then reappears in the paged formatter, whose
+   * sheet is narrower than the `md` breakpoint. It printed as a stray glyph
+   * over the top-left corner of every code panel in the book.
+   */
+  .nextra-code button {
+    display: none !important;
+  }
+
+  /* With the sidebar and the TOC gone, the article keeps the column width it
+     was given between them and prints as a narrow strip up the left edge.
+     The sheet's own margin comes from `@page` at the foot of this block, so
+     the column is simply the full text area. */
+  main,
+  article {
+    max-width: none !important;
+    width: auto !important;
+    margin-inline: 0 !important;
+    padding-inline: 0 !important;
+  }
+
+  /* The theme's `mt-2` on the title, plus the space the skip-nav target
+     holds, starts the first sheet a visible step below the page margin while
+     every following sheet starts at it. */
+  main > h1:first-of-type {
+    margin-top: 0 !important;
+  }
+
+  /*
+   * There are deliberately no `.dark` rules below.
+   *
+   * Printing from dark mode is not corrected here at all — `print-mode.jsx`
+   * removes the `.dark` class from `<html>` for the duration of the print, so
+   * by the time these rules apply the theme is already in its light state.
+   * That is the one approach that scales: the dark variant is painted with
+   * `dark:` utilities spread across a precompiled theme, and restating them
+   * one at a time inside `@media print` left invisible headings and a solid
+   * black `<summary>` band behind on the first attempt. The `.dark` selector
+   * on the token block above is the exception, and only so the paper tones
+   * are right if that class is somehow still present.
+   */
+
+  /* The inline chip's fill is a tint that prints as a grey wash behind a
+     third of the prose, so it is carried by a hairline instead.
+     `box-decoration-break` is what keeps a chip that wraps across two lines
+     from printing as two open-ended half-boxes — `BLITZE_DATABASE_PATH` and
+     friends wrap constantly at this measure. */
+  main code.nextra-code {
+    background-color: transparent !important;
+    border: 1px solid var(--line);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  /* A code block on paper is a panel with no fill — the border carries it,
+     and the oxblood head rule is the same entry marker it is on screen. */
+  main pre.not-prose {
+    background-color: transparent !important;
+    border: 1px solid var(--line);
+    border-top: 2px solid var(--color-rule);
+  }
+
+  /*
+   * The reference tables scroll horizontally on screen (`display: block;
+   * overflow-x: auto` in the theme). A printer has no scrollbar, so the
+   * columns past the fold are simply lost — every Default and Choices column
+   * in the Ansible reference. Laid out as a real table instead, which wraps.
+   */
+  main table {
+    display: table !important;
+    width: 100% !important;
+    overflow: visible !important;
+    /*
+     * Auto layout, not `fixed`. Fixed splits the width evenly, which on the
+     * Ansible reference gives a third of the sheet to Default (mostly paths
+     * of a dozen characters) and the same third to Variable, whose entries
+     * are 34-character identifiers — so every name in the table broke across
+     * two lines at an arbitrary letter. Auto sizes each column to what is
+     * actually in it; `overflow-wrap` on the cells is what stops the widest
+     * of those names from pushing the table off the sheet.
+     */
+    table-layout: auto;
+  }
+
+  main th,
+  main td {
+    overflow-wrap: anywhere;
+  }
+
+  main pre,
+  main code {
+    /* Long commands are the reason a printed page loses its right margin. */
+    white-space: pre-wrap !important;
+    word-break: break-word;
+  }
+
+  /*
+   * A link's destination is the one thing paper cannot carry, so it is
+   * written out. Only for outbound links: appending the URL to every
+   * cross-reference in a runbook — most paragraphs hold two or three — buries
+   * the prose, and a reader holding the printout can find `/docs/operate/dns`
+   * from its label alone.
+   *
+   * `.nextra-card` links are excluded because their label is already a route
+   * grid; the URL doubles the height of every cell.
+   */
+  main a[href^='http']:not(.nextra-card)::after {
+    content: ' <' attr(href) '>';
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    word-break: break-all;
+  }
+
+  /*
+   * Page breaks, and the one rule here that is easy to get backwards.
+   *
+   * `break-inside: avoid` is not free: an element that cannot fit in the
+   * space left is moved WHOLE to the next sheet, and whatever was left behind
+   * stays blank. Applied to tall elements it is actively worse than the
+   * default — the first version of this block put it on `details` and
+   * `table`, and the troubleshooting page printed its first sheet 40% empty
+   * to keep one 330px `<details>` together, then set it at the top of sheet
+   * two with room to spare.
+   *
+   * So it is kept only for elements short enough that moving them costs less
+   * than splitting them. Code blocks on this site run three to six lines; the
+   * `<details>` bodies and the reference tables run most of a page and are
+   * left to break wherever they land.
+   */
+  main h1,
+  main h2,
+  main h3,
+  main h4 {
+    break-after: avoid-page;
+    break-inside: avoid;
+  }
+
+  main pre,
+  main figure,
+  main blockquote,
+  main .nextra-card {
+    break-inside: avoid;
+  }
+
+  /*
+   * What replaces it for the tall elements. A table that breaks across a
+   * sheet loses its column heads, and every one of these tables is read by
+   * column — Variable / Default / Effect means nothing from the second sheet
+   * onward. `table-header-group` is what makes a browser reprint `thead` at
+   * the top of each fragment.
+   */
+  main thead {
+    display: table-header-group;
+  }
+
+  main tr {
+    break-inside: avoid;
+  }
+
+  /* Two lines is the least that reads as a paragraph rather than as a stray
+     line left at a page edge. This is the cheap half of the break problem and
+     costs no whitespace, unlike the rule above. */
+  main p,
+  main li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  main img,
+  main svg {
+    max-width: 100% !important;
+    height: auto;
+  }
+
+  /*
+   * A collapsed `<details>` prints collapsed, which silently drops content
+   * from the paper copy — the troubleshooting and incident pages keep most of
+   * their detail inside them. This is NOT fixable from CSS: the closed state
+   * is hidden inside the UA shadow tree, and neither `display` nor
+   * `content-visibility` on the children reaches it portably. `print-mode.jsx`
+   * opens them on `beforeprint` and restores them afterwards; the marker it
+   * leaves is here so the summary still reads as a heading rather than as a
+   * control that can be operated.
+   */
+  main details[data-print-opened] > summary {
+    list-style: none;
+    cursor: default;
+  }
+
+  /*
+   * Setting `open` is necessary but not sufficient. Nextra's `Details` does
+   * not rely on the element's own open state to show its body — it wraps the
+   * children in a `Collapse`, which animates a `div` between `height: 0` (an
+   * inline style) and `auto`, with `opacity-0 overflow-hidden` while closed.
+   * Opening the `<details>` from script leaves that `div` collapsed, so the
+   * section prints as a summary line with nothing under it, which is the
+   * failure this whole exercise was meant to fix.
+   */
+  main details[data-print-opened] > div {
+    height: auto !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    transition: none !important;
+  }
+
+  main details[data-print-opened] > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  @page {
+    margin: 18mm 16mm;
+  }
+}

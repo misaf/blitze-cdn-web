@@ -1,5 +1,7 @@
 import { generateStaticParamsFor, importPage } from 'nextra/pages'
+import Link from 'next/link'
 import PostByline from '@/components/post-byline'
+import PrintButton from '@/components/print-mode'
 import { absoluteUrl } from '@/lib/site'
 import { useMDXComponents as getMDXComponents } from '../../../mdx-components'
 
@@ -79,6 +81,43 @@ function RouteMarker({ mdxPath }) {
   )
 }
 
+/*
+ * The print control, and — on docs pages only — the way to the whole manual.
+ *
+ * Rendered above the `h1` rather than at the foot of the page: a reader who
+ * wants paper decides that on arrival, not after reading to the end. It sits
+ * on the same line as nothing else, right-aligned, so it reads as a marginal
+ * control on the page rather than as part of the content.
+ *
+ * The `/print` link is docs-only because that is what `/print` collects. A
+ * blog post and the FAQ still get the button — they print as well as anything
+ * else here — but there is no bound manual for them to be part of.
+ */
+function PrintControls({ mdxPath }) {
+  const isDocs = Array.isArray(mdxPath) && mdxPath[0] === 'docs'
+
+  return (
+    <div
+      data-print-hide
+      /* Inside `main`, which is the Pagefind body — without this the words
+         "Print" and "Whole manual" join the indexed text of all 26 pages and
+         turn up in their search excerpts. */
+      data-pagefind-ignore
+      className="mt-2 flex items-center justify-end gap-3 text-[0.68rem]"
+    >
+      {isDocs && (
+        <Link
+          href="/print"
+          className="x:focus-visible:nextra-focus font-mono tracking-head text-muted uppercase underline-offset-4 transition-colors hover:text-fg hover:underline"
+        >
+          Whole manual
+        </Link>
+      )}
+      <PrintButton />
+    </div>
+  )
+}
+
 export default async function Page(props) {
   const params = await props.params
   const {
@@ -91,6 +130,7 @@ export default async function Page(props) {
   return (
     <Wrapper toc={toc} metadata={metadata} sourceCode={sourceCode}>
       <RouteMarker mdxPath={params.mdxPath} />
+      <PrintControls mdxPath={params.mdxPath} />
       {/* Above the `h1`, because that is where the blog index puts the same
           two values — the dateline reads as the post's column head rather than
           as a footnote to the title. `metadata` is the page's front matter, so

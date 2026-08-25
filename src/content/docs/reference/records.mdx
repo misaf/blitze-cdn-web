@@ -56,7 +56,8 @@ cache or TLS setting.
 
 | Field                   | Type                                                  | Default    | Description                                                                                                                                      |
 | ----------------------- | ----------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `origin_scheme`         | `http` \| `https`                                     | `https`    | Scheme used to reach the origin.                                                                                                                 |
+| `ssl_mode`              | `off` \| `flexible` \| `full` \| `full_strict`       | `off`      | TLS policy for client-to-edge and edge-to-origin connections.                                                                                    |
+| `always_use_https`      | `bool`                                                | `false`    | Redirect visitor HTTP requests to the same URI over HTTPS while TLS is active.                                                                  |
 | `origin_port`           | `int`                                                 | —          | Origin port.                                                                                                                                     |
 | `origin_request_host`   | `str`                                                 | —          | `Host` header sent to the origin.                                                                                                                |
 | `origin_sni`            | `str`                                                 | —          | TLS SNI sent to the origin. Defaults to `origin_request_host`, then to `origin_host` — never to a `server_names` entry, which may be a wildcard. |

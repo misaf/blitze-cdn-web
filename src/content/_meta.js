@@ -16,4 +16,8 @@ export default {
   index: { display: 'hidden' },
   about: { display: 'hidden' },
   contact: { display: 'hidden' },
+  /* The whole manual on one page, reached from the print control on each docs
+     page rather than from navigation — it is a way to take the documentation
+     away, not a section of it. See `src/app/print/page.jsx`. */
+  print: { display: 'hidden' },
 }
