@@ -52,7 +52,7 @@ logs remain separate; do not parse human output for automation.
 
 ```console
 $ blitzecdn --version
-blitzecdn 2.1.0
+blitzecdn 2.6.0
 ```
 
 ## `blitzecdn audit`
@@ -160,7 +160,9 @@ together — leaving one behind would keep serving the stale object to whichever
 clients happen to match it.
 
 The query string is part of the key, so `/a` and `/a?v=2` are different entries
-and purging one does not touch the other.
+and purging one does not touch the other by default. If the owning record uses
+`cache_query_string_mode: ignore`, BlitzeCDN strips the query before computing
+the purge key, matching what the edge cached.
 
 Purging changes no configuration and writes no desired state, so no deploy is
 needed afterwards, and it does not wait for one already running.
@@ -180,6 +182,21 @@ response a client gets depends on which edge answers.
 Purging a hostname no enabled site serves is an error rather than a no-op — a
 purge that silently matches nothing looks exactly like one that worked, and you
 would not find out until the stale object was still being served.
+
+## `blitzecdn ssl`
+
+Run Cloudflare-compatible Automatic SSL/TLS scans.
+
+### `blitzecdn ssl reconcile`
+
+Runs the same upgrade-only origin scan as the monthly scheduler. Eligible
+records in `auto` mode are probed from every edge and upgraded only when all
+observations support a stronger SSL mode. The run deploys once when it changes
+records and does nothing when no safe upgrade is available.
+
+| Flag     | Type      | Required | Default | Description                 |
+| -------- | --------- | -------- | ------- | --------------------------- |
+| `--json` | `boolean` | `false`  | —       | Emit machine-readable JSON. |
 
 ## `blitzecdn stats`
 
@@ -601,6 +618,91 @@ Turns the CDN on or off for one record.
   still points at an edge is answered by the catch-all with `444`, not by your
   origin.
 </Callout>
+
+### `blitzecdn record ssl`
+
+Sets the combined visitor-to-edge and edge-to-origin SSL policy for one record.
+
+| Argument or flag | Type                                             | Required | Default | Description                 |
+| ---------------- | ------------------------------------------------ | -------- | ------- | --------------------------- |
+| `domain`         | `str`                                            | `true`   | —       | Zone the record belongs to. |
+| `name`           | `str`                                            | `true`   | —       | Record name.                |
+| `--mode`         | `off` \| `flexible` \| `full` \| `full_strict` | `true`   | —       | SSL mode to deploy.         |
+| `--type`         | `A` \| `AAAA`                                   | `false`  | `A`     | Record type.                |
+| `--json`         | `boolean`                                        | `false`  | —       | Emit machine-readable JSON. |
+
+Flexible uses HTTPS for visitors and HTTP to the origin. Full uses HTTPS to the
+origin without verifying its certificate. Full (strict) verifies the origin
+certificate and SNI. Every mode except Off requires an active edge certificate.
+Changing to Off retains the installed certificate for later re-enablement.
+Nothing changes on the edge until the next `blitzecdn deploy`.
+
+### `blitzecdn record ssl-automatic`
+
+Enrolls a record in upgrade-only Automatic SSL/TLS or opts it into operator-
+controlled Custom mode.
+
+| Argument or flag | Type             | Required | Default | Description                              |
+| ---------------- | ---------------- | -------- | ------- | ---------------------------------------- |
+| `domain`         | `str`            | `true`   | —       | Zone the record belongs to.              |
+| `name`           | `str`            | `true`   | —       | Record name.                             |
+| `--mode`         | `auto` \| `custom` | `true`   | —       | Automatic upgrades, or preserve the mode. |
+| `--type`         | `A` \| `AAAA`    | `false`  | `A`     | Record type.                             |
+| `--json`         | `boolean`        | `false`  | —       | Emit machine-readable JSON.              |
+
+Automatic mode may only strengthen `ssl_mode`; it never downgrades it. Custom
+mode leaves `ssl_mode` entirely under operator control.
+
+### `blitzecdn record minimum-tls`
+
+Sets the oldest visitor TLS version accepted for one hostname.
+
+| Argument or flag | Type          | Required | Default | Description                 |
+| ---------------- | ------------- | -------- | ------- | --------------------------- |
+| `domain`         | `str`         | `true`   | —       | Zone the record belongs to. |
+| `name`           | `str`         | `true`   | —       | Record name.                |
+| `--version`      | `1.2` \| `1.3` | `true`   | —       | Minimum edge TLS version.   |
+| `--type`         | `A` \| `AAAA` | `false`  | `A`     | Record type.                |
+| `--json`         | `boolean`     | `false`  | —       | Emit machine-readable JSON. |
+
+New records default to TLS 1.2, accepting both TLS 1.2 and 1.3. Selecting 1.3
+rejects TLS 1.2 clients after the next deploy.
+
+### `blitzecdn record always-use-https`
+
+Enables or disables the HTTP-to-HTTPS redirect for one record. HTTPS remains
+available when the redirect is disabled; visitor HTTP requests are proxied to
+the origin instead. The setting takes effect only while the SSL mode is not
+Off.
+
+| Argument or flag | Type          | Required | Default | Description                                   |
+| ---------------- | ------------- | -------- | ------- | --------------------------------------------- |
+| `domain`         | `str`         | `true`   | —       | Zone the record belongs to.                   |
+| `name`           | `str`         | `true`   | —       | Record name.                                  |
+| `--on` / `--off` | `boolean`     | `true`   | —       | Redirect HTTP to HTTPS, or serve both schemes. |
+| `--type`         | `A` \| `AAAA` | `false`  | `A`     | Record type.                                  |
+| `--json`         | `boolean`     | `false`  | —       | Emit machine-readable JSON.                   |
+
+New records default to `--off`. ACME HTTP-01 challenges remain reachable over
+HTTP in either mode. Nothing changes on the edge until the next `blitzecdn
+deploy`.
+
+### `blitzecdn record cache-query-string`
+
+Chooses whether query strings distinguish cached responses for one hostname.
+
+| Argument or flag | Type                   | Required | Default | Description                 |
+| ---------------- | ---------------------- | -------- | ------- | --------------------------- |
+| `domain`         | `str`                  | `true`   | —       | Zone the record belongs to. |
+| `name`           | `str`                  | `true`   | —       | Record name.                |
+| `--mode`         | `include` \| `ignore` | `true`   | —       | Query-string cache policy.  |
+| `--type`         | `A` \| `AAAA`         | `false`  | `A`     | Record type.                |
+| `--json`         | `boolean`              | `false`  | —       | Emit machine-readable JSON. |
+
+`include` is the safe default. `ignore` collapses every query variant of the
+same raw path onto one cached object while still forwarding the original query
+to the origin on a MISS. Do not ignore parameters that select content, identity,
+language, or authorization state.
 
 ### `blitzecdn record firewall`
 

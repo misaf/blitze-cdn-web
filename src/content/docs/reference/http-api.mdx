@@ -88,7 +88,8 @@ curl -sS -X POST https://controller.example.com/v1/domains/example.com/records \
     "name": "www",
     "value": "198.51.100.20",
     "proxied": true,
-    "origin_scheme": "https",
+    "ssl_mode": "off",
+    "always_use_https": false,
     "origin_request_host": "origin.internal.example.com",
     "cache_valid_success": "10m"
   }'
@@ -104,12 +105,15 @@ curl -sS -X POST https://controller.example.com/v1/domains/example.com/records \
   "value": "198.51.100.20",
   "ttl": 300,
   "proxied": true,
-  "origin_scheme": "https",
+  "ssl_mode": "off",
+  "ssl_automatic_mode": "auto",
+  "minimum_tls_version": "1.2",
+  "always_use_https": false,
   "origin_request_host": "origin.internal.example.com",
-  "origin_port": null,
   "enabled": true,
   "certificate_mode": "disabled",
   "cache_enabled": true,
+  "cache_query_string_mode": "include",
   "cache_valid_success": "10m",
   "cache_valid_not_found": "1m"
 }
@@ -488,6 +492,27 @@ Create Record. The body's `domain` must match the path segment.
 
 **Request body** (required): `application/json` → [`DnsRecord`](/docs/reference/http-api-models#dnsrecord)
 
+The certificate fields are optional. If omitted, `certificate_mode` defaults to
+`disabled`, while `certificate_path` and `certificate_key_path` default to
+`null`:
+
+| Field                  | Required | Type                                                                 |
+| ---------------------- | -------- | -------------------------------------------------------------------- |
+| `certificate_mode`     | `false`  | `disabled` \| `existing` \| `uploaded` \| `requested`               |
+| `certificate_path`     | `false`  | `string` \| `null`                                                    |
+| `certificate_key_path` | `false`  | `string` \| `null`                                                    |
+
+Send the two path fields only with `certificate_mode: existing`; otherwise,
+omit them.
+
+For automatic ACME issuance, create the record with `proxied: true` and leave
+`certificate_mode` at its `disabled` default. The background certificate
+reconciler periodically checks the derived site and, after deployment and
+public DNS are ready, requests a certificate, changes the mode to `requested`,
+and deploys the certificate. It never contacts the CA while preflight is
+blocked. Configure `BLITZE_ACME_DEFAULT_EMAIL` for unattended issuance; the
+default reconciliation interval is 600 seconds.
+
 **Responses**
 
 | Status | Description                                      | Body                  |
@@ -669,6 +694,24 @@ fleet only when it has something new to install.
 | Status | Description         | Body            |
 | ------ | ------------------- | --------------- |
 | `200`  | Successful Response | [`ReconciliationResult`](/docs/reference/http-api-models#reconciliationresult) |
+
+## `POST /v1/ssl/automatic/reconcile`
+
+Probe eligible records from every edge and apply upgrade-only Automatic
+SSL/TLS recommendations. Records in Custom mode are never changed. A scan may
+upgrade `ssl_mode` when every edge supports the stronger transport and sees
+equivalent origin content; it never downgrades a record.
+
+When one or more records change, the endpoint deploys the resulting desired
+state once. Missing edges, TLS failures, origin 5xx responses, or mismatched
+HTTP/HTTPS content leave the record unchanged and explain the decision in
+`skipped`.
+
+**Responses**
+
+| Status | Description         | Body |
+| ------ | ------------------- | ---- |
+| `200`  | Successful Response | [`SslAutomaticReconciliation`](/docs/reference/http-api-models#sslautomaticreconciliation) |
 
 ## `GET /metrics`
 

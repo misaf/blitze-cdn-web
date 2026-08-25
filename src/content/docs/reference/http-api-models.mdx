@@ -10,6 +10,13 @@ These schemas define the request and response objects linked from the
 
 ## Models
 
+### `CacheQueryStringMode`
+
+`include`, `ignore`
+
+`include` keeps the complete query string in the cache key. `ignore` keys by
+raw path only while still forwarding the original query to the origin.
+
 ### `AuditEvent`
 
 | Field           | Type       | Required | Default |
@@ -35,7 +42,9 @@ Validated, provider-independent desired state for one CDN virtual host.
 
 | Field                   | Type              | Required | Default    |
 | ----------------------- | ----------------- | -------- | ---------- | --- |
+| `always_use_https`      | `boolean`         | `false`  | `false`    |
 | `cache_enabled`         | `boolean`         | `false`  | `true`     |
+| `cache_query_string_mode` | [`CacheQueryStringMode`](#cachequerystringmode) | `false` | `include` |
 | `cache_valid_not_found` | `string`          | `false`  | `1m`       |
 | `cache_valid_success`   | `string`          | `false`  | `10m`      |
 | `certificate_key_path`  | `string \\        | null`    | `false`    | —   |
@@ -45,11 +54,12 @@ Validated, provider-independent desired state for one CDN virtual host.
 | `firewall`              | [`SiteFirewall`](#sitefirewall)    | `false`  | `{}`       |
 | `name`                  | `string`          | `true`   | —          |
 | `origin_host`           | `string`          | `true`   | —          |
-| `origin_port`           | `integer \\       | null`    | `false`    | —   |
 | `origin_request_host`   | `string \\        | null`    | `false`    | —   |
-| `origin_scheme`         | [`HttpScheme`](#httpscheme)      | `false`  | `https`    |
 | `origin_sni`            | `string \\        | null`    | `false`    | —   |
 | `server_names`          | `string[]`        | `true`   | —          |
+| `ssl_automatic_mode`    | [`SslAutomaticMode`](#sslautomaticmode) | `false` | `auto` |
+| `ssl_mode`              | [`SslMode`](#sslmode)            | `false`  | `off`      |
+| `minimum_tls_version`   | [`MinimumTlsVersion`](#minimumtlsversion) | `false` | `1.2` |
 
 ### `CertificateInfo`
 
@@ -295,6 +305,7 @@ One edge's answer about one site's origin.
 | `reachable`    | `boolean`         | `false`  | `false` |
 | `scheme`       | [`HttpScheme`](#httpscheme)      | `true`   | —       |
 | `site`         | `string`          | `true`   | —       |
+| `ssl_mode`     | [`SslMode`](#sslmode)            | `true`   | —       |
 | `sni`          | `string \| null`  | `false`  | —       |
 | `status`       | `integer \| null` | `false`  | —       |
 | `tls_verified` | `boolean \| null` | `false`  | —       |
@@ -304,8 +315,8 @@ routing, a firewall, or the wrong port — the edge got nothing back at all.
 `tls_verified` false with `reachable` true means the origin answered but
 presented a certificate that is not valid for the SNI this edge sends, which is
 the site's `origin_sni` or the origin's own certificate and nothing to do with
-the network. `tls_verified` is `null` for an HTTP origin, where the question
-does not arise.
+the network. `tls_verified` is `null` for an HTTP origin or Full mode, where
+verification is deliberately not attempted.
 
 `status` is whatever the origin answered a `HEAD /` with, and is not judged: a
 404 or a 403 still proves the origin is up and talking, which is the whole of
@@ -314,6 +325,12 @@ what this check claims to know.
 ### `HttpScheme`
 
 _None._
+
+### `MinimumTlsVersion`
+
+`1.2`, `1.3`
+
+The oldest visitor TLS protocol the edge accepts for one hostname.
 
 ### `RenewRequest`
 
@@ -342,7 +359,9 @@ regardless of age.
 
 | Field                   | Type              | Required | Default    |
 | ----------------------- | ----------------- | -------- | ---------- |
+| `always_use_https`      | `boolean`         | `false`  | `false`    |
 | `cache_enabled`         | `boolean`         | `false`  | `true`     |
+| `cache_query_string_mode` | [`CacheQueryStringMode`](#cachequerystringmode) | `false` | `include` |
 | `cache_valid_not_found` | `string`          | `false`  | `1m`       |
 | `cache_valid_success`   | `string`          | `false`  | `10m`      |
 | `certificate_key_path`  | `string \| null`  | `false`  | —          |
@@ -352,20 +371,23 @@ regardless of age.
 | `enabled`               | `boolean`         | `false`  | `true`     |
 | `firewall`              | [`SiteFirewall`](#sitefirewall)    | `false`  | `{}`       |
 | `name`                  | `string`          | `true`   | —          |
-| `origin_port`           | `integer \| null` | `false`  | —          |
 | `origin_request_host`   | `string \| null`  | `false`  | —          |
-| `origin_scheme`         | [`HttpScheme`](#httpscheme)      | `false`  | `https`    |
 | `origin_sni`            | `string \| null`  | `false`  | —          |
 | `proxied`               | `boolean`         | `false`  | `false`    |
 | `ttl`                   | `integer`         | `false`  | `300`      |
 | `type`                  | [`RecordType`](#recordtype)      | `false`  | `A`        |
 | `value`                 | `string`          | `true`   | —          |
+| `minimum_tls_version`   | [`MinimumTlsVersion`](#minimumtlsversion) | `false` | `1.2` |
+| `ssl_automatic_mode`    | [`SslAutomaticMode`](#sslautomaticmode) | `false` | `auto` |
+| `ssl_mode`              | [`SslMode`](#sslmode)            | `false`  | `off`      |
 
 ### `RecordPatch`
 
 | Field                   | Type                      | Required | Default |
 | ----------------------- | ------------------------- | -------- | ------- |
+| `always_use_https`      | `boolean \| null`         | `false`  | —       |
 | `cache_enabled`         | `boolean \| null`         | `false`  | —       |
+| `cache_query_string_mode` | `CacheQueryStringMode \| null` | `false` | — |
 | `cache_valid_not_found` | `string \| null`          | `false`  | —       |
 | `cache_valid_success`   | `string \| null`          | `false`  | —       |
 | `certificate_key_path`  | `string \| null`          | `false`  | —       |
@@ -373,13 +395,14 @@ regardless of age.
 | `certificate_path`      | `string \| null`          | `false`  | —       |
 | `enabled`               | `boolean \| null`         | `false`  | —       |
 | `firewall`              | `SiteFirewall \| null`    | `false`  | —       |
-| `origin_port`           | `integer \| null`         | `false`  | —       |
 | `origin_request_host`   | `string \| null`          | `false`  | —       |
-| `origin_scheme`         | `HttpScheme \| null`      | `false`  | —       |
 | `origin_sni`            | `string \| null`          | `false`  | —       |
 | `proxied`               | `boolean \| null`         | `false`  | —       |
 | `ttl`                   | `integer \| null`         | `false`  | —       |
 | `value`                 | `string \| null`          | `false`  | —       |
+| `minimum_tls_version`   | `MinimumTlsVersion \| null` | `false` | — |
+| `ssl_automatic_mode`    | `SslAutomaticMode \| null` | `false` | — |
+| `ssl_mode`              | `SslMode \| null`         | `false`  | —       |
 
 ### `SiteFirewall`
 
@@ -408,6 +431,36 @@ reference](/docs/reference/records) for how the rules compose and why
 ### `RecordType`
 
 `A`, `AAAA`
+
+### `SslMode`
+
+`off`, `flexible`, `full`, `full_strict`
+
+Off serves visitor HTTP and contacts the origin over HTTP. Flexible serves
+visitor HTTPS but contacts the origin over HTTP. Full uses HTTPS on both sides
+without verifying the origin certificate. Full (strict) verifies the origin
+certificate against the system trust store and configured SNI. Every mode
+except Off requires an active edge certificate.
+
+### `SslAutomaticMode`
+
+`auto`, `custom`
+
+Automatic mode permits upgrade-only reconciliation. Custom mode preserves the
+operator-selected [`SslMode`](#sslmode).
+
+### `SslAutomaticReconciliation`
+
+| Field        | Type                             | Required | Default |
+| ------------ | -------------------------------- | -------- | ------- |
+| `scanned`    | `string[]`                       | `false`  | `[]`    |
+| `upgraded`   | `object<string, SslMode>`        | `false`  | `{}`    |
+| `skipped`    | `object<string, string>`         | `false`  | `{}`    |
+| `deployment` | [`Deployment`](#deployment) \| null | `false` | —    |
+
+`upgraded` maps site names to their new SSL mode. `skipped` explains why an
+eligible site could not be upgraded. `deployment` is null when no record
+changed.
 
 ### `ValidationError`
 
