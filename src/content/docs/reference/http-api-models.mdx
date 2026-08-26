@@ -118,7 +118,9 @@ separated, matching `^[A-Za-z0-9_.*-]+(?:,[A-Za-z0-9_.*-]+)*$` and at most 512
 characters. Anything else is a `422`. The value is resolved against the
 inventory, so it can only narrow the fleet.
 
-### `Deployment`
+<span id="deployment"></span>
+
+### `blitzecdn__api__v2_operations__Deployment`
 
 | Field         | Type               | Required | Default |
 | ------------- | ------------------ | -------- | ------- | --- |
@@ -138,7 +140,9 @@ inventory, so it can only narrow the fleet.
 
 _None._
 
-### `DriftReport`
+<span id="driftreport"></span>
+
+### `blitzecdn__api__v2_operations__DriftReport`
 
 Whether the fleet still matches the state the control plane declares.
 
@@ -203,7 +207,9 @@ A partial update to an edge. Every field optional; unset means untouched. No
 | `ssh_sources`      | `string[] \| null` | `false`  | —       |
 | `user`             | `string \| null`   | `false`  | —       |
 
-### `EdgeRemoval`
+<span id="edgeremoval"></span>
+
+### `blitzecdn__api__v2_operations__EdgeRemoval`
 
 What `DELETE /v1/edges/{name}` did. The teardown and the deregistration fail
 independently, so the outcome of the first is reported rather than implied.
@@ -242,7 +248,9 @@ deployment held the lock, or the certificate was uploaded rather than issued and
 cannot be reissued here. A skipped site is picked up by the next run, so a sweep
 full of them is slower renewal rather than missed renewal.
 
-### `ReconciliationResult`
+<span id="reconciliationresult"></span>
+
+### `blitzecdn__api__v2_operations__ReconciliationResult`
 
 First certificates issued for sites that were ready, and the deploy that
 installed them.
@@ -449,7 +457,9 @@ except Off requires an active edge certificate.
 Automatic mode permits upgrade-only reconciliation. Custom mode preserves the
 operator-selected [`SslMode`](#sslmode).
 
-### `SslAutomaticReconciliation`
+<span id="sslautomaticreconciliation"></span>
+
+### `blitzecdn__api__v2_operations__SslAutomaticReconciliation`
 
 | Field        | Type                             | Required | Default |
 | ------------ | -------------------------------- | -------- | ------- |
@@ -472,13 +482,17 @@ changed.
 | `msg`   | `string`   | `true`     | —       |
 | `type`  | `string`   | `true`     | —       |
 
-### `AnsibleRun`
+<span id="ansiblerun"></span>
+
+### `blitzecdn__api__v2_operations__AnsibleRun`
 
 One Ansible invocation. Required fields are `id`, `playbook`, `status`,
 `started_at`, and `finished_at`. Optional fields are `return_code`, `log_path`,
 and `error`; `hosts` defaults to `[]` and contains [`HostRun`](#hostrun) objects.
 
-### `HostRun`
+<span id="hostrun"></span>
+
+### `blitzecdn__api__v2_operations__HostRun`
 
 One edge's structured run result. `host` is required. The `ok`, `changed`,
 `failed`, `unreachable`, `skipped`, `rescued`, and `ignored` counters default to
@@ -517,7 +531,9 @@ operation-specific structured fact such as cache statistics.
 to `false`; `host_limit` is an optional comma-separated edge pattern. Supply
 entries or `purge_all`, never both or neither.
 
-### `PurgeResult`
+<span id="purgeresult"></span>
+
+### `blitzecdn__api__v2_operations__PurgeResult`
 
 Contains `purged_at`, the requested `entries`, `purge_all`, `host_limit`, and
 per-edge `hosts`. Read-only `complete` is true only when every edge in scope
@@ -574,3 +590,21 @@ fields are `id`, `kind`, `status`, `operator`, `created_at`, and `updated_at`.
 
 Contains required `name` and `completed_at`, plus an operation-specific
 `details` object.
+## Versioned compatibility schemas
+
+The v1 and v2 operational schemas currently have the same documented fields,
+but remain separate OpenAPI components so v2 can evolve without changing v1.
+
+### `Body_upload_certificate_v2_sites__name__certificate_upload_post`
+
+The v2 multipart upload body has the same `certificate` and `private_key`
+fields documented for the v1 upload body.
+
+### `blitzecdn__api__v1_operations__Deployment`
+### `blitzecdn__api__v1_operations__DriftReport`
+### `blitzecdn__api__v1_operations__EdgeRemoval`
+### `blitzecdn__api__v1_operations__ReconciliationResult`
+### `blitzecdn__api__v1_operations__SslAutomaticReconciliation`
+### `blitzecdn__api__v1_operations__AnsibleRun`
+### `blitzecdn__api__v1_operations__HostRun`
+### `blitzecdn__api__v1_operations__PurgeResult`

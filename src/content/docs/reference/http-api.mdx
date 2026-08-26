@@ -14,7 +14,7 @@ Verified against the OpenAPI schema of `BlitzeCDN control plane`.
 Every route below except `GET /health` requires the `X-API-Key` header.
 Ten failed authentications from one client address within a minute return
 `429`. Deployment and rollback routes return `202 Accepted` with a queued
-record; poll `GET /v1/deployments/{deployment_id}` for the outcome.
+record; poll `GET /v2/deployments/{deployment_id}` for the outcome.
 
 The key is described in the schema as the security scheme `ApiKeyAuth`
 (`type: apiKey`, `in: header`, `name: x-api-key`), which every protected
@@ -26,7 +26,7 @@ examples on this page do.
 
 ## Request and retry rules
 
-- Send `X-API-Key` on every `/v1/*` request. A missing or invalid key returns
+- Send `X-API-Key` on every `/v2/*` request. A missing or invalid key returns
   `401`; repeated failures can return `429` for the source address.
 - Read-only `GET` requests are safe to retry with bounded backoff.
 - Do not blindly retry `POST` mutations. A timeout can occur after the server
@@ -80,7 +80,7 @@ with; see [Domains, records, and sites](/docs/reference/records).
 {/* schema: DnsRecord */}
 
 ```bash
-curl -sS -X POST https://controller.example.com/v1/domains/example.com/records \
+curl -sS -X POST https://controller.example.com/v2/domains/example.com/records \
   -H "X-API-Key: $BLITZE_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{
@@ -124,13 +124,13 @@ converges it.
 
 ### Converge the fleet
 
-[`POST /v1/deployments`](#post-v1deployments) returns `202` immediately; the
+[`POST /v2/deployments`](#post-v1deployments) returns `202` immediately; the
 body is the queued record, not the outcome.
 
 {/* schema: DeployRequest */}
 
 ```bash
-curl -sS -X POST https://controller.example.com/v1/deployments \
+curl -sS -X POST https://controller.example.com/v2/deployments \
   -H "X-API-Key: $BLITZE_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{ "check": false }'
@@ -155,12 +155,12 @@ curl -sS -X POST https://controller.example.com/v1/deployments \
 
 ### Poll it to a terminal state
 
-Poll [`GET /v1/deployments/{deployment_id}`](#get-v1deploymentsdeployment_id)
+Poll [`GET /v2/deployments/{deployment_id}`](#get-v1deploymentsdeployment_id)
 until `status` leaves `queued` and `running`. `result.hosts` is the per-edge
 breakdown, and `changed` on a non-check run counts tasks that acted.
 
 ```bash
-curl -sS https://controller.example.com/v1/deployments/7c1e4b90a2df46538ba0c7e15d93f8a2 \
+curl -sS https://controller.example.com/v2/deployments/7c1e4b90a2df46538ba0c7e15d93f8a2 \
   -H "X-API-Key: $BLITZE_API_KEY"
 ```
 
@@ -202,7 +202,7 @@ curl -sS https://controller.example.com/v1/deployments/7c1e4b90a2df46538ba0c7e15
 ```
 
 A `succeeded` deployment with `changed: 0` on every host means the fleet already
-matched. That is the same signal [`POST /v1/drift`](#post-v1drift) produces,
+matched. That is the same signal [`POST /v2/drift`](#post-v1drift) produces,
 without converging anything.
 
 ### Purge one path
@@ -212,7 +212,7 @@ Purges are partial by design: each entry names a host and a URI.
 {/* schema: PurgeRequest */}
 
 ```bash
-curl -sS -X POST https://controller.example.com/v1/cache/purge \
+curl -sS -X POST https://controller.example.com/v2/cache/purge \
   -H "X-API-Key: $BLITZE_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{
@@ -243,7 +243,7 @@ this same body with `complete` false and the unreachable edges in
 ### Read certificate state
 
 ```bash
-curl -sS https://controller.example.com/v1/sites/www.example.com/certificate \
+curl -sS https://controller.example.com/v2/sites/www.example.com/certificate \
   -H "X-API-Key: $BLITZE_API_KEY"
 ```
 
@@ -275,7 +275,7 @@ Health
 | ------ | ------------------- | -------- |
 | `200`  | Successful Response | `object` |
 
-## `GET /v1/audit-events`
+## `GET /v2/audit-events`
 
 Audit Events
 
@@ -292,7 +292,7 @@ Audit Events
 | `200`  | Successful Response | [`AuditEvent[]`](/docs/reference/http-api-models#auditevent)        |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `GET /v1/workflows`
+## `GET /v2/workflows`
 
 Lists durable deployment, rollback, and certificate workflows. A workflow in
 `needs_review` was interrupted while an external system may already have acted;
@@ -302,7 +302,7 @@ inspect its completed steps before retrying.
 | ----------- | -------- | -------- | --------- | ----------------------------- |
 | `limit`     | `query`  | `false`  | `integer` | Maximum workflows to return.  |
 
-## `GET /v1/workflows/{workflow_id}`
+## `GET /v2/workflows/{workflow_id}`
 
 Returns one durable workflow and its idempotent checkpoints.
 
@@ -310,7 +310,7 @@ Returns one durable workflow and its idempotent checkpoints.
 | ------------- | -------- | -------- | -------- | ----------------------------- |
 | `workflow_id` | `path`   | `true`   | `string` | Workflow identifier.          |
 
-## `GET /v1/deployments`
+## `GET /v2/deployments`
 
 Deployments
 
@@ -327,9 +327,9 @@ Deployments
 | `200`  | Successful Response | [`Deployment[]`](/docs/reference/http-api-models#deployment)        |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `POST /v1/deployments`
+## `POST /v2/deployments`
 
-Queue a convergence; poll `GET /v1/deployments/{deployment_id}` for the outcome.
+Queue a convergence; poll `GET /v2/deployments/{deployment_id}` for the outcome.
 
 
 **Request body** (required): `application/json` → [`DeployRequest`](/docs/reference/http-api-models#deployrequest)
@@ -341,7 +341,7 @@ Queue a convergence; poll `GET /v1/deployments/{deployment_id}` for the outcome.
 | `202`  | Successful Response | [`Deployment`](/docs/reference/http-api-models#deployment)          |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `GET /v1/deployments/{deployment_id}`
+## `GET /v2/deployments/{deployment_id}`
 
 Deployment
 
@@ -358,10 +358,10 @@ Deployment
 | `200`  | Successful Response | [`Deployment`](/docs/reference/http-api-models#deployment)          |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `POST /v1/drift`
+## `POST /v2/drift`
 
 Queue a check-mode run and read the answer from
-`GET /v1/deployments/{deployment_id}/drift`. Converges nothing.
+`GET /v2/deployments/{deployment_id}/drift`. Converges nothing.
 
 
 **Request body** (required): `application/json` → [`DriftRequest`](/docs/reference/http-api-models#driftrequest)
@@ -373,7 +373,7 @@ Queue a check-mode run and read the answer from
 | `202`  | Successful Response | [`Deployment`](/docs/reference/http-api-models#deployment)          |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `GET /v1/deployments/{deployment_id}/drift`
+## `GET /v2/deployments/{deployment_id}/drift`
 
 Read any completed check-mode deployment as a drift report. Returns `409` for a
 deployment that applied changes — its output describes what it did, not what had
@@ -393,9 +393,9 @@ drifted.
 | `409`  | Not a check-mode deployment | `object`              |
 | `422`  | Validation Error            | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `POST /v1/rollbacks`
+## `POST /v2/rollbacks`
 
-Queue a rollback; poll `GET /v1/deployments/{deployment_id}` for the outcome.
+Queue a rollback; poll `GET /v2/deployments/{deployment_id}` for the outcome.
 
 
 **Request body** (required): `application/json` → [`RollbackRequest`](/docs/reference/http-api-models#rollbackrequest)
@@ -407,7 +407,7 @@ Queue a rollback; poll `GET /v1/deployments/{deployment_id}` for the outcome.
 | `202`  | Successful Response | [`Deployment`](/docs/reference/http-api-models#deployment)          |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `GET /v1/sites`
+## `GET /v2/sites`
 
 List Sites. Sites are derived from proxied DNS records and are read-only —
 there is no `POST`, `PATCH`, or `DELETE`. Change the record instead.
@@ -420,7 +420,7 @@ there is no `POST`, `PATCH`, or `DELETE`. Change the record instead.
 | `200`  | Successful Response | [`CdnSite[]`](/docs/reference/http-api-models#cdnsite)           |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `GET /v1/sites/{name}`
+## `GET /v2/sites/{name}`
 
 The fully resolved policy for one site — the same document the edges are handed,
 including the defaults its record never mentioned.
@@ -439,7 +439,7 @@ including the defaults its record never mentioned.
 | `404`  | No site by that name | `object`              |
 | `422`  | Validation Error     | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `GET /v1/domains`
+## `GET /v2/domains`
 
 List Domains
 
@@ -450,7 +450,7 @@ List Domains
 | ------ | ------------------- | ---------- |
 | `200`  | Successful Response | [`Domain[]`](/docs/reference/http-api-models#domain) |
 
-## `POST /v1/domains`
+## `POST /v2/domains`
 
 Create Domain
 
@@ -464,7 +464,7 @@ Create Domain
 | `409`  | Domain already exists | —                     |
 | `422`  | Validation Error      | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `DELETE /v1/domains/{domain}`
+## `DELETE /v2/domains/{domain}`
 
 Delete Domain, and every record in it.
 
@@ -475,7 +475,7 @@ Delete Domain, and every record in it.
 | `204`  | Successful Response   | —    |
 | `404`  | Domain does not exist | —    |
 
-## `GET /v1/domains/{domain}/records`
+## `GET /v2/domains/{domain}/records`
 
 List Records
 
@@ -486,7 +486,7 @@ List Records
 | `200`  | Successful Response   | [`DnsRecord[]`](/docs/reference/http-api-models#dnsrecord) |
 | `404`  | Domain does not exist | —             |
 
-## `POST /v1/domains/{domain}/records`
+## `POST /v2/domains/{domain}/records`
 
 Create Record. The body's `domain` must match the path segment.
 
@@ -522,7 +522,7 @@ default reconciliation interval is 600 seconds.
 | `409`  | Record exists, or its derived site name collides | —                     |
 | `422`  | Validation Error                                 | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `PATCH /v1/domains/{domain}/records/{name}`
+## `PATCH /v2/domains/{domain}/records/{name}`
 
 Update Record. This is the CDN on/off switch: send `{"proxied": true}` or
 `{"proxied": false}`.
@@ -542,7 +542,7 @@ Update Record. This is the CDN on/off switch: send `{"proxied": true}` or
 | `200`  | Successful Response   | [`DnsRecord`](/docs/reference/http-api-models#dnsrecord) |
 | `404`  | Record does not exist | —           |
 
-## `DELETE /v1/domains/{domain}/records/{name}`
+## `DELETE /v2/domains/{domain}/records/{name}`
 
 Delete Record
 
@@ -553,7 +553,7 @@ Delete Record
 | `204`  | Successful Response   | —    |
 | `404`  | Record does not exist | —    |
 
-## `GET /v1/dns/export`
+## `GET /v2/dns/export`
 
 Every record, for the system that publishes DNS. Proxied records omit `value`:
 they must resolve to an edge, and edge addressing belongs to that system.
@@ -564,7 +564,7 @@ they must resolve to an edge, and edge addressing belongs to that system.
 | ------ | ------------------- | ---------- |
 | `200`  | Successful Response | `object[]` |
 
-## `GET /v1/certificates`
+## `GET /v2/certificates`
 
 Managed certificates against the clock, soonest expiry first.
 
@@ -581,7 +581,7 @@ Managed certificates against the clock, soonest expiry first.
 | `200`  | Successful Response | [`CertificateStatus[]`](/docs/reference/http-api-models#certificatestatus) |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `POST /v1/cache/purge`
+## `POST /v2/cache/purge`
 
 Remove cached responses from the edges. Answers inline rather than queueing: a
 purge is usually made under time pressure and the caller needs to know whether
@@ -618,7 +618,7 @@ or `entries` and `purge_all` together — is the other `409` and carries an
 `object` with `detail`, because no purge was attempted and there is no result to
 report.
 
-## `POST /v1/cache/stats`
+## `POST /v2/cache/stats`
 
 Collect cache effectiveness from the edges. A `POST` despite reading only
 counters: it runs a playbook across the fleet, which is neither cacheable nor
@@ -638,7 +638,7 @@ omitted, so a fleet-wide number is never quietly computed from a subset.
 | `422`  | Validation Error            | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 | `503`  | No edge reported statistics | `object`              |
 
-## `POST /v1/certificates/renew`
+## `POST /v2/certificates/renew`
 
 Reissue ACME certificates close to expiry. Answers inline rather than queueing:
 renewal changes no edge configuration, so there is nothing to converge and
@@ -672,7 +672,7 @@ automated caller cannot read a typo as "nothing was due". An empty list is a
 | `404`  | No managed certificate for a requested site | `object`              |
 | `422`  | Validation Error                            | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `POST /v1/certificates/reconcile`
+## `POST /v2/certificates/reconcile`
 
 Issue first certificates for every proxied site that is ready for one, then
 deploy once to install them. The same operation the scheduler runs on
@@ -695,7 +695,7 @@ fleet only when it has something new to install.
 | ------ | ------------------- | --------------- |
 | `200`  | Successful Response | [`ReconciliationResult`](/docs/reference/http-api-models#reconciliationresult) |
 
-## `POST /v1/ssl/automatic/reconcile`
+## `POST /v2/ssl/automatic/reconcile`
 
 Probe eligible records from every edge and apply upgrade-only Automatic
 SSL/TLS recommendations. Records in Custom mode are never changed. A scan may
@@ -737,7 +737,7 @@ are close to expiry are not public.
 | ------ | ------------------- | -------- |
 | `200`  | Successful Response | `text/plain` |
 
-## `GET /v1/edges`
+## `GET /v2/edges`
 
 List Edges. The fleet, and therefore the Ansible inventory: the `blitzecdn`
 inventory plugin reads these same rows at the start of every run.
@@ -748,10 +748,10 @@ inventory plugin reads these same rows at the start of every run.
 | ------ | ------------------- | -------- |
 | `200`  | Successful Response | [`Edge[]`](/docs/reference/http-api-models#edge) |
 
-## `POST /v1/edges`
+## `POST /v2/edges`
 
 Add Edge. Registers a host; converges nothing and contacts nothing. The edge
-joins the fleet on the next `POST /v1/deployments`.
+joins the fleet on the next `POST /v2/deployments`.
 
 `201` rather than `202`: this creates a record and returns having finished,
 unlike the deployment routes.
@@ -766,7 +766,7 @@ unlike the deployment routes.
 | `409`  | Edge already exists | —                     |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `GET /v1/edges/{name}`
+## `GET /v2/edges/{name}`
 
 Get Edge
 
@@ -777,7 +777,7 @@ Get Edge
 | `200`  | Successful Response | [`Edge`](/docs/reference/http-api-models#edge) |
 | `404`  | Edge does not exist | —      |
 
-## `PATCH /v1/edges/{name}`
+## `PATCH /v2/edges/{name}`
 
 Update Edge. Each field replaces its own value; unset fields are untouched.
 `public_addresses` and `ssh_sources` replace their whole list, so sending `[]`
@@ -798,7 +798,7 @@ key. Remove the edge and add it again under the new name.
 | `404`  | Edge does not exist | —                     |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `DELETE /v1/edges/{name}`
+## `DELETE /v2/edges/{name}`
 
 Remove Edge. Tears the host down, then deregisters it — in that order. The
 inventory is derived from these rows, so deregistering first would leave a host
@@ -829,13 +829,13 @@ that distinction survives.
 | `502`  | Teardown failed and the edge was kept; retry, or pass `force=true` | —                     |
 | `422`  | Validation Error                                                   | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `POST /v1/origins/check`
+## `POST /v2/origins/check`
 
 Ask the edges to connect to the origins they proxy to: resolve, connect, and for
 an HTTPS origin complete a verified TLS handshake with the same SNI the edge
 sends. Each edge answers for itself, so the response is per edge and per site.
 
-A `POST` despite changing nothing, following `POST /v1/cache/stats`: it runs a
+A `POST` despite changing nothing, following `POST /v2/cache/stats`: it runs a
 playbook across the fleet, which is neither cacheable nor safe to retry blindly
 the way `GET` promises. Answers inline, bounded by
 `BLITZE_DEPLOYMENT_TIMEOUT_SECONDS`, so set a matching client timeout.
@@ -850,7 +850,7 @@ the way `GET` promises. Answers inline, bounded by
 | `200`  | Successful Response | [`OriginReport`](/docs/reference/http-api-models#originreport) |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `GET /v1/sites/{name}/certificate`
+## `GET /v2/sites/{name}/certificate`
 
 Certificate
 
@@ -867,7 +867,7 @@ Certificate
 | `200`  | Successful Response | [`CertificateInfo`](/docs/reference/http-api-models#certificateinfo)     |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `POST /v1/sites/{name}/certificate/request`
+## `POST /v2/sites/{name}/certificate/request`
 
 Request Certificate
 
@@ -886,7 +886,7 @@ Request Certificate
 | `200`  | Successful Response | [`CertificateInfo`](/docs/reference/http-api-models#certificateinfo)     |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `GET /v1/sites/{name}/certificate/preflight`
+## `GET /v2/sites/{name}/certificate/preflight`
 
 Certificate Preflight
 
@@ -910,7 +910,7 @@ and changes nothing. The check names and severities are listed under
 | `404`  | No such site        | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
 
-## `POST /v1/sites/{name}/certificate/upload`
+## `POST /v2/sites/{name}/certificate/upload`
 
 Upload Certificate
 
@@ -920,7 +920,7 @@ Upload Certificate
 | ----------- | -------- | -------- | -------- | ----------------------------- |
 | `name`      | `path`   | `true`   | `string` | —                             |
 
-**Request body** (required): `multipart/form-data` → [`Body_upload_certificate_v1_sites__name__certificate_upload_post`](/docs/reference/http-api-models#body_upload_certificate_v1_sites__name__certificate_upload_post)
+**Request body** (required): `multipart/form-data` → [`Body_upload_certificate_v2_sites__name__certificate_upload_post`](/docs/reference/http-api-models#body_upload_certificate_v1_sites__name__certificate_upload_post)
 
 **Responses**
 
@@ -928,3 +928,43 @@ Upload Certificate
 | ------ | ------------------- | --------------------- |
 | `200`  | Successful Response | [`CertificateInfo`](/docs/reference/http-api-models#certificateinfo)     |
 | `422`  | Validation Error    | [`HTTPValidationError`](/docs/reference/http-api-models#httpvalidationerror) |
+## Version 1 compatibility routes
+
+The following frozen routes remain available for existing integrations. Their
+behavior and schemas match the v1 contract; new integrations should use v2.
+
+## `GET /v1/audit-events`
+## `GET /v1/workflows`
+## `GET /v1/workflows/{workflow_id}`
+## `GET /v1/deployments`
+## `POST /v1/deployments`
+## `GET /v1/deployments/{deployment_id}`
+## `POST /v1/drift`
+## `GET /v1/deployments/{deployment_id}/drift`
+## `POST /v1/rollbacks`
+## `GET /v1/sites`
+## `GET /v1/sites/{name}`
+## `GET /v1/domains`
+## `POST /v1/domains`
+## `DELETE /v1/domains/{domain}`
+## `GET /v1/domains/{domain}/records`
+## `POST /v1/domains/{domain}/records`
+## `PATCH /v1/domains/{domain}/records/{name}`
+## `DELETE /v1/domains/{domain}/records/{name}`
+## `GET /v1/dns/export`
+## `GET /v1/certificates`
+## `POST /v1/cache/purge`
+## `POST /v1/cache/stats`
+## `POST /v1/certificates/renew`
+## `POST /v1/certificates/reconcile`
+## `POST /v1/ssl/automatic/reconcile`
+## `GET /v1/edges`
+## `POST /v1/edges`
+## `GET /v1/edges/{name}`
+## `PATCH /v1/edges/{name}`
+## `DELETE /v1/edges/{name}`
+## `POST /v1/origins/check`
+## `GET /v1/sites/{name}/certificate`
+## `POST /v1/sites/{name}/certificate/request`
+## `GET /v1/sites/{name}/certificate/preflight`
+## `POST /v1/sites/{name}/certificate/upload`
